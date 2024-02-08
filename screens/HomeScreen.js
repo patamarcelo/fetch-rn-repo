@@ -23,6 +23,7 @@ const FarmList = (itemData) => {
 const HomeScreen = () => {
 	const [isLoading, setIsLoading] = useState(false);
 	const [dataFromServer, setDataFromServer] = useState([]);
+	const [onlyFarms, setOnlyFarms] = useState([]);
 	const handleRefresh = () => {
 		console.log("atualizar");
 	};
@@ -34,6 +35,17 @@ const HomeScreen = () => {
 	useEffect(() => {
 		getData();
 	}, []);
+
+	useEffect(() => {
+		if (dataFromServer.length > 0) {
+			const onlyFarm = dataFromServer.map((data, i) => {
+				return data.fazenda;
+			});
+			const setFarms = [...new Set(onlyFarm)];
+			setOnlyFarms(setFarms);
+		}
+	}, [dataFromServer]);
+
 	const getData = async () => {
 		console.log("pegando os dados");
 		setIsLoading(true);

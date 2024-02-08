@@ -5,6 +5,7 @@ import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { StatusBar } from "expo-status-bar";
 import { StyleSheet, Text, View, Button } from "react-native";
 import HomeStack from "./stacks/HomeStack";
+import MainStack from "./stacks/MainStack";
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -13,7 +14,7 @@ const Navigation = () => {
 	return (
 		<NavigationContainer>
 			{/* {!context.isAuth ? ( */}
-			<HomeStack />
+			<MainStack />
 			{/* ) : (
 				<AuthenticatedStack context={context} />
 			)} */}
