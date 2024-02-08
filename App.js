@@ -1,20 +1,65 @@
-import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View } from 'react-native';
+import { NavigationContainer } from "@react-navigation/native";
+import { createNativeStackNavigator } from "@react-navigation/native-stack";
+import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
+
+import { StatusBar } from "expo-status-bar";
+import { StyleSheet, Text, View, Button } from "react-native";
+import HomeStack from "./stacks/HomeStack";
+
+const Stack = createNativeStackNavigator();
+const Tab = createBottomTabNavigator();
+
+const Navigation = () => {
+	return (
+		<NavigationContainer>
+			{/* {!context.isAuth ? ( */}
+			<HomeStack />
+			{/* ) : (
+				<AuthenticatedStack context={context} />
+			)} */}
+		</NavigationContainer>
+	);
+};
+
+const Root = () => {
+	return <Navigation />;
+};
 
 export default function App() {
-  return (
-    <View style={styles.container}>
-      <Text>Open up App.js to start working on your app!</Text>
-      <StatusBar style="auto" />
-    </View>
-  );
+	const handleRefresh = () => {
+		console.log("atualizando");
+	};
+	return (
+		<>
+			<StatusBar style="auto" />
+			<Root />
+		</>
+	);
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+	HeaderView: {
+		paddingTop: 50,
+		height: 100,
+		width: "100%",
+		justifyContent: "center",
+		alignItems: "center"
+		// backgroundColor: "red"
+	},
+	BottomView: {
+		paddingTop: 50,
+		flex: 1,
+		backgroundColor: "blue",
+		width: "100%",
+		justifyContent: "flex-start",
+		alignItems: "center"
+	},
+	container: {
+		flexDirection: "column",
+		width: "100%",
+		flex: 1,
+		backgroundColor: "#fff",
+		alignItems: "center",
+		justifyContent: "center"
+	}
 });
