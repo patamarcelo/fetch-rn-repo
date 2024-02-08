@@ -22,7 +22,17 @@ const HomeStack = () => {
 			screenOptions={{
 				headerStyle: { backgroundColor: Colors.primary500 },
 				headerTintColor: "white",
-				contentStyle: { backgroundColor: Colors.primary100 }
+				contentStyle: { backgroundColor: Colors.primary100 },
+				tabBarStyle: {
+					backgroundColor: "transparent",
+					elevation: 0,
+					height: 90,
+					paddingHorizontal: 5,
+					paddingTop: 0,
+					backgroundColor: Colors.primary100,
+					position: "absolute",
+					borderTopWidth: 0
+				}
 			}}
 		>
 			<Tab.Screen
