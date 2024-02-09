@@ -5,7 +5,7 @@ import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { Colors } from "../constants/styles";
 
 import HomeScreen from "../screens/HomeScreen";
-import NextScreen from "../screens/NextScreen";
+import ProgramScreen from "../screens/ProgramScreen";
 
 import IconButton from "../components/ui/IconButton";
 import Ionicons from "@expo/vector-icons/Ionicons";
@@ -22,7 +22,7 @@ const HomeStack = () => {
 	return (
 		<Tab.Navigator
 			screenOptions={{
-				headerStyle: { backgroundColor: Colors.primary500 },
+				headerStyle: { backgroundColor: Colors.primary[901] },
 				headerTintColor: "white",
 				contentStyle: { backgroundColor: Colors.primary100 },
 				tabBarStyle: {
@@ -31,39 +31,27 @@ const HomeStack = () => {
 					height: 90,
 					paddingHorizontal: 5,
 					paddingTop: 0,
-					backgroundColor: Colors.primary100,
+					backgroundColor: Colors.primary[901],
 					position: "absolute",
 					borderTopWidth: 0
 				}
 			}}
 		>
 			<Tab.Screen
-				name="Home"
+				name="Programações"
 				component={HomeScreen}
 				options={{
 					tabBarIcon: ({ color, size }) => (
-						<Ionicons name="home" color={color} size={size} />
+						<Ionicons name="timer" color={color} size={size} />
 					)
 				}}
 			/>
 			<Tab.Screen
 				name="Next"
-				component={NextScreen}
+				component={ProgramScreen}
 				options={{
-					title: "Home Page",
-					tabBarLabel: "Home",
-					// headerRight: ({ tintColor }) => (
-					// 	<IconButton
-					// 		type={"awesome"}
-					// 		icon="power-off"
-					// 		color={tintColor}
-					// 		size={22}
-					// 		onPress={handlerLogout}
-					// 		btnStyles={{ marginRight: 15, marginTop: 0 }}
-					// 	/>
-					// ),
 					tabBarIcon: ({ color, size }) => (
-						<Ionicons name="car" color={color} size={size} />
+						<Ionicons name="book" color={color} size={size} />
 					)
 				}}
 			/>

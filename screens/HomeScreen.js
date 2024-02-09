@@ -5,7 +5,8 @@ import {
 	StyleSheet,
 	FlatList,
 	RefreshControl,
-	Alert
+	Alert,
+	Modal
 } from "react-native";
 import { EXPO_PUBLIC_REACT_APP_DJANGO_TOKEN } from "@env";
 
@@ -18,6 +19,9 @@ import IconButton from "../components/ui/IconButton";
 import { useEffect, useState, useLayoutEffect } from "react";
 
 import CardList from "../components/HomeScreen/CardList";
+import FarmScreen from "./FarmsScreen";
+
+import { LINK } from "../utils/api";
 
 const FarmList = (itemData) => {
 	return <CardList data={itemData.item} />;
@@ -30,12 +34,15 @@ const HomeScreen = ({ navigation }) => {
 	const [dataFromServer, setDataFromServer] = useState([]);
 	const selFarm = useSelector(farmsSelected);
 
+	const [modalVisible, setModalVisible] = useState(false);
+
 	const farmTitle = selFarm ? selFarm : "Plantio";
 
 	const dispatch = useDispatch();
 	const handlerFarms = () => {
 		console.log("logout");
 		navigation.navigate("FarmsScren");
+		// setModalVisible(true);
 	};
 
 	useEffect(() => {
@@ -47,12 +54,12 @@ const HomeScreen = ({ navigation }) => {
 	useLayoutEffect(() => {
 		navigation.setOptions({
 			title: farmTitle,
-			tabBarLabel: "Home",
+			tabBarLabel: "Programações",
 			headerLeft: ({ tintColor }) => (
 				<View style={{ flexDirection: "row" }}>
 					<IconButton
 						type={"awesome"}
-						icon="map"
+						icon="filter"
 						color={tintColor}
 						size={22}
 						onPress={handlerFarms}
@@ -98,7 +105,7 @@ const HomeScreen = ({ navigation }) => {
 		setIsLoading(true);
 		try {
 			const response = await fetch(
-				"http://127.0.0.1:8000/diamante/plantio/get_plantio_operacoes_detail_json_program/",
+				`${LINK}/plantio/get_plantio_operacoes_detail_json_program/`,
 				{
 					headers: {
 						Authorization: `Token ${EXPO_PUBLIC_REACT_APP_DJANGO_TOKEN}`,
@@ -132,7 +139,7 @@ const HomeScreen = ({ navigation }) => {
 				style={{
 					flex: 1,
 					justifyContent: "center",
-					backgroundColor: Colors.primary100
+					backgroundColor: "whitesmoke"
 				}}
 			>
 				<ActivityIndicator size="large" color="#0000ff" />
@@ -145,6 +152,20 @@ const HomeScreen = ({ navigation }) => {
 			{/* <View style={styles.header}>
 				<Button onPress={getData}>Pegar Dados</Button>
 			</View> */}
+			<Modal
+				animationType="slide"
+				transparent={true}
+				visible={modalVisible}
+				onRequestClose={() => {
+					Alert.alert("Modal has been closed.");
+					setModalVisible(!modalVisible);
+				}}
+			>
+				<FarmScreen
+					setModalVisible={setModalVisible}
+					modalVisible={modalVisible}
+				/>
+			</Modal>
 			<View style={styles.dataContainer}>
 				{dataFromServer.length > 0 && (
 					<FlatList
@@ -173,7 +194,7 @@ const HomeScreen = ({ navigation }) => {
 
 const styles = StyleSheet.create({
 	mainContainer: {
-		backgroundColor: Colors.primary100,
+		backgroundColor: "whitesmoke",
 		flex: 1,
 		justifyContent: "space-around",
 		alignItems: "center"

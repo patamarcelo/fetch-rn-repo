@@ -2,7 +2,9 @@ import { createSlice } from "@reduxjs/toolkit";
 
 const initialState = {
 	fazendas: [],
-	selectedFarm: ""
+	selectedFarm: "",
+	programsAvaiable: [],
+	selectedProgram: null
 };
 
 const geralSlice = createSlice({
@@ -14,6 +16,12 @@ const geralSlice = createSlice({
 		},
 		selectedFarm: (state, action) => {
 			state.selectedFarm = action.payload;
+		},
+		setProgramsAvaiable: (state, action) => {
+			state.programsAvaiable = action.payload;
+		},
+		setSelectedProgram: (state, action) => {
+			state.selectedProgram = action.payload;
 		}
 	}
 });
