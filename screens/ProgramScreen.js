@@ -24,6 +24,8 @@ import BottomSheetList from "../components/ProgramasScreen/BottomSheetList";
 
 import { LINK } from "../utils/api";
 
+import ProgramList from "../components/ProgramasScreen/ProgramList";
+
 const ProgramScreen = ({ navigation }) => {
 	const sheetRef = useRef(null);
 	const [isLoading, setIsLoading] = useState();
@@ -56,7 +58,10 @@ const ProgramScreen = ({ navigation }) => {
 				? programSelected.nome_fantasia.replace("Programa", "")
 				: "Programas",
 			headerLeft: ({ tintColor }) => {
-				if (programSelected !== "Programas") {
+				if (
+					programSelected !== "Programas" &&
+					programSelected !== null
+				) {
 					return (
 						<View style={{ flexDirection: "row" }}>
 							<IconButton
@@ -125,18 +130,21 @@ const ProgramScreen = ({ navigation }) => {
 	}
 
 	return (
-		<View style={styles.mainContainer}>
+		<>
 			{programSelected === null && (
-				<Button onPress={handleSelectProgram}>
-					Selecione um programa
-				</Button>
+				<View style={styles.mainContainer}>
+					<Button onPress={handleSelectProgram}>
+						Selecione um programa
+					</Button>
+				</View>
 			)}
+			{programSelected !== null && <ProgramList />}
 			<BottomSheet ref={sheetRef} style={styles.bottomSheetStl}>
 				<ScrollView>
 					<BottomSheetList onClose={handleClose} />
 				</ScrollView>
 			</BottomSheet>
-		</View>
+		</>
 	);
 };
 
