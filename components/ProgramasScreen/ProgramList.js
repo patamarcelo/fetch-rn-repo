@@ -1,11 +1,28 @@
-import { View, Text, StyleSheet, ScrollView } from "react-native";
+import {
+	View,
+	Text,
+	StyleSheet,
+	ScrollView,
+	RefreshControl
+} from "react-native";
 import { useHeaderHeight } from "@react-navigation/elements";
 import { DataTable, Chip } from "react-native-paper";
 import CardList from "./CardList";
+import { Colors } from "../../constants/styles";
 
-const ProgramList = () => {
+const ProgramList = ({ refresh, isLoading }) => {
 	return (
-		<ScrollView style={styles.mainContainer}>
+		<ScrollView
+			style={styles.mainContainer}
+			refreshControl={
+				<RefreshControl
+					refreshing={isLoading}
+					onRefresh={refresh}
+					colors={["#9Bd35A", "#689F38"]}
+					tintColor={Colors.primary500}
+				/>
+			}
+		>
 			<CardList />
 			<CardList />
 			<CardList />

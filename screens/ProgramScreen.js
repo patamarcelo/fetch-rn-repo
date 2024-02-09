@@ -88,6 +88,7 @@ const ProgramScreen = ({ navigation }) => {
 
 	const getData = async () => {
 		console.log("pegando os dados");
+		dispatch(setProgramsAvaiable([]));
 		setIsLoading(true);
 		try {
 			const response = await fetch(`${LINK}/programas/get_operacoes/`, {
@@ -115,6 +116,10 @@ const ProgramScreen = ({ navigation }) => {
 		getData();
 	}, []);
 
+	const handlerRefresh = () => {
+		getData();
+	};
+
 	if (isLoading) {
 		return (
 			<View
@@ -138,7 +143,9 @@ const ProgramScreen = ({ navigation }) => {
 					</Button>
 				</View>
 			)}
-			{programSelected !== null && <ProgramList />}
+			{programSelected !== null && (
+				<ProgramList refresh={handlerRefresh} isLoading={isLoading} />
+			)}
 			<BottomSheet ref={sheetRef} style={styles.bottomSheetStl}>
 				<ScrollView>
 					<BottomSheetList onClose={handleClose} />
