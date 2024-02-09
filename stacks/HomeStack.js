@@ -18,10 +18,6 @@ const Tab = createBottomTabNavigator();
 
 const HomeStack = () => {
 	const navigation = useNavigation();
-	const handlerFarms = () => {
-		console.log("logout");
-		navigation.navigate("FarmsScren");
-	};
 
 	return (
 		<Tab.Navigator
@@ -45,28 +41,6 @@ const HomeStack = () => {
 				name="Home"
 				component={HomeScreen}
 				options={{
-					title: "Plantio",
-					tabBarLabel: "Home",
-					headerLeft: ({ tintColor }) => (
-						<View style={{ flexDirection: "row" }}>
-							<IconButton
-								type={"awesome"}
-								icon="map"
-								color={tintColor}
-								size={22}
-								onPress={handlerFarms}
-								btnStyles={{ marginLeft: 25, marginTop: 10 }}
-							/>
-							{/* <IconButton
-								type={"awesome"}
-								icon="map"
-								color={tintColor}
-								size={22}
-								onPress={handlerFarms}
-								btnStyles={{ marginLeft: 25, marginTop: 10 }}
-							/> */}
-						</View>
-					),
 					tabBarIcon: ({ color, size }) => (
 						<Ionicons name="home" color={color} size={size} />
 					)

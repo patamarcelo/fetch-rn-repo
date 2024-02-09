@@ -7,12 +7,15 @@ import {
 	RefreshControl,
 	Alert
 } from "react-native";
-
 import { EXPO_PUBLIC_REACT_APP_DJANGO_TOKEN } from "@env";
 
+import { useDispatch, useSelector } from "react-redux";
+import { geralActions } from "../store/redux/geral";
+import { farmsSelected } from "../store/redux/selector";
+
 import { Colors } from "../constants/styles";
-import Button from "../components/ui/Button";
-import { useEffect, useState } from "react";
+import IconButton from "../components/ui/IconButton";
+import { useEffect, useState, useLayoutEffect } from "react";
 
 import CardList from "../components/HomeScreen/CardList";
 
@@ -20,10 +23,54 @@ const FarmList = (itemData) => {
 	return <CardList data={itemData.item} />;
 };
 
-const HomeScreen = () => {
+const HomeScreen = ({ navigation }) => {
+	const { setFarms } = geralActions;
+
 	const [isLoading, setIsLoading] = useState(false);
 	const [dataFromServer, setDataFromServer] = useState([]);
-	const [onlyFarms, setOnlyFarms] = useState([]);
+	const selFarm = useSelector(farmsSelected);
+
+	const farmTitle = selFarm ? selFarm : "Plantio";
+
+	const dispatch = useDispatch();
+	const handlerFarms = () => {
+		console.log("logout");
+		navigation.navigate("FarmsScren");
+	};
+
+	useEffect(() => {
+		navigation.setOptions({
+			title: farmTitle
+		});
+	}, [farmTitle]);
+
+	useLayoutEffect(() => {
+		navigation.setOptions({
+			title: farmTitle,
+			tabBarLabel: "Home",
+			headerLeft: ({ tintColor }) => (
+				<View style={{ flexDirection: "row" }}>
+					<IconButton
+						type={"awesome"}
+						icon="map"
+						color={tintColor}
+						size={22}
+						onPress={handlerFarms}
+						btnStyles={{ marginLeft: 25, marginTop: 10 }}
+					/>
+					{/* <IconButton
+								type={"awesome"}
+								icon="map"
+								color={tintColor}
+								size={22}
+								onPress={handlerFarms}
+								btnStyles={{ marginLeft: 25, marginTop: 10 }}
+							/> */}
+				</View>
+			)
+		});
+	}, []);
+
 	const handleRefresh = () => {
 		console.log("atualizar");
 	};
@@ -41,8 +88,8 @@ const HomeScreen = () => {
 			const onlyFarm = dataFromServer.map((data, i) => {
 				return data.fazenda;
 			});
-			const setFarms = [...new Set(onlyFarm)];
-			setOnlyFarms(setFarms);
+			const setFiltFarms = [...new Set(onlyFarm)];
+			dispatch(setFarms(setFiltFarms));
 		}
 	}, [dataFromServer]);
 

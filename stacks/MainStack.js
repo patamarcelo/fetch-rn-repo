@@ -20,7 +20,7 @@ const MainStack = () => {
 				// contentStyle: { backgroundColor: Colors.secondary[100] }
 			}}
 		>
-			<Stack.Screen name="Welcome" component={HomeStack} />
+			<Stack.Screen name="HomeStackScreen" component={HomeStack} />
 			<Stack.Screen
 				name="FarmsScren"
 				component={FarmsScreen}
@@ -29,7 +29,11 @@ const MainStack = () => {
 					presentation: "modal",
 					title: "Redefinir a Senha",
 					contentStyle: {
-						backgroundColor: Colors.primary[900]
+						backgroundColor: Colors.primary[901],
+						height: "70%"
+					},
+					cardStyle: {
+						height: "10%"
 					}
 				}}
 			/>

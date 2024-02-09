@@ -4,6 +4,11 @@ import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 
 import { StatusBar } from "expo-status-bar";
 import { StyleSheet, Text, View, Button } from "react-native";
+
+import { Provider } from "react-redux";
+import { PersistGate } from "redux-persist/integration/react";
+import { store, persistor } from "./store/redux/store";
+
 import HomeStack from "./stacks/HomeStack";
 import MainStack from "./stacks/MainStack";
 
@@ -33,7 +38,15 @@ export default function App() {
 	return (
 		<>
 			<StatusBar style="light" />
-			<Root />
+
+			<Provider store={store}>
+				<PersistGate
+					loading={<Text>Loading...</Text>}
+					persistor={persistor}
+				>
+					<Root />
+				</PersistGate>
+			</Provider>
 		</>
 	);
 }
