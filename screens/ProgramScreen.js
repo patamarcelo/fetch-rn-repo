@@ -33,8 +33,6 @@ const ProgramScreen = ({ navigation }) => {
 	const programasAvai = useSelector(programasSelector);
 	const programSelected = useSelector(programSelector);
 
-	const programTitle = programSelected ? programSelected : "Programas";
-
 	const handleSelectProgram = () => {
 		console.log("selecionar um programa");
 		sheetRef.current?.open();
@@ -54,26 +52,32 @@ const ProgramScreen = ({ navigation }) => {
 
 	useEffect(() => {
 		navigation.setOptions({
-			title: programTitle.nome
+			title: programSelected
+				? programSelected.nome_fantasia.replace("Programa", "")
+				: "Programas",
+			headerLeft: ({ tintColor }) => {
+				if (programSelected !== "Programas") {
+					return (
+						<View style={{ flexDirection: "row" }}>
+							<IconButton
+								type={"awesome"}
+								icon="filter"
+								color={tintColor}
+								size={22}
+								onPress={handleSelectProgram}
+								btnStyles={{ marginLeft: 25, marginTop: 10 }}
+							/>
+						</View>
+					);
+				}
+			}
 		});
-	}, [programTitle]);
+	}, [programSelected]);
 
 	useLayoutEffect(() => {
 		navigation.setOptions({
 			title: "",
-			tabBarLabel: "Programas",
-			headerLeft: ({ tintColor }) => (
-				<View style={{ flexDirection: "row" }}>
-					<IconButton
-						type={"awesome"}
-						icon="filter"
-						color={tintColor}
-						size={22}
-						onPress={handleSelectProgram}
-						btnStyles={{ marginLeft: 25, marginTop: 10 }}
-					/>
-				</View>
-			)
+			tabBarLabel: "Programas"
 		});
 	}, []);
 
