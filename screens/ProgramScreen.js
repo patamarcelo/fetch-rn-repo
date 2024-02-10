@@ -25,10 +25,12 @@ import BottomSheetList from "../components/ProgramasScreen/BottomSheetList";
 import { LINK } from "../utils/api";
 
 import ProgramList from "../components/ProgramasScreen/ProgramList";
+import { useScrollToTop } from "@react-navigation/native";
 
 const ProgramScreen = ({ navigation }) => {
 	const sheetRef = useRef(null);
 	const [isLoading, setIsLoading] = useState();
+	const ref = useRef(null);
 
 	const dispatch = useDispatch();
 	const {
@@ -57,6 +59,12 @@ const ProgramScreen = ({ navigation }) => {
 		console.log(programasAvai);
 	}, [programasAvai]);
 
+	useScrollToTop(
+		useRef({
+			scrollToTop: () => ref.current?.scrollTo({ y: 0 })
+		})
+	);
+
 	useEffect(() => {
 		navigation.setOptions({
 			headerShadowVisible: false, // applied here,
@@ -84,6 +92,8 @@ const ProgramScreen = ({ navigation }) => {
 			}
 		});
 	}, [programSelected]);
+
+	useScrollToTop(ref);
 
 	useLayoutEffect(() => {
 		navigation.setOptions({
@@ -152,7 +162,11 @@ const ProgramScreen = ({ navigation }) => {
 				</View>
 			)}
 			{programSelected !== null && (
-				<ProgramList refresh={handlerRefresh} isLoading={isLoading} />
+				<ProgramList
+					innerRef={ref}
+					refresh={handlerRefresh}
+					isLoading={isLoading}
+				/>
 			)}
 			<BottomSheet ref={sheetRef} style={styles.bottomSheetStl}>
 				<ScrollView>

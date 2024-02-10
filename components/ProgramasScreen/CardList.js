@@ -25,6 +25,7 @@ const CardList = (props) => {
 							: app.dose;
 					return (
 						<DataTable.Row
+							key={i}
 							style={{
 								backgroundColor: i % 2 == 0 && "lightgrey",
 								minHeight: 30

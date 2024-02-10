@@ -16,12 +16,14 @@ import { farmsSelected } from "../store/redux/selector";
 
 import { Colors } from "../constants/styles";
 import IconButton from "../components/ui/IconButton";
-import { useEffect, useState, useLayoutEffect } from "react";
+import { useEffect, useState, useLayoutEffect, useRef } from "react";
 
 import CardList from "../components/HomeScreen/CardList";
 import FarmScreen from "./FarmsScreen";
 
 import { LINK } from "../utils/api";
+
+import { useScrollToTop } from "@react-navigation/native";
 
 const FarmList = (itemData) => {
 	return <CardList data={itemData.item} />;
@@ -33,12 +35,14 @@ const HomeScreen = ({ navigation }) => {
 	const [isLoading, setIsLoading] = useState(false);
 	const [dataFromServer, setDataFromServer] = useState([]);
 	const selFarm = useSelector(farmsSelected);
+	const ref = useRef(null);
 
 	const [modalVisible, setModalVisible] = useState(false);
 
 	const farmTitle = selFarm ? selFarm : "Plantio";
 
 	const dispatch = useDispatch();
+
 	const handlerFarms = () => {
 		console.log("logout");
 		navigation.navigate("FarmsScren");
@@ -78,9 +82,6 @@ const HomeScreen = ({ navigation }) => {
 		});
 	}, []);
 
-	const handleRefresh = () => {
-		console.log("atualizar");
-	};
 	const safraCiclo = {
 		safra: "2023/2024",
 		ciclo: "3"
@@ -133,6 +134,8 @@ const HomeScreen = ({ navigation }) => {
 		}
 	};
 
+	useScrollToTop(ref);
+
 	if (isLoading) {
 		return (
 			<View
@@ -170,6 +173,7 @@ const HomeScreen = ({ navigation }) => {
 				{dataFromServer.length > 0 && (
 					<FlatList
 						// scrollEnabled={false}
+						ref={ref}
 						data={dataFromServer}
 						keyExtractor={(item, i) => i}
 						renderItem={FarmList}

@@ -21,7 +21,7 @@ import {
 
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 
-const ProgramList = ({ refresh, isLoading }) => {
+const ProgramList = ({ refresh, isLoading, innerRef }) => {
 	const tabBarHeight = useBottomTabBarHeight();
 	const estagios = useSelector(estagiosSelector);
 	const programa = useSelector(programSelector);
@@ -42,6 +42,7 @@ const ProgramList = ({ refresh, isLoading }) => {
 
 	return (
 		<ScrollView
+			ref={innerRef}
 			style={[styles.mainContainer, { marginBottom: tabBarHeight }]}
 			refreshControl={
 				<RefreshControl
