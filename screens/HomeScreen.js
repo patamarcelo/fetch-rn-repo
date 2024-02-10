@@ -25,17 +25,21 @@ import { LINK } from "../utils/api";
 
 import { useScrollToTop } from "@react-navigation/native";
 
+import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
+
 const FarmList = (itemData) => {
 	return <CardList data={itemData.item} />;
 };
 
 const HomeScreen = ({ navigation }) => {
-	const { setFarms } = geralActions;
+	const { setFarms, selectedFarm } = geralActions;
 
 	const [isLoading, setIsLoading] = useState(false);
 	const [dataFromServer, setDataFromServer] = useState([]);
 	const selFarm = useSelector(farmsSelected);
 	const ref = useRef(null);
+
+	const tabBarHeight = useBottomTabBarHeight();
 
 	const [modalVisible, setModalVisible] = useState(false);
 
@@ -47,6 +51,10 @@ const HomeScreen = ({ navigation }) => {
 		console.log("logout");
 		navigation.navigate("FarmsScren");
 		// setModalVisible(true);
+	};
+
+	const handleClear = () => {
+		dispatch(selectedFarm(""));
 	};
 
 	useEffect(() => {
@@ -69,18 +77,49 @@ const HomeScreen = ({ navigation }) => {
 						onPress={handlerFarms}
 						btnStyles={{ marginLeft: 25, marginTop: 10 }}
 					/>
-					{/* <IconButton
-								type={"awesome"}
-								icon="map"
-								color={tintColor}
-								size={22}
-								onPress={handlerFarms}
-								btnStyles={{ marginLeft: 25, marginTop: 10 }}
-							/> */}
+					{selFarm && (
+						<IconButton
+							type={""}
+							icon="close-circle"
+							color={tintColor}
+							size={22}
+							onPress={handleClear}
+							btnStyles={{ marginLeft: 25, marginTop: 10 }}
+						/>
+					)}
 				</View>
 			)
 		});
 	}, []);
+
+	useEffect(() => {
+		navigation.setOptions({
+			title: farmTitle,
+			tabBarLabel: "Programações",
+			headerLeft: ({ tintColor }) => (
+				<View style={{ flexDirection: "row" }}>
+					<IconButton
+						type={"awesome"}
+						icon="filter"
+						color={tintColor}
+						size={22}
+						onPress={handlerFarms}
+						btnStyles={{ marginLeft: 25, marginTop: 10 }}
+					/>
+					{selFarm && (
+						<IconButton
+							type={""}
+							icon="close-circle-outline"
+							color={tintColor}
+							size={22}
+							onPress={handleClear}
+							btnStyles={{ marginLeft: 25, marginTop: 10 }}
+						/>
+					)}
+				</View>
+			)
+		});
+	}, [selFarm]);
 
 	const safraCiclo = {
 		safra: "2023/2024",
@@ -169,29 +208,43 @@ const HomeScreen = ({ navigation }) => {
 					modalVisible={modalVisible}
 				/>
 			</Modal>
-			<View style={styles.dataContainer}>
-				{dataFromServer.length > 0 && (
-					<FlatList
-						// scrollEnabled={false}
-						ref={ref}
-						data={dataFromServer}
-						keyExtractor={(item, i) => i}
-						renderItem={FarmList}
-						ItemSeparatorComponent={() => (
-							<View style={{ height: 9 }} />
-						)}
-						refreshControl={
-							<RefreshControl
-								refreshing={isLoading}
-								onRefresh={getData}
-								colors={["#9Bd35A", "#689F38"]}
-								tintColor={Colors.primary500}
-							/>
-						}
-					/>
-				)}
-			</View>
-			{/* <Text style={{ color: "whitesmoke" }}>Home Screen</Text> */}
+
+			{!selFarm && (
+				<View>
+					<Text>Dados do Plantio</Text>
+				</View>
+			)}
+			{selFarm && (
+				<View
+					style={[
+						styles.dataContainer,
+						{ marginTop: 3, paddingBottom: tabBarHeight + 5 }
+					]}
+				>
+					{dataFromServer.length > 0 && (
+						<FlatList
+							// scrollEnabled={false}
+							ref={ref}
+							data={dataFromServer.filter(
+								(data) => data.fazenda === selFarm
+							)}
+							keyExtractor={(item, i) => i}
+							renderItem={FarmList}
+							ItemSeparatorComponent={() => (
+								<View style={{ height: 9 }} />
+							)}
+							refreshControl={
+								<RefreshControl
+									refreshing={isLoading}
+									onRefresh={getData}
+									colors={["#9Bd35A", "#689F38"]}
+									tintColor={Colors.primary500}
+								/>
+							}
+						/>
+					)}
+				</View>
+			)}
 		</View>
 	);
 };

@@ -7,6 +7,10 @@ const CardList = (props) => {
 		applications
 	} = props;
 
+	const capitalized = (word) => {
+		return word.charAt(0).toUpperCase() + word.slice(1);
+	};
+
 	return (
 		<DataTable>
 			<View style={styles.headerTitleContainer}>
@@ -38,7 +42,10 @@ const CardList = (props) => {
 							</DataTable.Cell>
 							<DataTable.Cell numeric>
 								<Text style={{ fontSize: 10 }}>
-									{app.defensivo__tipo}
+									{app.defensivo__tipo ===
+									"oleo_mineral_vegetal"
+										? "Oleo Mineral"
+										: capitalized(app.defensivo__tipo)}
 								</Text>
 							</DataTable.Cell>
 							<DataTable.Cell numeric>
