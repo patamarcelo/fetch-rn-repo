@@ -31,7 +31,12 @@ const ProgramScreen = ({ navigation }) => {
 	const [isLoading, setIsLoading] = useState();
 
 	const dispatch = useDispatch();
-	const { setProgramsAvaiable, setSelectedProgram } = geralActions;
+	const {
+		setProgramsAvaiable,
+		setSelectedProgram,
+		setDataProgram,
+		setEstagiosProgram
+	} = geralActions;
 	const programasAvai = useSelector(programasSelector);
 	const programSelected = useSelector(programSelector);
 
@@ -54,6 +59,7 @@ const ProgramScreen = ({ navigation }) => {
 
 	useEffect(() => {
 		navigation.setOptions({
+			headerShadowVisible: false, // applied here,
 			title: programSelected
 				? programSelected.nome_fantasia.replace("Programa", "")
 				: "Programas",
@@ -102,6 +108,8 @@ const ProgramScreen = ({ navigation }) => {
 			const data = await response.json();
 			// console.log(data);
 			dispatch(setProgramsAvaiable(data.programas));
+			dispatch(setEstagiosProgram(data.estagios));
+			dispatch(setDataProgram(data.dados));
 		} catch (error) {
 			console.log("erro ao pegar os dados", error);
 			Alert.alert(

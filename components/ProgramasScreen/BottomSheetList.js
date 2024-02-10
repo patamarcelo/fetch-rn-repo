@@ -3,8 +3,11 @@ import { useDispatch, useSelector } from "react-redux";
 import { programasSelector } from "../../store/redux/selector";
 import { geralActions } from "../../store/redux/geral";
 import { Colors } from "../../constants/styles";
+import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 
 const BottomSheetList = ({ onClose }) => {
+	const tabBarHeight = useBottomTabBarHeight();
+
 	const dispatch = useDispatch();
 	const { setProgramsAvaiable, setSelectedProgram } = geralActions;
 	const programasAvai = useSelector(programasSelector);
@@ -16,7 +19,7 @@ const BottomSheetList = ({ onClose }) => {
 	};
 
 	return (
-		<View>
+		<View style={{ marginBottom: tabBarHeight + 50 }}>
 			{programasAvai?.map((data, i) => {
 				return (
 					<Pressable

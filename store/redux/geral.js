@@ -4,7 +4,9 @@ const initialState = {
 	fazendas: [],
 	selectedFarm: "",
 	programsAvaiable: [],
-	selectedProgram: null
+	selectedProgram: null,
+	estagiosProgram: [],
+	dataProgram: []
 };
 
 const geralSlice = createSlice({
@@ -22,6 +24,12 @@ const geralSlice = createSlice({
 		},
 		setSelectedProgram: (state, action) => {
 			state.selectedProgram = action.payload;
+		},
+		setEstagiosProgram: (state, action) => {
+			state.estagiosProgram = action.payload;
+		},
+		setDataProgram: (state, action) => {
+			state.dataProgram = action.payload;
 		}
 	}
 });

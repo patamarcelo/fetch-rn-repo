@@ -1,39 +1,53 @@
 import { View, Text, StyleSheet } from "react-native";
 import { DataTable } from "react-native-paper";
 import { Colors } from "../../constants/styles";
-const CardList = () => {
+const CardList = (props) => {
+	const {
+		estagioData: { estagio, prazo_dap },
+		applications
+	} = props;
+
 	return (
 		<DataTable>
 			<View style={styles.headerTitleContainer}>
 				<Text style={{ color: "whitesmoke", fontWeight: "bold" }}>
-					DESSECACAO
+					{estagio}
 				</Text>
-				<Text style={{ fontWeight: 10, color: "lightgrey" }}>
-					0 DAP
+				<Text style={{ fontSize: 10, color: "lightgrey" }}>
+					{prazo_dap} DAP
 				</Text>
 			</View>
-			{/* <DataTable.Header>
-				<DataTable.Title sortDirection="descending">
-					Produto
-				</DataTable.Title>
-				<DataTable.Title numeric>Tipo</DataTable.Title>
-				<DataTable.Title numeric>Dose (kg/lt p/ ha)</DataTable.Title>
-			</DataTable.Header> */}
-			<DataTable.Row style={{ backgroundColor: "lightgrey" }}>
-				<DataTable.Cell>1</DataTable.Cell>
-				<DataTable.Cell numeric>2</DataTable.Cell>
-				<DataTable.Cell numeric>3</DataTable.Cell>
-			</DataTable.Row>
-			<DataTable.Row>
-				<DataTable.Cell>1</DataTable.Cell>
-				<DataTable.Cell numeric>2</DataTable.Cell>
-				<DataTable.Cell numeric>3</DataTable.Cell>
-			</DataTable.Row>
-			<DataTable.Row style={{ backgroundColor: "lightgrey" }}>
-				<DataTable.Cell>1</DataTable.Cell>
-				<DataTable.Cell numeric>2</DataTable.Cell>
-				<DataTable.Cell numeric>3</DataTable.Cell>
-			</DataTable.Row>
+			{applications?.length > 0 &&
+				applications.map((app, i) => {
+					const formatDose =
+						app.dose <= 10
+							? app.dose.toFixed(3).replace(".", ",")
+							: app.dose;
+					return (
+						<DataTable.Row
+							style={{
+								backgroundColor: i % 2 == 0 && "lightgrey",
+								minHeight: 30
+							}}
+						>
+							<DataTable.Cell style>
+								<Text style={{ fontSize: 10 }}>
+									{app.defensivo__produto}
+								</Text>
+							</DataTable.Cell>
+							<DataTable.Cell numeric>
+								<Text style={{ fontSize: 10 }}>
+									{app.defensivo__tipo}
+								</Text>
+							</DataTable.Cell>
+							<DataTable.Cell numeric>
+								<Text style={{ fontSize: 10 }}>
+									{formatDose}
+								</Text>
+							</DataTable.Cell>
+						</DataTable.Row>
+					);
+				})}
 		</DataTable>
 	);
 };

@@ -5,15 +5,44 @@ import {
 	ScrollView,
 	RefreshControl
 } from "react-native";
+
+import { useState, useEffect } from "react";
 import { useHeaderHeight } from "@react-navigation/elements";
 import { DataTable, Chip } from "react-native-paper";
 import CardList from "./CardList";
 import { Colors } from "../../constants/styles";
 
+import { useSelector } from "react-redux";
+import {
+	estagiosSelector,
+	programSelector,
+	dataProgramSelector
+} from "../../store/redux/selector";
+
+import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
+
 const ProgramList = ({ refresh, isLoading }) => {
+	const tabBarHeight = useBottomTabBarHeight();
+	const estagios = useSelector(estagiosSelector);
+	const programa = useSelector(programSelector);
+	const dataProgram = useSelector(dataProgramSelector);
+
+	const [filteredEstagios, setFilteredEstagios] = useState([]);
+
+	useEffect(() => {
+		const estagiosFiltered = estagios
+			.filter(
+				(data, i) =>
+					data.programa__nome === programa.nome && data.prazo_dap >= 0
+			)
+			.sort((a, b) => a.prazo_dap - b.prazo_dap);
+		console.log(estagios);
+		setFilteredEstagios(estagiosFiltered);
+	}, [programa]);
+
 	return (
 		<ScrollView
-			style={styles.mainContainer}
+			style={[styles.mainContainer, { marginBottom: tabBarHeight }]}
 			refreshControl={
 				<RefreshControl
 					refreshing={isLoading}
@@ -23,15 +52,28 @@ const ProgramList = ({ refresh, isLoading }) => {
 				/>
 			}
 		>
-			<CardList />
-			<CardList />
-			<CardList />
-			<CardList />
-			<CardList />
-			<CardList />
-			<CardList />
-			<CardList />
-			<CardList />
+			{filteredEstagios.length > 0 &&
+				dataProgram.length > 0 &&
+				filteredEstagios.map((data, i) => {
+					const applications = dataProgram
+						.filter((app) => {
+							// console.log(app);
+							return (
+								app.operacao__estagio === data.estagio &&
+								app.operacao__programa__nome === programa.nome
+							);
+						})
+						.sort((a, b) =>
+							a.defensivo__tipo.localeCompare(b.defensivo__tipo)
+						);
+					return (
+						<CardList
+							estagioData={data}
+							key={i}
+							applications={applications}
+						/>
+					);
+				})}
 		</ScrollView>
 	);
 };
