@@ -50,6 +50,7 @@ const HomeStack = () => {
 				name="Next"
 				component={ProgramScreen}
 				options={{
+					title: "Programas",
 					tabBarIcon: ({ color, size }) => (
 						<Ionicons name="book" color={color} size={size} />
 					)
