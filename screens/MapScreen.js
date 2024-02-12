@@ -51,6 +51,7 @@ const MapScreen = ({ navigation }) => {
 			<MapView
 				ref={mapRef}
 				showsUserLocation={true}
+				followsUserLocation={true}
 				style={styles.map}
 				initialRegion={{
 					latitude: -10.7993,
