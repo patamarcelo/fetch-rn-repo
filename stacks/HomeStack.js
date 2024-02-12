@@ -51,13 +51,13 @@ const HomeStack = () => {
 				name="Maps"
 				component={MapStack}
 				listeners={{
-					tabPress: e => {
-					  // Prevent default action
-					  e.preventDefault();
-				
-					  //Any custom code here
-					  navigation.navigate('MapsCreenStack')
-					},
+					tabPress: (e) => {
+						// Prevent default action
+						e.preventDefault();
+
+						//Any custom code here
+						navigation.navigate("MapsCreenStack");
+					}
 				}}
 				options={{
 					title: "Mapas",
@@ -76,7 +76,6 @@ const HomeStack = () => {
 					)
 				}}
 			/>
-			
 		</Tab.Navigator>
 	);
 };

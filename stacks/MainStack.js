@@ -43,10 +43,9 @@ const MainStack = () => {
 				component={MapStack}
 				options={{
 					// headerShown: true,
-					presentation: 'card',
+					presentation: "card"
 				}}
 			/>
-
 		</Stack.Navigator>
 	);
 };
