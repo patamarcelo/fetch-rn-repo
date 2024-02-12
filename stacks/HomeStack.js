@@ -11,6 +11,7 @@ import IconButton from "../components/ui/IconButton";
 import Ionicons from "@expo/vector-icons/Ionicons";
 
 import { useNavigation } from "@react-navigation/native";
+import MapStack from "./MapStack";
 
 const Stack = createNativeStackNavigator();
 
@@ -47,6 +48,25 @@ const HomeStack = () => {
 				}}
 			/>
 			<Tab.Screen
+				name="Maps"
+				component={MapStack}
+				listeners={{
+					tabPress: e => {
+					  // Prevent default action
+					  e.preventDefault();
+				
+					  //Any custom code here
+					  navigation.navigate('MapsCreenStack')
+					},
+				}}
+				options={{
+					title: "Mapas",
+					tabBarIcon: ({ color, size }) => (
+						<Ionicons name="map" color={color} size={size} />
+					)
+				}}
+			/>
+			<Tab.Screen
 				name="Next"
 				component={ProgramScreen}
 				options={{
@@ -56,6 +76,7 @@ const HomeStack = () => {
 					)
 				}}
 			/>
+			
 		</Tab.Navigator>
 	);
 };

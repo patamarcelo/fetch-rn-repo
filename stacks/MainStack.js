@@ -6,6 +6,7 @@ import IconButton from "../components/ui/IconButton";
 
 import HomeStack from "./HomeStack";
 import FarmsScreen from "../screens/FarmsScreen";
+import MapStack from "./MapStack";
 
 const MainStack = () => {
 	const handlerLogout = () => {
@@ -37,6 +38,15 @@ const MainStack = () => {
 					}
 				}}
 			/>
+			<Stack.Screen
+				name="MapsCreenStack"
+				component={MapStack}
+				options={{
+					// headerShown: true,
+					presentation: 'card',
+				}}
+			/>
+
 		</Stack.Navigator>
 	);
 };

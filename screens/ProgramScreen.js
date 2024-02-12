@@ -104,7 +104,6 @@ const ProgramScreen = ({ navigation }) => {
 
 	const getData = async () => {
 		console.log("pegando os dados");
-		dispatch(setProgramsAvaiable([]));
 		setIsLoading(true);
 		try {
 			const response = await fetch(`${LINK}/programas/get_operacoes/`, {

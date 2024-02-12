@@ -58,6 +58,10 @@ const HomeScreen = ({ navigation }) => {
 	};
 
 	useEffect(() => {
+		handleClear()
+	}, []);
+
+	useEffect(() => {
 		navigation.setOptions({
 			title: farmTitle
 		});
