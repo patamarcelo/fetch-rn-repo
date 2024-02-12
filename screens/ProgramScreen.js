@@ -55,9 +55,9 @@ const ProgramScreen = ({ navigation }) => {
 		dispatch(setSelectedProgram(null));
 	}, []);
 
-	useEffect(() => {
-		console.log(programasAvai);
-	}, [programasAvai]);
+	// useEffect(() => {
+	// 	console.log(programasAvai);
+	// }, [programasAvai]);
 
 	useScrollToTop(
 		useRef({

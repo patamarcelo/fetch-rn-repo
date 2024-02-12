@@ -51,7 +51,7 @@ const MapScreen = ({ navigation }) => {
 			<MapView
 				ref={mapRef}
 				showsUserLocation={true}
-				followsUserLocation={true}
+				// followsUserLocation={true}
 				style={styles.map}
 				initialRegion={{
 					latitude: -10.7993,
@@ -67,7 +67,7 @@ const MapScreen = ({ navigation }) => {
 					height: 50,
 					backgroundColor: "transparent",
 					position: "absolute",
-					bottom: "30%",
+					bottom: "20%",
 					left: "80%",
 					zIndex: 10,
 					borderRadius: 50
@@ -103,6 +103,20 @@ const MapScreen = ({ navigation }) => {
 						width: 50
 					}}
 				/>
+			</View>
+
+			<View
+				style={{
+					width: 50,
+					height: 50,
+					backgroundColor: "transparent",
+					position: "absolute",
+					top: "8%",
+					right: "84%",
+					zIndex: 10,
+					borderRadius: 50
+				}}
+			>
 				<IconButton
 					type={""}
 					icon="arrow-back-outline"
