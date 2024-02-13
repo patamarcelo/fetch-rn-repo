@@ -1,29 +1,48 @@
 import { View, Text, StyleSheet, Pressable, ScrollView } from "react-native";
-import { useSelector } from "react-redux";
-import { farmsSelector } from "../store/redux/selector";
+import { farmsSelector, farmsSelected } from "../store/redux/selector";
 import { CheckBox } from "@rneui/themed";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Button from "../components/ui/Button";
 import { useNavigation } from "@react-navigation/native";
 
 import { geralActions } from "../store/redux/geral";
-import { useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { Colors } from "../constants/styles";
 
-const FarmsScreen = ({ setModalVisible, modalVisible }) => {
+const FarmsScreen = ({ setModalVisible, modalVisible, route }) => {
 	const farmsList = useSelector(farmsSelector);
 	const [checkedIndex, setCheckedIndex] = useState(null);
 	const [selectedFarmHook, setSelectedFarm] = useState("");
+	const params = route.params;
 
 	const { selectedFarm } = geralActions;
 	const dispatch = useDispatch();
+	const selectedFarmStore = useSelector(farmsSelected);
+
+	useEffect(() => {
+		if (selectedFarmStore) {
+			const farmListFinder = farmsList.filter((data, i) => {
+				if (data === selectedFarmStore) {
+					setCheckedIndex(i);
+					setSelectedFarm(data);
+				}
+				return;
+			});
+		}
+	}, []);
 
 	const navigation = useNavigation();
 
 	const handleFilter = () => {
 		console.log("FilterFarm", selectedFarmHook);
 		dispatch(selectedFarm(selectedFarmHook));
-		navigation.navigate("HomeStackScreen");
+		if (params === undefined) {
+			navigation.navigate("HomeStackScreen");
+			return;
+		}
+		if (params.fromRoute === "maps") {
+			navigation.navigate("MapStackScreen");
+		}
 		// setModalVisible(!modalVisible);
 	};
 
