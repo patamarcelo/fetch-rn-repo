@@ -51,17 +51,17 @@ const CardListApp = (props) => {
 						return (
 							// <View style={[styles.rowTable, {backgroundColor: i % 2 === 0 ? Colors.secondary[100] : Colors.primary[200]}]} key={i}>
 							<View style={[styles.rowTable]} key={i}>
-								<Text style={styles.textData}>{data.parcela}</Text>
-								<Text style={styles.textData}>{formatData(data.dataPlantio)}</Text>
-								<Text style={styles.textData}>{data.dap}</Text>
-								<Text style={styles.textData}>{data.variedade}</Text>
-								<Text style={styles.textData}>
+								<Text style={[styles.textData,{width: 30}]}>{data.parcela}</Text>
+								<Text style={[styles.textData,{width: 60}]}>{formatData(data.dataPlantio)}</Text>
+								<Text style={[styles.textData,{width: 30}]}>{data.dap}</Text>
+								<Text style={[styles.textData,{width: 40}]}>{data.variedade}</Text>
+								<Text style={[styles.textData,{width: 30}]}>
 									{data.area.toLocaleString("pt-br", {
 										minimumFractionDigits: 2,
 										maximumFractionDigits: 2
 									})}
 								</Text>
-								<Text style={styles.textData}>
+								<Text style={[styles.textData,{width: 60}]}>
 									{formatData(data.dataPrevAp)}
 								</Text>
 							</View>
@@ -126,7 +126,8 @@ const styles = StyleSheet.create({
 	},
 	textData: {
 		fontSize: 10,
-		// marginBottom: 5
+		// marginBottom: 5,
+		textAlign: 'center'
 	},
 	mainConatiner: {
 		backgroundColor: "#fff",
