@@ -39,11 +39,12 @@ const HomeStack = () => {
 			}}
 		>
 			<Tab.Screen
-				name="Programações"
-				component={HomeScreen}
+				name="Next"
+				component={ProgramScreen}
 				options={{
+					title: "Programas",
 					tabBarIcon: ({ color, size }) => (
-						<Ionicons name="timer" color={color} size={size} />
+						<Ionicons name="book" color={color} size={size} />
 					)
 				}}
 			/>
@@ -67,12 +68,11 @@ const HomeStack = () => {
 				}}
 			/>
 			<Tab.Screen
-				name="Next"
-				component={ProgramScreen}
+				name="Programações"
+				component={HomeScreen}
 				options={{
-					title: "Programas",
 					tabBarIcon: ({ color, size }) => (
-						<Ionicons name="book" color={color} size={size} />
+						<Ionicons name="timer" color={color} size={size} />
 					)
 				}}
 			/>
