@@ -65,6 +65,8 @@ const ProgramScreen = ({ navigation }) => {
 		})
 	);
 
+	console.log('EXPO_PUBLIC_REACT_APP_DJANGO_TOKEN', EXPO_PUBLIC_REACT_APP_DJANGO_TOKEN)
+
 	useEffect(() => {
 		navigation.setOptions({
 			headerShadowVisible: false, // applied here,

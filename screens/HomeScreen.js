@@ -143,7 +143,7 @@ const HomeScreen = ({ navigation }) => {
 			dispatch(setFarms(setFiltFarms));
 		}
 	}, [dataFromServer]);
-
+console.log('expo token: ', EXPO_PUBLIC_REACT_APP_DJANGO_TOKEN)
 	const getData = async () => {
 		console.log("pegando os dados");
 		setIsLoading(true);
