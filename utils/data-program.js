@@ -23,7 +23,7 @@ export default formatDataProgram = (data) => {
         const parcela = farmData.parcela;
         const dataPlantio = farmData.dados.data_plantio;
         const dap = farmData.dados.dap
-        farmData.dados.cronograma.filter((data) => data.aplicado === false && data["data prevista"] < endFinalDate).forEach((cron) => {
+        farmData.dados.cronograma.filter((data) => data.aplicado === false && data["data prevista"] <= endFinalDate).forEach((cron) => {
             const estagio = cron.estagio;
             const aplicado = cron.aplicado;
             const dataPrevAp = cron["data prevista"]
