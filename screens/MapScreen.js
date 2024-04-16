@@ -81,6 +81,8 @@ const coordArr = [
 // API GET GEOPOINTS PLANTED
 // http://127.0.0.1:8000/diamante/plantio/get_plantio_detail_map/
 
+// http://127.0.0.1:8000/diamante/plantio/get_produtividade_plantio/
+
 const MapScreen = ({ navigation }) => {
 	const [location, setLocation] = useState(null);
 	const [errorMsg, setErrorMsg] = useState(null);
