@@ -18,7 +18,7 @@ import { Colors } from "../constants/styles";
 import IconButton from "../components/ui/IconButton";
 import { useEffect, useState, useLayoutEffect, useRef } from "react";
 
-import CardList from "../components/HomeScreen/CardList";
+
 import FarmScreen from "./FarmsScreen";
 
 import { LINK } from "../utils/api";
@@ -27,8 +27,11 @@ import { useScrollToTop } from "@react-navigation/native";
 
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 
+import formatDataServer from '../utils/data-program'
+import CardListApp from "../components/HomeScreen/CardListApp";
+
 const FarmList = (itemData) => {
-	return <CardList data={itemData.item} />;
+	return <CardListApp data={itemData.item} />;
 };
 
 const HomeScreen = ({ navigation }) => {
@@ -42,6 +45,7 @@ const HomeScreen = ({ navigation }) => {
 	const tabBarHeight = useBottomTabBarHeight();
 
 	const [modalVisible, setModalVisible] = useState(false);
+	const [listToCardApp, setListToCardApp] = useState([]);
 
 	const farmTitle = selFarm ? selFarm : "Plantio";
 
@@ -123,6 +127,18 @@ const HomeScreen = ({ navigation }) => {
 				</View>
 			)
 		});
+	}, [selFarm]);
+
+	useEffect(() => {
+		if(selFarm) {
+			const newArr = dataFromServer?.filter(
+				(data) => data.fazenda === selFarm
+			)
+			const result = formatDataServer(newArr)
+			setListToCardApp(result)
+			console.log('result', result)
+
+		}
 	}, [selFarm]);
 
 	const safraCiclo = {
@@ -225,17 +241,18 @@ console.log('expo token: ', EXPO_PUBLIC_REACT_APP_DJANGO_TOKEN)
 						{ marginTop: 3, paddingBottom: tabBarHeight + 5 }
 					]}
 				>
-					{dataFromServer.length > 0 && (
+					{listToCardApp.length > 0 ? (
 						<FlatList
 							// scrollEnabled={false}
 							ref={ref}
-							data={dataFromServer.filter(
-								(data) => data.fazenda === selFarm
-							)}
+							data={listToCardApp}
+							// data={dataFromServer.filter(
+							// 	(data) => data.fazenda === selFarm
+							// )}
 							keyExtractor={(item, i) => i}
 							renderItem={FarmList}
 							ItemSeparatorComponent={() => (
-								<View style={{ height: 9 }} />
+								<View style={{ height: 12 }} />
 							)}
 							refreshControl={
 								<RefreshControl
@@ -246,7 +263,11 @@ console.log('expo token: ', EXPO_PUBLIC_REACT_APP_DJANGO_TOKEN)
 								/>
 							}
 						/>
-					)}
+					):
+						<View style={{justifyContent: 'center', alignItems: 'center', flex: 1}}>
+							<Text style={{fontWeight: 'bold'}}>Sem Aplicações para este período</Text>
+						</View>
+					}
 				</View>
 			)}
 		</View>

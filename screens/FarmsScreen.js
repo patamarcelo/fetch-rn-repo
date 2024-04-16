@@ -64,18 +64,21 @@ const FarmsScreen = ({ setModalVisible, modalVisible, route }) => {
 	return (
 		<View style={styles.mainContainer}>
 			<View style={{ width: "100%", alignItems: "center" }}>
+				<View style={{height: 50}}>
 				<Text
 					style={{
 						color: "whitesmoke",
 						fontSize: 20,
 						paddingTop: 20
 					}}
-				>
+					>
 					Selecione a Fazenda
 				</Text>
+					</View>
 				{farmsList.length > 0 && (
-					<>
-						<View style={styles.farmsContainer}>
+					
+					<ScrollView style={{marginHorizontal: 40}}>
+						
 							{farmsList.map((data, i) => {
 								return (
 									<Pressable
@@ -109,8 +112,7 @@ const FarmsScreen = ({ setModalVisible, modalVisible, route }) => {
 									</Pressable>
 								);
 							})}
-						</View>
-					</>
+						</ScrollView>
 				)}
 			</View>
 			<View style={{ width: "90%", alignItems: "center" }}>
@@ -118,7 +120,8 @@ const FarmsScreen = ({ setModalVisible, modalVisible, route }) => {
 					btnStyles={[
 						{
 							width: "90%",
-							marginTop: 20
+							marginTop: 20,
+							marginBottom: 20
 						},
 						checkedIndex === null && styles.cancelType
 					]}
@@ -141,7 +144,8 @@ const styles = StyleSheet.create({
 		alignItems: "flex-start",
 		marginLeft: 20,
 		marginTop: 20,
-		width: "100%"
+		width: "100%",
+		height: 100
 	},
 	titleContainer: {
 		flexDirection: "row",
@@ -161,7 +165,7 @@ const styles = StyleSheet.create({
 	mainContainer: {
 		flex: 1,
 		justifyContent: "space-between",
-		marginBottom: 50,
+		marginBottom: 20,
 		marginTop: 20,
 		alignItems: "center",
 		height: "100%"
