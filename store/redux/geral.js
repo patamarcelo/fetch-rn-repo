@@ -6,13 +6,17 @@ const initialState = {
 	programsAvaiable: [],
 	selectedProgram: null,
 	estagiosProgram: [],
-	dataProgram: []
+	dataProgram: [],
+	plantioData: []
 };
 
 const geralSlice = createSlice({
 	name: "geral",
 	initialState,
 	reducers: {
+		setDataPlantio: (state, action) => {
+			state.plantioData = action.payload
+		},
 		setFarms: (state, action) => {
 			state.fazendas = action.payload;
 		},

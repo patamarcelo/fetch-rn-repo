@@ -12,7 +12,7 @@ import { EXPO_PUBLIC_REACT_APP_DJANGO_TOKEN } from "@env";
 
 import { useDispatch, useSelector } from "react-redux";
 import { geralActions } from "../store/redux/geral";
-import { farmsSelected } from "../store/redux/selector";
+import { farmsSelected, selectDataPlantio } from "../store/redux/selector";
 
 import { Colors } from "../constants/styles";
 import IconButton from "../components/ui/IconButton";
@@ -30,16 +30,17 @@ import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import formatDataServer from '../utils/data-program'
 import CardListApp from "../components/HomeScreen/CardListApp";
 
+
 const FarmList = (itemData) => {
 	return <CardListApp data={itemData.item} />;
 };
 
 const HomeScreen = ({ navigation }) => {
-	const { setFarms, selectedFarm } = geralActions;
+	const { setFarms, selectedFarm, setDataPlantio } = geralActions;
 
 	const [isLoading, setIsLoading] = useState(false);
-	const [dataFromServer, setDataFromServer] = useState([]);
 	const selFarm = useSelector(farmsSelected);
+	const dataPlantioServer = useSelector(selectDataPlantio)
 	const ref = useRef(null);
 
 	const tabBarHeight = useBottomTabBarHeight();
@@ -130,8 +131,8 @@ const HomeScreen = ({ navigation }) => {
 	}, [selFarm]);
 
 	useEffect(() => {
-		if(selFarm) {
-			const newArr = dataFromServer?.filter(
+		if (selFarm) {
+			const newArr = dataPlantioServer?.filter(
 				(data) => data.fazenda === selFarm
 			)
 			const result = formatDataServer(newArr)
@@ -151,15 +152,15 @@ const HomeScreen = ({ navigation }) => {
 	}, []);
 
 	useEffect(() => {
-		if (dataFromServer.length > 0) {
-			const onlyFarm = dataFromServer.map((data, i) => {
+		if (dataPlantioServer.length > 0) {
+			const onlyFarm = dataPlantioServer?.map((data, i) => {
 				return data.fazenda;
 			});
 			const setFiltFarms = [...new Set(onlyFarm)];
 			dispatch(setFarms(setFiltFarms));
 		}
-	}, [dataFromServer]);
-console.log('expo token: ', EXPO_PUBLIC_REACT_APP_DJANGO_TOKEN)
+	}, [dataPlantioServer]);
+	console.log('expo token: ', EXPO_PUBLIC_REACT_APP_DJANGO_TOKEN)
 	const getData = async () => {
 		console.log("pegando os dados");
 		setIsLoading(true);
@@ -178,11 +179,11 @@ console.log('expo token: ', EXPO_PUBLIC_REACT_APP_DJANGO_TOKEN)
 
 			const data = await response.json();
 			console.table(data.dados_plantio);
-			setDataFromServer(
-				data.dados_plantio
-					.sort((a, b) => a.parcela.localeCompare(b.parcela))
-					.sort((a, b) => a.fazenda.localeCompare(b.fazenda))
-			);
+			const formDataServer = data.dados_plantio
+				.sort((a, b) => a.parcela.localeCompare(b.parcela))
+				.sort((a, b) => a.fazenda.localeCompare(b.fazenda))
+
+			dispatch(setDataPlantio(formDataServer))
 		} catch (error) {
 			console.log("erro ao pegar os dados", error);
 			Alert.alert(
@@ -195,7 +196,7 @@ console.log('expo token: ', EXPO_PUBLIC_REACT_APP_DJANGO_TOKEN)
 
 	useScrollToTop(ref);
 
-	if (isLoading) {
+	if (isLoading && dataPlantioServer.length === 0) {
 		return (
 			<View
 				style={{
@@ -263,9 +264,9 @@ console.log('expo token: ', EXPO_PUBLIC_REACT_APP_DJANGO_TOKEN)
 								/>
 							}
 						/>
-					):
-						<View style={{justifyContent: 'center', alignItems: 'center', flex: 1}}>
-							<Text style={{fontWeight: 'bold'}}>Sem Aplicações para este período</Text>
+					) :
+						<View style={{ justifyContent: 'center', alignItems: 'center', flex: 1 }}>
+							<Text style={{ fontWeight: 'bold' }}>Sem Aplicações para este período</Text>
 						</View>
 					}
 				</View>

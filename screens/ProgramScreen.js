@@ -18,7 +18,7 @@ import { Colors } from "../constants/styles";
 
 import { useDispatch, useSelector } from "react-redux";
 import { geralActions } from "../store/redux/geral";
-import { programasSelector, programSelector } from "../store/redux/selector";
+import { programasSelector, programSelector, dataProgramSelector } from "../store/redux/selector";
 
 import BottomSheetList from "../components/ProgramasScreen/BottomSheetList";
 
@@ -41,6 +41,7 @@ const ProgramScreen = ({ navigation }) => {
 	} = geralActions;
 	const programasAvai = useSelector(programasSelector);
 	const programSelected = useSelector(programSelector);
+	const dataProgram = useSelector(dataProgramSelector);
 
 	const handleSelectProgram = () => {
 		console.log("selecionar um programa");
@@ -139,7 +140,7 @@ const ProgramScreen = ({ navigation }) => {
 		getData();
 	};
 
-	if (isLoading) {
+	if (isLoading && dataProgram.length === 0) {
 		return (
 			<View
 				style={{
