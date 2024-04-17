@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "fetch-app",
-    "slug": "Farm Applicações",
+    "name": "Farm Applicações",
+    "slug": "fetchapp",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
