@@ -54,8 +54,8 @@ const CardListApp = (props) => {
 								<Text style={[styles.textData,{width: 30}]}>{data.parcela}</Text>
 								<Text style={[styles.textData,{width: 60}]}>{formatData(data.dataPlantio)}</Text>
 								<Text style={[styles.textData,{width: 30}]}>{data.dap}</Text>
-								<Text style={[styles.textData,{width: 40}]}>{data.variedade}</Text>
-								<Text style={[styles.textData,{width: 30}]}>
+								<Text style={[styles.textData,{width: 50}]}>{data.variedade}</Text>
+								<Text style={[styles.textData,{width: 40}]}>
 									{data.area.toLocaleString("pt-br", {
 										minimumFractionDigits: 2,
 										maximumFractionDigits: 2
