@@ -140,7 +140,7 @@ const HomeScreen = ({ navigation }) => {
 			console.log('result', result)
 
 		}
-	}, [selFarm]);
+	}, [selFarm, dataPlantioServer]);
 
 	const safraCiclo = {
 		safra: "2023/2024",
@@ -160,7 +160,9 @@ const HomeScreen = ({ navigation }) => {
 			dispatch(setFarms(setFiltFarms));
 		}
 	}, [dataPlantioServer]);
+	
 	console.log('expo token: ', EXPO_PUBLIC_REACT_APP_DJANGO_TOKEN)
+
 	const getData = async () => {
 		console.log("pegando os dados");
 		setIsLoading(true);
