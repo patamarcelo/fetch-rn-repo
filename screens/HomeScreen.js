@@ -181,7 +181,7 @@ const HomeScreen = ({ navigation }) => {
 
 			const data = await response.json();
 			console.table(data.dados_plantio);
-			const formDataServer = data.dados_plantio
+			const formDataServer = data.dados_plantio.filter((data) => data.dados.plantio_finalizado === true)
 				.sort((a, b) => a.parcela.localeCompare(b.parcela))
 				.sort((a, b) => a.fazenda.localeCompare(b.fazenda))
 

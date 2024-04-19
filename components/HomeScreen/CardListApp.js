@@ -28,8 +28,8 @@ const CardListApp = (props) => {
 		<View style={styles.mainConatiner}>
 			<View style={styles.headerView}>
 				<View style={styles.headerStlTitle}>
-					<View>
-						<Text style={{fontWeight: 'bold'}}>{programa.replace("Programa", "")}</Text>
+					<View style={{marginLeft: 5}}>
+						<Text style={{fontWeight: '600'}}>{programa.replace("Programa", "")}</Text>
 					</View>
 					<View style={styles.totalAreaHeader}>
 					<Text style={{fontStyle: 'italic'}}>
