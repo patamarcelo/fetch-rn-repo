@@ -145,7 +145,7 @@ const HomeScreen = ({ navigation }) => {
 						selFarm && listToCardApp.length > 0 &&
 						<IconButton
 							type={"awesome"}
-							icon={filterByDate ? "sort-alpha-asc" : "sort-alpha-desc"}
+							icon={!filterByDate ? "sort-alpha-asc" : "sort-alpha-desc"}
 							color={'green'}
 							size={18}
 							onPress={handlerSortData}
@@ -208,7 +208,7 @@ const HomeScreen = ({ navigation }) => {
 						selFarm && listToCardApp.length > 0 &&
 						<IconButton
 							type={"awesome"}
-							icon={filterByDate ? "sort-alpha-asc" : "sort-alpha-desc"}
+							icon={!filterByDate ? "sort-alpha-asc" : "sort-alpha-desc"}
 							color={'green'}
 							size={18}
 							onPress={handlerSortData}
