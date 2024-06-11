@@ -4,15 +4,21 @@ import {
 	Text,
 	StyleSheet,
 	FlatList,
-	RefreshControl
+	RefreshControl,
+	Pressable
 } from "react-native";
 import { Colors } from "../../constants/styles";
+
+
+import { useEffect } from "react";
 
 const CardListApp = (props) => {
 	console.log(props);
 	const {
 		data: { aplicacao, programa, app }
 	} = props;
+
+	const { data, filterByDate } = props
 
 	const formatData = (data) => {
 		const date = data.replaceAll("-", "");
@@ -24,21 +30,29 @@ const CardListApp = (props) => {
 
 	const totalArea = app.reduce((acc, curr) => (acc += curr.area), 0);
 
+	const handleDetailAp = (data) => {
+		console.log('data da ap: ', data)
+	}
+
+	useEffect(() => {
+		console.log('trocou novamente: , ', filterByDate)
+	}, [filterByDate]);
+
 	return (
-		<View style={styles.mainConatiner}>
+		<Pressable style={styles.mainConatiner} onPress={handleDetailAp.bind(this, data)}>
 			<View style={styles.headerView}>
 				<View style={styles.headerStlTitle}>
-					<View style={{marginLeft: 5}}>
-						<Text style={{fontWeight: '600'}}>{programa.replace("Programa", "")}</Text>
+					<View style={{ marginLeft: 5 }}>
+						<Text style={{ fontWeight: '600' }}>{programa.replace("Programa", "")}</Text>
 					</View>
 					<View style={styles.totalAreaHeader}>
-					<Text style={{fontStyle: 'italic'}}>
-						{totalArea.toLocaleString("pt-br", {
-							minimumFractionDigits: 2,
-							maximumFractionDigits: 2
-						})}
-					</Text>
-						</View>
+						<Text style={{ fontStyle: 'italic' }}>
+							{totalArea.toLocaleString("pt-br", {
+								minimumFractionDigits: 2,
+								maximumFractionDigits: 2
+							})}
+						</Text>
+					</View>
 				</View>
 				<View style={[{ width: "100%", alignItems: "center" }, styles.programHeader]}>
 					<Text style={styles.textApp}>{aplicacao}</Text>
@@ -47,36 +61,39 @@ const CardListApp = (props) => {
 			<View style={styles.dataContainer}>
 				{app &&
 					app.length > 0 &&
-					app.map((data, i) => {
+					app.sort((a, b) =>
+					filterByDate ? a.dataPrevAp.localeCompare(b.dataPrevAp) :
+							a.parcela.localeCompare(b.parcela)
+					).map((data, i) => {
 						return (
 							// <View style={[styles.rowTable, {backgroundColor: i % 2 === 0 ? Colors.secondary[100] : Colors.primary[200]}]} key={i}>
 							<View style={[styles.rowTable]} key={i}>
-								<Text style={[styles.textData,{width: 30}]}>{data.parcela}</Text>
-								<Text style={[styles.textData,{width: 60}]}>{formatData(data.dataPlantio)}</Text>
-								<Text style={[styles.textData,{width: 30}]}>{data.dap}</Text>
-								<Text style={[styles.textData,{width: 50}]}>{data.variedade}</Text>
-								<Text style={[styles.textData,{width: 40}]}>
+								<Text style={[styles.textData, { width: 30 }]}>{data.parcela}</Text>
+								<Text style={[styles.textData, { width: 60 }]}>{formatData(data.dataPlantio)}</Text>
+								<Text style={[styles.textData, { width: 20 }]}>{data.dap}</Text>
+								<Text style={[styles.textData, { width: 80 }]}>{data.variedade}</Text>
+								<Text style={[styles.textData, { width: 30 }]}>
 									{data.area.toLocaleString("pt-br", {
 										minimumFractionDigits: 2,
 										maximumFractionDigits: 2
 									})}
 								</Text>
-								<Text style={[styles.textData,{width: 60}]}>
+								<Text style={[styles.textData, { width: 60 }]}>
 									{formatData(data.dataPrevAp)}
 								</Text>
 							</View>
 						);
 					})}
 			</View>
-		</View>
+		</Pressable>
 	);
 };
 const styles = StyleSheet.create({
-	totalAreaHeader:{
+	totalAreaHeader: {
 		borderBottomColor: 'black',
 		borderBottomWidth: 1
-	},	
-	programHeader:{
+	},
+	programHeader: {
 		backgroundColor: Colors.primary500,
 		borderRadius: 12,
 		paddingHorizontal: 6,
@@ -141,7 +158,7 @@ const styles = StyleSheet.create({
 		shadowOffset: { width: 0, height: 2 }, // For iOS
 		marginHorizontal: 5,
 		paddingVertical: 20,
-		
+
 		// 	flex: 1,
 		// flexDirection: "column",
 		// justifyContent: "space-between",

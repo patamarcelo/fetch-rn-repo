@@ -12,10 +12,10 @@ const lastSunday = (today) => {
 const finalDate = lastSunday(today)[1];
 finalDate.setDate(finalDate.getDate() + 6);
 // setFinalDateForm(finalDate.toISOString().split("T")[0]);
-const endFinalDate = finalDate.toISOString().split("T")[0]
+const endFinalDateHere = finalDate.toISOString().split("T")[0]
 
 
-export default formatDataProgram = (data) => {
+export default formatDataProgram = (data, filterFinalDate) => {
     let finalArray = []
     data.forEach((farmData) => {
         const area = farmData.dados.area_colheita;
@@ -23,10 +23,12 @@ export default formatDataProgram = (data) => {
         const parcela = farmData.parcela;
         const dataPlantio = farmData.dados.data_plantio;
         const dap = farmData.dados.dap
+        const endFinalDate = filterFinalDate ? filterFinalDate : endFinalDateHere 
         farmData.dados.cronograma.filter((data) => data.aplicado === false && data["data prevista"] <= endFinalDate).forEach((cron) => {
             const estagio = cron.estagio;
             const aplicado = cron.aplicado;
             const dataPrevAp = cron["data prevista"]
+            const produtos = cron.produtos
             const newObj = {
                 parcela, 
                 area,
@@ -36,7 +38,8 @@ export default formatDataProgram = (data) => {
                 dap,
                 estagio,
                 aplicado,
-                dataPrevAp
+                dataPrevAp,
+                produtos
             }
             finalArray.push(newObj)
         })

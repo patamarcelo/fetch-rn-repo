@@ -35,12 +35,12 @@ const CardList = (props) => {
 								minHeight: 30
 							}}
 						>
-							<DataTable.Cell style>
-								<Text style={{ fontSize: 10 }}>
+							<View style={{flex: 3, justifyContent: 'center'}}>
+								<Text style={{ fontSize: 10 }} numberOfLines={1}>
 									{app.defensivo__produto}
 								</Text>
-							</DataTable.Cell>
-							<DataTable.Cell numeric>
+							</View>
+							<DataTable.Cell>
 								<Text style={{ fontSize: 10 }}>
 									{app.defensivo__tipo ===
 									"oleo_mineral_vegetal"

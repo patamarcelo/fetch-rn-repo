@@ -31,8 +31,12 @@ import formatDataServer from '../utils/data-program'
 import CardListApp from "../components/HomeScreen/CardListApp";
 
 
-const FarmList = (itemData) => {
-	return <CardListApp data={itemData.item} />;
+import DateTimePicker from '@react-native-community/datetimepicker';
+
+
+
+const FarmList = (itemData, filterByDate) => {
+	return <CardListApp data={itemData.item} filterByDate={filterByDate} />;
 };
 
 const HomeScreen = ({ navigation }) => {
@@ -48,9 +52,46 @@ const HomeScreen = ({ navigation }) => {
 	const [modalVisible, setModalVisible] = useState(false);
 	const [listToCardApp, setListToCardApp] = useState([]);
 
+	const [date, setDate] = useState()
+	const [open, setOpen] = useState(false)
+	const [mode, setMode] = useState('date');
+	const [filterEndDate, setfilterEndDate] = useState();
+
+	const [filterByDate, setFilterByDate] = useState(false);
+
+
 	const farmTitle = selFarm ? selFarm : "Plantio";
 
 	const dispatch = useDispatch();
+
+	const handlerSortData = () => {
+		setFilterByDate(current => !current)
+	}
+
+	const handlerOpenCalendar = () => {
+		console.log('Open Calendar')
+		setDate(new Date())
+		setOpen(true);
+	}
+
+	const handleClearDate = () => {
+		setDate()
+		setfilterEndDate()
+		setOpen(false);
+	}
+
+	const onChange = (event, selectedDate) => {
+		const currentDate = selectedDate;
+		setOpen(false);
+		setDate(currentDate);
+		console.log("current Date here: ", currentDate.toLocaleDateString().split('/').reverse().join('-'))
+		if (currentDate) {
+			const formatDate = currentDate.toLocaleDateString().split('/').reverse().join('-')
+			setfilterEndDate(formatDate)
+		}
+	};
+
+
 
 	const handlerFarms = () => {
 		console.log("logout");
@@ -81,7 +122,7 @@ const HomeScreen = ({ navigation }) => {
 					<IconButton
 						type={"awesome"}
 						icon="filter"
-						color={tintColor}
+						color={selFarm ? '#3d8bfd' : tintColor}
 						size={22}
 						onPress={handlerFarms}
 						btnStyles={{ marginLeft: 25, marginTop: 10 }}
@@ -93,7 +134,41 @@ const HomeScreen = ({ navigation }) => {
 							color={tintColor}
 							size={22}
 							onPress={handleClear}
-							btnStyles={{ marginLeft: 25, marginTop: 10 }}
+							btnStyles={{ marginLeft: 5, marginTop: 10 }}
+						/>
+					)}
+				</View>
+			),
+			headerRight: ({ tintColor }) => (
+				<View style={{ flexDirection: "row", alignItems: 'center' }}>
+					{
+						selFarm && listToCardApp.length > 0 &&
+						<IconButton
+							type={"awesome"}
+							icon={filterByDate ? "sort-alpha-asc" : "sort-alpha-desc"}
+							color={'green'}
+							size={18}
+							onPress={handlerSortData}
+							btnStyles={{ marginLeft: 5, marginTop: 10 }}
+						/>
+					}
+					<IconButton
+						type={"awesome"}
+						icon="calendar"
+						color={date ? '#3d8bfd' : tintColor}
+						size={22}
+						onPress={handlerOpenCalendar}
+						btnStyles={{ marginRight: 25, marginTop: 10 }}
+					/>
+					
+					{date && (
+						<IconButton
+							type={""}
+							icon="close-circle"
+							color={tintColor}
+							size={22}
+							onPress={handleClear}
+							btnStyles={{ marginLeft: 5, marginTop: 10 }}
 						/>
 					)}
 				</View>
@@ -110,7 +185,7 @@ const HomeScreen = ({ navigation }) => {
 					<IconButton
 						type={"awesome"}
 						icon="filter"
-						color={tintColor}
+						color={selFarm ? '#3d8bfd' : tintColor}
 						size={22}
 						onPress={handlerFarms}
 						btnStyles={{ marginLeft: 25, marginTop: 10 }}
@@ -122,25 +197,58 @@ const HomeScreen = ({ navigation }) => {
 							color={tintColor}
 							size={22}
 							onPress={handleClear}
-							btnStyles={{ marginLeft: 25, marginTop: 10 }}
+							btnStyles={{ marginLeft: 5, marginTop: 10 }}
+						/>
+					)}
+				</View>
+			),
+			headerRight: ({ tintColor }) => (
+				<View style={{ flexDirection: "row" , alignItems: 'center'}}>
+					{
+						selFarm && listToCardApp.length > 0 &&
+						<IconButton
+							type={"awesome"}
+							icon={filterByDate ? "sort-alpha-asc" : "sort-alpha-desc"}
+							color={'green'}
+							size={18}
+							onPress={handlerSortData}
+							btnStyles={{ marginLeft: 5, marginTop: 10 }}
+						/>
+					}
+					<IconButton
+						type={"awesome"}
+						icon="calendar"
+						color={date ? '#3d8bfd' : tintColor}
+						size={22}
+						onPress={handlerOpenCalendar}
+						btnStyles={{ marginRight: date ? 4 : 25, marginTop: 10 }}
+					/>
+					{date && (
+						<IconButton
+							type={""}
+							icon="close-circle"
+							color={'whitesmoke'}
+							size={22}
+							onPress={handleClearDate}
+							btnStyles={{ marginTop: 10 }}
 						/>
 					)}
 				</View>
 			)
 		});
-	}, [selFarm]);
+	}, [selFarm, date, filterByDate, listToCardApp]);
 
 	useEffect(() => {
 		if (selFarm) {
 			const newArr = dataPlantioServer?.filter(
 				(data) => data.fazenda === selFarm
 			)
-			const result = formatDataServer(newArr)
+			const result = formatDataServer(newArr, filterEndDate)
 			setListToCardApp(result)
 			console.log('result', result)
 
 		}
-	}, [selFarm, dataPlantioServer]);
+	}, [selFarm, dataPlantioServer, filterEndDate, filterByDate]);
 
 	const safraCiclo = {
 		safra: "2023/2024",
@@ -160,7 +268,7 @@ const HomeScreen = ({ navigation }) => {
 			dispatch(setFarms(setFiltFarms));
 		}
 	}, [dataPlantioServer]);
-	
+
 	console.log('expo token: ', EXPO_PUBLIC_REACT_APP_DJANGO_TOKEN)
 
 	const getData = async () => {
@@ -213,67 +321,91 @@ const HomeScreen = ({ navigation }) => {
 	}
 
 	return (
-		<View style={styles.mainContainer}>
-			{/* <View style={styles.header}>
+		<>
+			{open && date && (
+				<View
+					style={{
+						justifyContent: 'center',
+						flex: 1,
+						alignItems: 'center'
+					}}
+				>
+					<DateTimePicker
+						testID="dateTimePicker"
+						value={date}
+						mode={mode}
+						is24Hour={true}
+						onChange={onChange}
+						display="calendar"
+						// timeZoneName={'Europe/Prague'}
+						locale="pt-BR"
+					/>
+				</View>
+			)}
+			{!open &&
+				<View style={styles.mainContainer}>
+					{/* <View style={styles.header}>
 				<Button onPress={getData}>Pegar Dados</Button>
 			</View> */}
-			<Modal
-				animationType="slide"
-				transparent={true}
-				visible={modalVisible}
-				onRequestClose={() => {
-					Alert.alert("Modal has been closed.");
-					setModalVisible(!modalVisible);
-				}}
-			>
-				<FarmScreen
-					setModalVisible={setModalVisible}
-					modalVisible={modalVisible}
-				/>
-			</Modal>
-
-			{!selFarm && (
-				<View>
-					<Text>Dados do Plantio</Text>
-				</View>
-			)}
-			{selFarm && (
-				<View
-					style={[
-						styles.dataContainer,
-						{ marginTop: 3, paddingBottom: tabBarHeight + 5 }
-					]}
-				>
-					{listToCardApp.length > 0 ? (
-						<FlatList
-							// scrollEnabled={false}
-							ref={ref}
-							data={listToCardApp}
-							// data={dataFromServer.filter(
-							// 	(data) => data.fazenda === selFarm
-							// )}
-							keyExtractor={(item, i) => i}
-							renderItem={FarmList}
-							ItemSeparatorComponent={() => (
-								<View style={{ height: 12 }} />
-							)}
-							refreshControl={
-								<RefreshControl
-									refreshing={isLoading}
-									onRefresh={getData}
-									colors={["#9Bd35A", "#689F38"]}
-									tintColor={Colors.primary500}
-								/>
-							}
+					<Modal
+						animationType="slide"
+						transparent={true}
+						visible={modalVisible}
+						onRequestClose={() => {
+							Alert.alert("Modal has been closed.");
+							setModalVisible(!modalVisible);
+						}}
+					>
+						<FarmScreen
+							setModalVisible={setModalVisible}
+							modalVisible={modalVisible}
 						/>
-					) :
-						<View style={{ justifyContent: 'center', alignItems: 'center', flex: 1 }}>
-							<Text style={{ fontWeight: 'bold' }}>Sem Aplicações para este período</Text>
+					</Modal>
+
+					{!selFarm && (
+						<View>
+							<Text>Dados do Plantio</Text>
 						</View>
-					}
+					)}
+					{selFarm && (
+						<View
+							style={[
+								styles.dataContainer,
+								{ marginTop: 3, paddingBottom: tabBarHeight + 5 }
+							]}
+						>
+							{listToCardApp.length > 0 ? (
+								<FlatList
+									// scrollEnabled={false}
+									ref={ref}
+									data={listToCardApp}
+									// data={dataFromServer.filter(
+									// 	(data) => data.fazenda === selFarm
+									// )}
+									keyExtractor={(item, i) => i}
+									renderItem={(item) => FarmList(item, filterByDate)}
+									ItemSeparatorComponent={() => (
+										<View style={{ height: 12 }} />
+									)}
+									refreshControl={
+										<RefreshControl
+											refreshing={isLoading}
+											onRefresh={getData}
+											colors={["#9Bd35A", "#689F38"]}
+											tintColor={Colors.primary500}
+										/>
+									}
+								/>
+							) :
+								<View style={{ justifyContent: 'center', alignItems: 'center', flex: 1 }}>
+									<Text style={{ fontWeight: 'bold' }}>Sem Aplicações para este período</Text>
+								</View>
+							}
+						</View>
+					)}
 				</View>
-			)}
-		</View>
+			}
+		</>
 	);
 };
 
@@ -290,7 +422,7 @@ const styles = StyleSheet.create({
 	},
 	dataContainer: {
 		flex: 1,
-		// backgroundColor: "red",
+		backgroundColor: "whitesmoke",
 		width: "100%",
 		alignItems: "center"
 	}
