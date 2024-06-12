@@ -12,6 +12,7 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 
 import { useNavigation } from "@react-navigation/native";
 import MapStack from "./MapStack";
+import FarmBoxStack from "./FarmBoxStack";
 
 const Stack = createNativeStackNavigator();
 
@@ -50,6 +51,25 @@ const HomeStack = () => {
 			/>
 			<Tab.Screen
 				name="Maps"
+				component={FarmBoxStack}
+				// listeners={{
+				// 	tabPress: (e) => {
+				// 		// Prevent default action
+				// 		e.preventDefault();
+
+				// 		//Any custom code here
+				// 		navigation.navigate("FarmBoxStack");
+				// 	}
+				// }}
+				options={{
+					title: "FarmBox",
+					tabBarIcon: ({ color, size }) => (
+						<Ionicons name="hourglass-outline" color={color} size={size} />
+					)
+				}}
+			/>
+			{/* <Tab.Screen
+				name="Maps"
 				component={MapStack}
 				listeners={{
 					tabPress: (e) => {
@@ -66,7 +86,7 @@ const HomeStack = () => {
 						<Ionicons name="map" color={color} size={size} />
 					)
 				}}
-			/>
+			/> */}
 			<Tab.Screen
 				name="Programações"
 				component={HomeScreen}
