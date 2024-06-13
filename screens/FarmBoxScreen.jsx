@@ -26,7 +26,7 @@ import { EXPO_PUBLIC_REACT_APP_DJANGO_TOKEN } from "@env";
 
 
 const FarmBoxList = (itemData) => {
-    return <CardFarmBox data={itemData.item} />
+    return <CardFarmBox data={itemData.item}/>
 }
 
 
@@ -135,6 +135,7 @@ const FarmBoxScreen = ({ navigation }) => {
     return (
         <View style={styles.mainContainer}>
             <ScrollView ref={ref} style={[styles.mainContainer, { marginBottom: tabBarHeight }]}
+                horizontal={false}
                 refreshControl={
                     <RefreshControl
                         refreshing={isLoading}
@@ -148,8 +149,8 @@ const FarmBoxScreen = ({ navigation }) => {
 
                     onlyFarms.map((farms, i) => {
                         return (
-                            <>
-                                <Pressable key={i}
+                            <View key={i}>
+                                <Pressable 
                                     style={({ pressed }) => [
                                         styles.headerContainer,
                                         pressed && styles.pressed,
@@ -166,14 +167,15 @@ const FarmBoxScreen = ({ navigation }) => {
                                     <FlatList
                                         // scrollEnabled={false}
                                         data={farmData.filter((farmName) => farmName.farmName === farms)}
-                                        keyExtractor={(item, i) => i + item}
+                                        keyExtractor={(item, i) => item.id}
                                         renderItem={(item) => FarmBoxList(item)}
                                         ItemSeparatorComponent={() => (
                                             <View style={{ height: 12 }} />
                                         )}
+                                        scrollEnabled={false}
                                     />
                                 }
-                            </>
+                            </View>
 
 
                         )

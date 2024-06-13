@@ -85,8 +85,11 @@ const CardFarmBox = (props) => {
                     <View style={styles.parcelasContainer}>
                         {
                             data.parcelas.map((parcela) => {
+                                const uniKey = data.id + parcela.parcela
                                 return (
-                                    <View style={[styles.parcelasView, { backgroundColor: parcela.fillColorParce }]}>
+                                    <View 
+                                    key={uniKey}
+                                    style={[styles.parcelasView, { backgroundColor: parcela.fillColorParce }]}>
                                         <Text style={{ color: parcela.fillColorParce === '#E4D00A' ? 'black' : 'whitesmoke' }}>{parcela.parcela}</Text>
                                         <Text style={{ color: parcela.fillColorParce === '#E4D00A' ? 'black' : 'whitesmoke' }}>-</Text>
                                         <Text style={{ color: parcela.fillColorParce === '#E4D00A' ? 'black' : 'whitesmoke' }}>{formatNumber(parcela.areaSolicitada)}</Text>
@@ -99,8 +102,11 @@ const CardFarmBox = (props) => {
                     <View style={styles.produtosContainer}>
                         {
                             data.prods.filter((pro) => pro.type !== 'Operação').map((produto) => {
+                                const uniKey = data.cultura + data.id + produto.product
                                 return (
-                                    <View style={[styles.prodsView, { backgroundColor: produto.colorChip }]}>
+                                    <View 
+                                    key={uniKey}
+                                    style={[styles.prodsView, { backgroundColor: produto.colorChip }]}>
                                         <Text style={styles.textProds}>{formatNumberProds(produto.doseSolicitada)}</Text>
                                         <Text style={styles.textProdsName}>{produto.product}</Text>
                                     </View>

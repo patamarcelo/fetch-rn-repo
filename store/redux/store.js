@@ -22,7 +22,8 @@ export const store = configureStore({
 	// middleware: [thunk]
 	middleware: (getDefaultMiddleware) =>
 		getDefaultMiddleware({
-			serializableCheck: false
+			serializableCheck: false,
+			immutableCheck: false,
 		})
 });
 
