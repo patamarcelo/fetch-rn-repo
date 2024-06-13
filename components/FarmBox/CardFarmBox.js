@@ -85,7 +85,7 @@ const CardFarmBox = (props) => {
                     <View style={styles.parcelasContainer}>
                         {
                             data.parcelas.map((parcela) => {
-                                const uniKey = data.id + parcela.parcela
+                                const uniKey = data.idAp + parcela.parcela
                                 return (
                                     <View 
                                     key={uniKey}
@@ -102,7 +102,7 @@ const CardFarmBox = (props) => {
                     <View style={styles.produtosContainer}>
                         {
                             data.prods.filter((pro) => pro.type !== 'Operação').map((produto) => {
-                                const uniKey = data.cultura + data.id + produto.product
+                                const uniKey = data.cultura + data.idAp + produto.product
                                 return (
                                     <View 
                                     key={uniKey}

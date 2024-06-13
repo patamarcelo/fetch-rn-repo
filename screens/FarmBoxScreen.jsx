@@ -167,7 +167,7 @@ const FarmBoxScreen = ({ navigation }) => {
                                     <FlatList
                                         // scrollEnabled={false}
                                         data={farmData.filter((farmName) => farmName.farmName === farms)}
-                                        keyExtractor={(item, i) => item.id}
+                                        keyExtractor={(item, i) => item.idAp}
                                         renderItem={(item) => FarmBoxList(item)}
                                         ItemSeparatorComponent={() => (
                                             <View style={{ height: 12 }} />
