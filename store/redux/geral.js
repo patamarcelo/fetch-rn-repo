@@ -7,13 +7,17 @@ const initialState = {
 	selectedProgram: null,
 	estagiosProgram: [],
 	dataProgram: [],
-	plantioData: []
+	plantioData: [],
+	farmBoxData: []
 };
 
 const geralSlice = createSlice({
 	name: "geral",
 	initialState,
 	reducers: {
+		setFarmBoxData: (state, action) => {
+			state.farmBoxData = action.payload
+		},
 		setDataPlantio: (state, action) => {
 			state.plantioData = action.payload
 		},

@@ -8,43 +8,115 @@ import {
     Pressable
 } from 'react-native'
 import { useState, useEffect, useRef } from 'react'
+import { Colors } from '../constants/styles';
 
 import dataFarm from '../store/farmboxData.json'
 
+import { useDispatch, useSelector } from "react-redux";
+import { geralActions } from "../store/redux/geral";
+import { selectFarmBoxData } from "../store/redux/selector";
+
+
 import { useScrollToTop } from "@react-navigation/native";
+import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
+
+
 import CardFarmBox from '../components/FarmBox/CardFarmBox';
 
-import { Colors } from '../constants/styles';
+import { NODELINK } from "../utils/api";
+import { EXPO_PUBLIC_REACT_APP_DJANGO_TOKEN } from "@env";
 
-import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 
 const FarmBoxList = (itemData) => {
     return <CardFarmBox data={itemData.item} />
 }
 
 
-const FarmBoxScreen = () => {
+const FarmBoxScreen = ({ navigation }) => {
+    const { setFarmBoxData } = geralActions;
+
+    const dispatch = useDispatch()
+
     const sheetRef = useRef(null);
     const ref = useRef(null);
     const [farmData, setfarmData] = useState([]);
     const [onlyFarms, setOnlyFarms] = useState([]);
     const tabBarHeight = useBottomTabBarHeight();
 
+    const farmBoxData = useSelector(selectFarmBoxData)
+
+
     const [showFarm, setShowFarm] = useState(false);
+
+    const [isLoading, setIsLoading] = useState(false);
+
+    const getData = async () => {
+        setIsLoading(true);
+        try {
+            const response = await fetch(
+                `${NODELINK}/data-open-apps-fetch-app/`,
+                {
+                    headers: {
+                        Authorization: `Token ${EXPO_PUBLIC_REACT_APP_DJANGO_TOKEN}`,
+                        "Content-Type": "application/json"
+                    },
+                    method: "GET"
+                }
+            );
+            const data = await response.json();
+            dispatch(setFarmBoxData(data))
+        } catch (error) {
+            console.log("erro ao pegar os dados", error);
+            Alert.alert(
+                `Problema na API', 'possível erro de internet para pegar os dados ${error}`
+            );
+        } finally {
+            setIsLoading(false);
+        }
+    }
 
     useEffect(() => {
         const getData = async () => {
+            setIsLoading(true);
             try {
-                const data = dataFarm
-                setfarmData(data.data)
-                setOnlyFarms(data.farms)
-            } catch (err) {
-                console.log('Erro ao carregar os dados')
+                const response = await fetch(
+                    `${NODELINK}/data-open-apps-fetch-app/`,
+                    {
+                        headers: {
+                            Authorization: `Token ${EXPO_PUBLIC_REACT_APP_DJANGO_TOKEN}`,
+                            "Content-Type": "application/json"
+                        },
+                        method: "GET"
+                    }
+                );
+                const data = await response.json();
+                dispatch(setFarmBoxData(data))
+            } catch (error) {
+                console.log("erro ao pegar os dados", error);
+                Alert.alert(
+                    `Problema na API', 'possível erro de internet para pegar os dados ${error}`
+                );
+            } finally {
+                setIsLoading(false);
             }
         }
-
         getData()
     }, []);
+
+    useEffect(() => {
+        if (farmBoxData) {
+            setfarmData(farmBoxData.data)
+            setOnlyFarms(farmBoxData.farms)
+        }
+    }, []);
+
+
+    useEffect(() => {
+        if (farmBoxData) {
+            setfarmData(farmBoxData.data)
+            setOnlyFarms(farmBoxData.farms)
+        }
+    }, [farmBoxData]);
 
     useScrollToTop(ref);
 
@@ -67,8 +139,8 @@ const FarmBoxScreen = () => {
             <ScrollView ref={ref} style={[styles.mainContainer, { marginBottom: tabBarHeight }]}
                 refreshControl={
                     <RefreshControl
-                        // refreshing={isLoading}
-                        // onRefresh={getData}
+                        refreshing={isLoading}
+                        onRefresh={getData}
                         colors={["#9Bd35A", "#689F38"]}
                         tintColor={Colors.primary500}
                     />
@@ -82,7 +154,9 @@ const FarmBoxScreen = () => {
                                 <Pressable key={i}
                                     style={({ pressed }) => [
                                         styles.headerContainer,
-                                        pressed && styles.pressed]}
+                                        pressed && styles.pressed,
+                                        i === 0 && styles.firstHeader
+                                    ]}
                                     onPress={handleShowFarm.bind(this, farms)}
                                 >
                                     <Text style={{ color: 'white', fontSize: 18, fontWeight: 'bold' }}>
@@ -94,7 +168,7 @@ const FarmBoxScreen = () => {
                                     <FlatList
                                         // scrollEnabled={false}
                                         data={farmData.filter((farmName) => farmName.farmName === farms)}
-                                        keyExtractor={(item, i) => i}
+                                        keyExtractor={(item, i) => i + item}
                                         renderItem={(item) => FarmBoxList(item)}
                                         ItemSeparatorComponent={() => (
                                             <View style={{ height: 12 }} />
@@ -115,6 +189,9 @@ const FarmBoxScreen = () => {
 export default FarmBoxScreen;
 
 const styles = StyleSheet.create({
+    firstHeader: {
+        marginTop: 0
+    },
     mainContainer: {
         flex: 1,
         // marginBottom: 10

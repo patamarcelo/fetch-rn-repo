@@ -11,3 +11,5 @@ export const estagiosSelector = (state) => state.geral.estagiosProgram;
 export const dataProgramSelector = (state) => state.geral.dataProgram;
 
 export const selectDataPlantio = (state) => state.geral.plantioData
+
+export const selectFarmBoxData = (state) => state.geral.farmBoxData

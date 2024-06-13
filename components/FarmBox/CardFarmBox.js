@@ -101,8 +101,8 @@ export default CardFarmBox
 
 const styles = StyleSheet.create({
     mainContainer: {
-        backgroundColor: Colors.secondary[100],
-        paddingVertical: 10
+        backgroundColor: Colors.secondary[300],
+        paddingBottom: 10
     },
     headerContainer: {
         flexDirection: 'row',
@@ -128,17 +128,18 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         paddingHorizontal: 4,
         flexWrap: 'wrap',
-        marginBottom: 10
+        marginBottom: 10,
+        justifyContent: 'flex-start'
     },
     parcelasView: {
         flexDirection: 'row',
         gap: 10,
-        width: 100,
+        width: 90,
         borderRadius: 12,
         padding: 8,
         // paddingVertical: 12,
         backgroundColor: 'green',
-        justifyContent: 'space-evenly'
+        justifyContent: 'space-around'
     },
     infoContainer: {
         flex: 1,

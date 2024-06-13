@@ -50,7 +50,7 @@ const HomeStack = () => {
 				}}
 			/>
 			<Tab.Screen
-				name="Maps"
+				name="FarmBoxStackT"
 				component={FarmBoxStack}
 				// listeners={{
 				// 	tabPress: (e) => {
