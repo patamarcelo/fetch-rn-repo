@@ -1,4 +1,4 @@
-import { Pressable, View, Text, StyleSheet } from "react-native"
+import { Pressable, View, Text, StyleSheet, Image } from "react-native"
 import { Colors } from "../../constants/styles";
 
 import { useState } from "react";
@@ -33,6 +33,23 @@ const CardFarmBox = (props) => {
         setShowAps(prev => !prev)
     }
 
+    const iconDict = [
+		{ cultura: "Feijão", icon: require('../../utils/assets/icons/beans2.png'), alt: "feijao" },
+		{ cultura: "Arroz", icon: require('../../utils/assets/icons/rice.png'), alt: "arroz" },
+		{ cultura: "Soja", icon: require('../../utils/assets/icons/soy.png'), alt: "soja" },
+		{ cultura: undefined, icon: require('../../utils/assets/icons/question.png'), alt: "?" }
+	];
+
+	const filteredIcon = (data) => {
+		const filtered = iconDict.filter((dictD) => dictD.cultura === data);
+
+		if (filtered.length > 0) {
+			return filtered[0].icon;
+		}
+		return iconDict[3].icon;
+		// return "";
+	};
+    const getCultura = filteredIcon(data.cultura)
     return (
         <Pressable
             style={({ pressed }) => [
@@ -50,8 +67,11 @@ const CardFarmBox = (props) => {
                     <Text style={styles.headerTitle}> {data.code.split('AP')}</Text>
                     <Text style={[styles.headerTitle, styles.dateTile]}> {data.dateAp.split('-').reverse().join('/')}</Text>
                 </View>
-                <View>
+                <View style={{flexDirection: 'row', alignItems: 'center', gap: 5}}>
                     <Text style={styles.headerTitle}> {data.operation}</Text>
+                    <Image source={getCultura} 
+                    style={{width: 20, height: 20}}
+                    />
                 </View>
                 <View style={styles.progressContainer}>
                     <Progress.Pie size={30} indeterminate={false} progress={data.percent} color={data.percentColor} />
