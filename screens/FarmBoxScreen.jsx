@@ -10,8 +10,6 @@ import {
 import { useState, useEffect, useRef } from 'react'
 import { Colors } from '../constants/styles';
 
-import dataFarm from '../store/farmboxData.json'
-
 import { useDispatch, useSelector } from "react-redux";
 import { geralActions } from "../store/redux/geral";
 import { selectFarmBoxData } from "../store/redux/selector";
