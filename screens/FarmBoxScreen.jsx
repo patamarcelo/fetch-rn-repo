@@ -5,7 +5,7 @@ import {
     StyleSheet,
     FlatList,
     RefreshControl,
-    Pressable, 
+    Pressable,
     Alert
 } from 'react-native'
 import { useState, useEffect, useRef } from 'react'
@@ -26,9 +26,7 @@ import { NODELINK } from "../utils/api";
 import { EXPO_PUBLIC_REACT_APP_DJANGO_TOKEN } from "@env";
 
 
-const FarmBoxList = (itemData) => {
-    return <CardFarmBox data={itemData.item}/>
-}
+
 
 
 const FarmBoxScreen = ({ navigation }) => {
@@ -62,11 +60,11 @@ const FarmBoxScreen = ({ navigation }) => {
                     method: "GET"
                 }
             );
-            if(response.status === 200){
+            if (response.status === 200) {
                 console.log('atualização OK')
                 const data = await response.json();
                 dispatch(setFarmBoxData(data))
-                }
+            }
         } catch (error) {
             console.log("erro ao pegar os dados", error);
             Alert.alert(
@@ -91,16 +89,16 @@ const FarmBoxScreen = ({ navigation }) => {
                         method: "GET"
                     }
                 );
-                if(response.status === 200){
+                if (response.status === 200) {
                     console.log('atualização OK here')
                     const data = await response.json();
                     dispatch(setFarmBoxData(data))
                 }
             } catch (error) {
                 console.log("erro ao pegar os dados", error);
-            Alert.alert(
-                `Problema na API', 'possível erro de internet para pegar os dados ${error}`
-            );
+                Alert.alert(
+                    `Problema na API', 'possível erro de internet para pegar os dados ${error}`
+                );
             } finally {
                 setIsLoading(false);
             }
@@ -157,7 +155,7 @@ const FarmBoxScreen = ({ navigation }) => {
                     onlyFarms.map((farms, i) => {
                         return (
                             <View key={i}>
-                                <Pressable 
+                                <Pressable
                                     style={({ pressed }) => [
                                         styles.headerContainer,
                                         pressed && styles.pressed,
@@ -170,17 +168,14 @@ const FarmBoxScreen = ({ navigation }) => {
                                     </Text>
                                 </Pressable>
                                 {
-                                    showFarm === farms &&
-                                    <FlatList
-                                        // scrollEnabled={false}
-                                        data={farmData.filter((farmName) => farmName.farmName === farms)}
-                                        keyExtractor={(item, i) => item.idAp}
-                                        renderItem={(item) => FarmBoxList(item)}
-                                        ItemSeparatorComponent={() => (
-                                            <View style={{ height: 12 }} />
-                                        )}
-                                        scrollEnabled={false}
-                                    />
+                                    showFarm !== null && showFarm === farms && farmData.length > 0 &&
+                                    farmData.filter((farmName) => farmName.farmName === farms).map((farmDatas, i) => {
+                                        return (
+                                            <View style={{marginBottom: 10 }} key={farmDatas.idAp}>
+                                                <CardFarmBox data={farmDatas}/>
+                                            </View>
+                                        )
+                                    })
                                 }
                             </View>
 

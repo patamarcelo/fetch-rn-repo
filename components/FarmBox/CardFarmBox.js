@@ -12,18 +12,17 @@ import * as Progress from 'react-native-progress';
 
 const CardFarmBox = (props) => {
     const { data } = props
-
     const [showAps, setShowAps] = useState(false);
 
 
     const formatNumber = number => {
-        return number.toLocaleString("pt-br", {
+        return number?.toLocaleString("pt-br", {
             minimumFractionDigits: 2,
             maximumFractionDigits: 2
         })
     }
     const formatNumberProds = number => {
-        return number.toLocaleString("pt-br", {
+        return number?.toLocaleString("pt-br", {
             minimumFractionDigits: 3,
             maximumFractionDigits: 3
         })
@@ -64,8 +63,8 @@ const CardFarmBox = (props) => {
             </View>
             <View style={styles.headerContainer}>
                 <View>
-                    <Text style={styles.headerTitle}> {data.code.split('AP')}</Text>
-                    <Text style={[styles.headerTitle, styles.dateTile]}> {data.dateAp.split('-').reverse().join('/')}</Text>
+                    <Text style={styles.headerTitle}> {data?.code?.split('AP')}</Text>
+                    <Text style={[styles.headerTitle, styles.dateTile]}> {data?.dateAp?.split('-').reverse().join('/')}</Text>
                 </View>
                 <View style={{flexDirection: 'row', alignItems: 'center', gap: 5}}>
                     <Text style={styles.headerTitle}> {data.operation}</Text>
@@ -84,7 +83,7 @@ const CardFarmBox = (props) => {
                 <View style={styles.bodyContainer}>
                     <View style={styles.parcelasContainer}>
                         {
-                            data.parcelas.map((parcela) => {
+                            data?.parcelas?.map((parcela) => {
                                 const uniKey = data.idAp + parcela.parcela
                                 return (
                                     <View 
@@ -101,7 +100,7 @@ const CardFarmBox = (props) => {
                     <Divider width={1} color={Colors.secondary[300]} />
                     <View style={styles.produtosContainer}>
                         {
-                            data.prods.filter((pro) => pro.type !== 'Operação').map((produto) => {
+                            data?.prods?.filter((pro) => pro.type !== 'Operação').map((produto) => {
                                 const uniKey = data.cultura + data.idAp + produto.product
                                 return (
                                     <View 
@@ -128,7 +127,8 @@ export default CardFarmBox
 const styles = StyleSheet.create({
     mainContainer: {
         backgroundColor: Colors.secondary[300],
-        paddingBottom: 10
+        paddingBottom: 10,
+        marginTop: 10
     },
     headerContainer: {
         flexDirection: 'row',
@@ -146,6 +146,7 @@ const styles = StyleSheet.create({
         marginRight: 10
     },
     bodyContainer: {
+        // backgroundColor:Colors. secondary[400]
         // flex: 1,
         // flexDirection: 'row'
     },
