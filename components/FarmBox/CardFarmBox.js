@@ -9,6 +9,8 @@ import { Divider } from '@rneui/themed';
 
 import * as Progress from 'react-native-progress';
 
+import * as Haptics from 'expo-haptics';
+
 
 const CardFarmBox = (props) => {
     const { data } = props
@@ -30,6 +32,7 @@ const CardFarmBox = (props) => {
 
     const handleOpen = () => {
         setShowAps(prev => !prev)
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy)
     }
 
     const iconDict = [
