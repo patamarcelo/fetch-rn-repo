@@ -5,7 +5,8 @@ import {
     StyleSheet,
     FlatList,
     RefreshControl,
-    Pressable
+    Pressable, 
+    Alert
 } from 'react-native'
 import { useState, useEffect, useRef } from 'react'
 import { Colors } from '../constants/styles';
@@ -61,8 +62,11 @@ const FarmBoxScreen = ({ navigation }) => {
                     method: "GET"
                 }
             );
-            const data = await response.json();
-            dispatch(setFarmBoxData(data))
+            if(response.status === 200){
+                console.log('atualização OK')
+                const data = await response.json();
+                dispatch(setFarmBoxData(data))
+                }
         } catch (error) {
             console.log("erro ao pegar os dados", error);
             Alert.alert(
@@ -87,13 +91,16 @@ const FarmBoxScreen = ({ navigation }) => {
                         method: "GET"
                     }
                 );
-                const data = await response.json();
-                dispatch(setFarmBoxData(data))
+                if(response.status === 200){
+                    console.log('atualização OK here')
+                    const data = await response.json();
+                    dispatch(setFarmBoxData(data))
+                }
             } catch (error) {
                 console.log("erro ao pegar os dados", error);
-                Alert.alert(
-                    `Problema na API', 'possível erro de internet para pegar os dados ${error}`
-                );
+            Alert.alert(
+                `Problema na API', 'possível erro de internet para pegar os dados ${error}`
+            );
             } finally {
                 setIsLoading(false);
             }
