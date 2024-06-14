@@ -25,6 +25,8 @@ import CardFarmBox from '../components/FarmBox/CardFarmBox';
 import { NODELINK } from "../utils/api";
 import { EXPO_PUBLIC_REACT_APP_DJANGO_TOKEN } from "@env";
 
+import * as Haptics from 'expo-haptics';
+
 
 
 
@@ -132,8 +134,10 @@ const FarmBoxScreen = ({ navigation }) => {
     const handleShowFarm = (farms) => {
         if (showFarm === farms) {
             setShowFarm(null)
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy)
         } else {
             setShowFarm(farms)
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy)
         }
     }
 
