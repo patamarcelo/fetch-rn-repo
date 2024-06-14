@@ -8,8 +8,6 @@ import {
     Alert,
 } from 'react-native'
 
-import * as Haptics from 'expo-haptics';
-
 
 import { useState, useEffect, useRef } from 'react'
 import { Colors } from '../constants/styles';
