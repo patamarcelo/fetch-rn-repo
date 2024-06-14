@@ -27,6 +27,8 @@ import { LINK } from "../utils/api";
 import ProgramList from "../components/ProgramasScreen/ProgramList";
 import { useScrollToTop } from "@react-navigation/native";
 
+import * as Haptics from 'expo-haptics';
+
 const ProgramScreen = ({ navigation }) => {
 	const sheetRef = useRef(null);
 	const [isLoading, setIsLoading] = useState();
@@ -46,6 +48,7 @@ const ProgramScreen = ({ navigation }) => {
 	const handleSelectProgram = () => {
 		console.log("selecionar um programa");
 		sheetRef.current?.open();
+		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy)
 	};
 
 	const handleClose = () => {

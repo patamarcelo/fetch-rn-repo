@@ -3,11 +3,14 @@ import {
     Text,
     ScrollView,
     StyleSheet,
-    FlatList,
     RefreshControl,
     Pressable,
-    Alert
+    Alert,
 } from 'react-native'
+
+import * as Haptics from 'expo-haptics';
+
+
 import { useState, useEffect, useRef } from 'react'
 import { Colors } from '../constants/styles';
 
@@ -31,6 +34,9 @@ import * as Haptics from 'expo-haptics';
 
 
 
+
+
+
 const FarmBoxScreen = ({ navigation }) => {
     const { setFarmBoxData } = geralActions;
 
@@ -48,6 +54,13 @@ const FarmBoxScreen = ({ navigation }) => {
     const [showFarm, setShowFarm] = useState(false);
 
     const [isLoading, setIsLoading] = useState(false);
+
+    const formatNumber = number => {
+        return number?.toLocaleString("pt-br", {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+        })
+    }
 
     const getData = async () => {
         setIsLoading(true);
@@ -157,6 +170,7 @@ const FarmBoxScreen = ({ navigation }) => {
                 {farmData &&
 
                     onlyFarms.map((farms, i) => {
+                        const totalByFarm = farmData.filter((farmName) => farmName.farmName === farms).reduce((acc, curr) => acc += curr.saldoAreaAplicar, 0)
                         return (
                             <View key={i}>
                                 <Pressable
@@ -168,8 +182,9 @@ const FarmBoxScreen = ({ navigation }) => {
                                     onPress={handleShowFarm.bind(this, farms)}
                                 >
                                     <Text style={{ color: 'white', fontSize: 18, fontWeight: 'bold' }}>
-                                        {farms.replace('Fazenda', '')}
+                                        {farms.replace('Fazenda ', '')}
                                     </Text>
+                                    <Text style={{fontSize: 10, color: Colors.secondary[200]}}>{formatNumber(totalByFarm)}</Text>
                                 </Pressable>
                                 {
                                     showFarm !== null && showFarm === farms && farmData.length > 0 &&
@@ -209,6 +224,7 @@ const styles = StyleSheet.create({
         marginVertical: 10,
         backgroundColor: Colors.primary500,
         fontSize: 18,
+        // paddingLeft: 10,
         justifyContent: 'center',
         alignItems: 'center'
     },
