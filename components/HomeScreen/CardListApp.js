@@ -5,7 +5,7 @@ import {
 	StyleSheet,
 	FlatList,
 	RefreshControl,
-	Pressable
+	Pressable,
 } from "react-native";
 import { Colors } from "../../constants/styles";
 
@@ -62,7 +62,6 @@ const getColorChip = (data) => {
 
 
 const CardListApp = (props) => {
-	console.log(props);
 	const {
 		data: { aplicacao, programa, app }
 	} = props;
@@ -81,13 +80,13 @@ const CardListApp = (props) => {
 
 	const [showProds, setShowProds] = useState(false);
 	const [arrProds, setArrProds] = useState([]);
-	
+
 	const formatNumber = (number, decimal) => {
-        return Number(number)?.toLocaleString("pt-br", {
-            minimumFractionDigits: decimal,
-            maximumFractionDigits: decimal
-        })
-    }
+		return Number(number)?.toLocaleString("pt-br", {
+			minimumFractionDigits: decimal,
+			maximumFractionDigits: decimal
+		})
+	}
 	const handleDetailAp = (data) => {
 		const totalAp = data.app.reduce((acc, curr) => acc += curr.area, 0)
 		console.log('Area Total: ', totalAp.toFixed(2))
@@ -101,8 +100,8 @@ const CardListApp = (props) => {
 				dose,
 				totalApp,
 				tipo
-				})
-				})
+			})
+		})
 		setArrProds(totalProds)
 		setShowProds(prev => !prev)
 		// console.log('data da ap: ', data.app)
@@ -165,21 +164,21 @@ const CardListApp = (props) => {
 					})}
 			</View>
 			{
-				showProds && arrProds.length > 0 &&	
+				showProds && arrProds.length > 0 &&
 				<View style={styles.headerContainerProds}>
-					<Text style={{fontWeight: 'bold', color:'whitesmoke', fontSize: 12}}>PRODUTOS</Text>
+					<Text style={{ fontWeight: 'bold', color: 'whitesmoke', fontSize: 12 }}>PRODUTOS</Text>
 				</View>
 			}
 			{showProds && arrProds.length > 0 &&
-				arrProds.filter((op) => op.tipo !== 'operacao').sort((a,b) => a.tipo.localeCompare(b.tipo)).map((prods, index) =>{
+				arrProds.filter((op) => op.tipo !== 'operacao').sort((a, b) => a.tipo.localeCompare(b.tipo)).map((prods, index) => {
 					console.log(prods.tipo)
 					return (
 						<View style={styles.detailProdView} key={index}>
-							<Text style={{textAlign: 'left', width: 50, fontSize: 10, marginBottom: 2}}>{formatNumber(prods.dose,3)}</Text>
-							<View style={{backgroundColor: getColorChip(prods.tipo), borderRadius: 6, padding: 3,paddingLeft: 5, marginBottom: 2}}>
-								<Text style={{textAlign: 'left', width: 150, fontSize: 10,color: 'whitesmoke'}} numberOfLines={1}>{prods.produto}</Text>
+							<Text style={{ textAlign: 'left', width: 50, fontSize: 10, marginBottom: 2 }}>{formatNumber(prods.dose, 3)}</Text>
+							<View style={{ backgroundColor: getColorChip(prods.tipo), borderRadius: 6, padding: 3, paddingLeft: 5, marginBottom: 2 }}>
+								<Text style={{ textAlign: 'left', width: 150, fontWeight: 'bold', fontSize: 10, color: 'whitesmoke' }} numberOfLines={1}>{prods.produto}</Text>
 							</View>
-							<Text style={{textAlign: 'right', width: 50, fontSize: 10, marginBottom: 2}}>{formatNumber(prods.totalApp,2)}</Text>
+							<Text style={{ textAlign: 'right', width: 50, fontSize: 10, marginBottom: 2 }}>{formatNumber(prods.totalApp, 2)}</Text>
 						</View>
 					)
 				})
@@ -188,14 +187,14 @@ const CardListApp = (props) => {
 	);
 };
 const styles = StyleSheet.create({
-	headerContainerProds:{
+	headerContainerProds: {
 		// flex: 1, 
-		justifyContent:  'center',
+		justifyContent: 'center',
 		alignItems: 'center',
 		marginVertical: 10,
 		backgroundColor: Colors.primary[800]
 	},
-	detailProdView:{
+	detailProdView: {
 		flexDirection: 'row',
 		// flex: 1,
 		justifyContent: 'space-between',
