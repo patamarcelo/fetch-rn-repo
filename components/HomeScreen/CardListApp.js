@@ -10,7 +10,56 @@ import {
 import { Colors } from "../../constants/styles";
 
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import * as Haptics from 'expo-haptics';
+const colorDict = [
+	{
+		tipo: "inseticida",
+		color: "rgb(218,78,75)"
+	},
+	{
+		tipo: "herbicida",
+		color: "rgb(166,166,54)"
+	},
+	{
+		tipo: "adjuvante",
+		color: "rgb(136,171,172)"
+	},
+	{
+		tipo: "oleo_mineral",
+		color: "rgb(120,161,144)"
+	},
+	{
+		tipo: "micronutrientes",
+		color: "rgb(118,192,226)"
+	},
+	{
+		tipo: "fungicida",
+		color: "rgb(238,165,56)"
+	},
+	{
+		tipo: "fertilizante",
+		color: "rgb(76,180,211)"
+	},
+	{
+		tipo: "nutricao",
+		color: "rgb(87,77,109)"
+	},
+	{
+		tipo: "biologico",
+		color: "rgb(69,133,255)"
+	}
+];
+
+const getColorChip = (data) => {
+	const folt = colorDict.filter((tipo) => tipo.tipo === data);
+	if (folt.length > 0) {
+		return folt[0].color;
+	} else {
+		return "rgb(255,255,255,0.1)";
+	}
+};
+
 
 const CardListApp = (props) => {
 	console.log(props);
@@ -30,8 +79,34 @@ const CardListApp = (props) => {
 
 	const totalArea = app.reduce((acc, curr) => (acc += curr.area), 0);
 
+	const [showProds, setShowProds] = useState(false);
+	const [arrProds, setArrProds] = useState([]);
+	
+	const formatNumber = (number, decimal) => {
+        return Number(number)?.toLocaleString("pt-br", {
+            minimumFractionDigits: decimal,
+            maximumFractionDigits: decimal
+        })
+    }
 	const handleDetailAp = (data) => {
-		console.log('data da ap: ', data)
+		const totalAp = data.app.reduce((acc, curr) => acc += curr.area, 0)
+		console.log('Area Total: ', totalAp.toFixed(2))
+		const totalProds = data.app[0].produtos.map((prods) => {
+			const produto = prods.produto
+			const dose = prods.dose
+			const totalApp = (Number(dose) * totalAp).toFixed(2)
+			const tipo = prods.tipo
+			return ({
+				produto,
+				dose,
+				totalApp,
+				tipo
+				})
+				})
+		setArrProds(totalProds)
+		setShowProds(prev => !prev)
+		// console.log('data da ap: ', data.app)
+		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy)
 	}
 
 	useEffect(() => {
@@ -39,7 +114,11 @@ const CardListApp = (props) => {
 	}, [filterByDate]);
 
 	return (
-		<Pressable style={styles.mainConatiner} onPress={handleDetailAp.bind(this, data)}>
+		<Pressable
+			style={({ pressed }) => [
+				styles.mainConatiner,
+				pressed && styles.pressed]}
+			onPress={handleDetailAp.bind(this, data)}>
 			<View style={styles.headerView}>
 				<View style={styles.headerStlTitle}>
 					<View style={{ marginLeft: 5 }}>
@@ -62,7 +141,7 @@ const CardListApp = (props) => {
 				{app &&
 					app.length > 0 &&
 					app.sort((a, b) =>
-					filterByDate ? a.dataPrevAp.localeCompare(b.dataPrevAp) :
+						filterByDate ? a.dataPrevAp.localeCompare(b.dataPrevAp) :
 							a.parcela.localeCompare(b.parcela)
 					).map((data, i) => {
 						return (
@@ -85,10 +164,44 @@ const CardListApp = (props) => {
 						);
 					})}
 			</View>
+			{
+				showProds && arrProds.length > 0 &&	
+				<View style={styles.headerContainerProds}>
+					<Text style={{fontWeight: 'bold', color:'whitesmoke', fontSize: 12}}>PRODUTOS</Text>
+				</View>
+			}
+			{showProds && arrProds.length > 0 &&
+				arrProds.filter((op) => op.tipo !== 'operacao').sort((a,b) => a.tipo.localeCompare(b.tipo)).map((prods, index) =>{
+					console.log(prods.tipo)
+					return (
+						<View style={styles.detailProdView} key={index}>
+							<Text style={{textAlign: 'left', width: 50, fontSize: 10, marginBottom: 2}}>{formatNumber(prods.dose,3)}</Text>
+							<View style={{backgroundColor: getColorChip(prods.tipo), borderRadius: 6, padding: 3,paddingLeft: 5, marginBottom: 2}}>
+								<Text style={{textAlign: 'left', width: 150, fontSize: 10,color: 'whitesmoke'}} numberOfLines={1}>{prods.produto}</Text>
+							</View>
+							<Text style={{textAlign: 'right', width: 50, fontSize: 10, marginBottom: 2}}>{formatNumber(prods.totalApp,2)}</Text>
+						</View>
+					)
+				})
+			}
 		</Pressable>
 	);
 };
 const styles = StyleSheet.create({
+	headerContainerProds:{
+		// flex: 1, 
+		justifyContent:  'center',
+		alignItems: 'center',
+		marginVertical: 10,
+		backgroundColor: Colors.primary[800]
+	},
+	detailProdView:{
+		flexDirection: 'row',
+		// flex: 1,
+		justifyContent: 'space-between',
+		alignItems: 'center',
+		marginHorizontal: 40,
+	},
 	totalAreaHeader: {
 		borderBottomColor: 'black',
 		borderBottomWidth: 1
@@ -166,6 +279,9 @@ const styles = StyleSheet.create({
 		// paddingHorizontal: 10,
 		// paddingVertical: 10,
 		// backgroundColor: Colors.secondary[400]
-	}
+	},
+	pressed: {
+		opacity: 0.7
+	},
 });
 export default CardListApp;

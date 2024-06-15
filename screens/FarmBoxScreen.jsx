@@ -48,8 +48,7 @@ const FarmBoxScreen = ({ navigation }) => {
 
     const farmBoxData = useSelector(selectFarmBoxData)
 
-
-    const [showFarm, setShowFarm] = useState(false);
+    const [showFarm, setShowFarm] = useState(null);
 
     const [isLoading, setIsLoading] = useState(false);
 
@@ -148,6 +147,10 @@ const FarmBoxScreen = ({ navigation }) => {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy)
         } else {
             setShowFarm(farms)
+            ref.current?.scrollTo({
+                y: 0,
+                animated: true,
+            });
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy)
         }
     }
@@ -167,7 +170,7 @@ const FarmBoxScreen = ({ navigation }) => {
             >
                 {farmData &&
 
-                    onlyFarms.map((farms, i) => {
+                    onlyFarms.filter((farmArr) => showFarm !== null ? farmArr === showFarm : farmArr.length > 0).map((farms, i) => {
                         const totalByFarm = farmData.filter((farmName) => farmName.farmName === farms).reduce((acc, curr) => acc += curr.saldoAreaAplicar, 0)
                         return (
                             <View key={i}>
@@ -177,19 +180,20 @@ const FarmBoxScreen = ({ navigation }) => {
                                         pressed && styles.pressed,
                                         i === 0 && styles.firstHeader
                                     ]}
+
                                     onPress={handleShowFarm.bind(this, farms)}
                                 >
                                     <Text style={{ color: 'white', fontSize: 18, fontWeight: 'bold' }}>
                                         {farms.replace('Fazenda ', '')}
                                     </Text>
-                                    <Text style={{fontSize: 10, color: Colors.secondary[200]}}>{formatNumber(totalByFarm)}</Text>
+                                    <Text style={{ fontSize: 10, color: Colors.secondary[200] }}>{formatNumber(totalByFarm)}</Text>
                                 </Pressable>
                                 {
                                     showFarm !== null && showFarm === farms && farmData.length > 0 &&
                                     farmData.filter((farmName) => farmName.farmName === farms).map((farmDatas, i) => {
                                         return (
-                                            <View style={{marginBottom: 10 }} key={farmDatas.idAp}>
-                                                <CardFarmBox data={farmDatas}/>
+                                            <View style={{ marginBottom: 10 }} key={farmDatas.idAp}>
+                                                <CardFarmBox data={farmDatas} />
                                             </View>
                                         )
                                     })

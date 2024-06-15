@@ -109,13 +109,13 @@ const HomeScreen = ({ navigation }) => {
 
 	useEffect(() => {
 		navigation.setOptions({
-			title: farmTitle
+			title: farmTitle.replace('Projeto ', '')
 		});
 	}, [farmTitle]);
 
 	useLayoutEffect(() => {
 		navigation.setOptions({
-			title: farmTitle,
+			title: farmTitle.replace('Projeto ', ''),
 			tabBarLabel: "Programações",
 			headerLeft: ({ tintColor }) => (
 				<View style={{ flexDirection: "row" }}>
@@ -178,7 +178,7 @@ const HomeScreen = ({ navigation }) => {
 
 	useEffect(() => {
 		navigation.setOptions({
-			title: farmTitle,
+			title: farmTitle.replace('Projeto ', ''),
 			tabBarLabel: "Programações",
 			headerLeft: ({ tintColor }) => (
 				<View style={{ flexDirection: "row" }}>

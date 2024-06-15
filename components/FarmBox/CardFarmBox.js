@@ -1,7 +1,7 @@
-import { Pressable, View, Text, StyleSheet, Image } from "react-native"
+import { Pressable, View, Text, StyleSheet, Image, Animated, Easing } from "react-native"
 import { Colors } from "../../constants/styles";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 
 import { Divider } from '@rneui/themed';
 
@@ -36,22 +36,70 @@ const CardFarmBox = (props) => {
     }
 
     const iconDict = [
-		{ cultura: "Feijão", icon: require('../../utils/assets/icons/beans2.png'), alt: "feijao" },
-		{ cultura: "Arroz", icon: require('../../utils/assets/icons/rice.png'), alt: "arroz" },
-		{ cultura: "Soja", icon: require('../../utils/assets/icons/soy.png'), alt: "soja" },
-		{ cultura: undefined, icon: require('../../utils/assets/icons/question.png'), alt: "?" }
-	];
+        { cultura: "Feijão", icon: require('../../utils/assets/icons/beans2.png'), alt: "feijao" },
+        { cultura: "Arroz", icon: require('../../utils/assets/icons/rice.png'), alt: "arroz" },
+        { cultura: "Soja", icon: require('../../utils/assets/icons/soy.png'), alt: "soja" },
+        { cultura: undefined, icon: require('../../utils/assets/icons/question.png'), alt: "?" }
+    ];
 
-	const filteredIcon = (data) => {
-		const filtered = iconDict.filter((dictD) => dictD.cultura === data);
+    const filteredIcon = (data) => {
+        const filtered = iconDict.filter((dictD) => dictD.cultura === data);
 
-		if (filtered.length > 0) {
-			return filtered[0].icon;
-		}
-		return iconDict[3].icon;
-		// return "";
-	};
+        if (filtered.length > 0) {
+            return filtered[0].icon;
+        }
+        return iconDict[3].icon;
+        // return "";
+    };
     const getCultura = filteredIcon(data.cultura)
+
+    //Animated View by chatgpt
+    // const parcelaAnimValues = useRef(data?.parcelas?.map(() => new Animated.Value(0))).current;
+    // const produtoAnimValues = useRef(data?.prods?.filter((pro) => pro.type !== 'Operação').map(() => new Animated.Value(0))).current;
+
+    // useEffect(() => {
+    //     Animated.stagger(100, parcelaAnimValues.map(animValue => {
+    //         return Animated.timing(animValue, {
+    //             toValue: 1,
+    //             duration: 500,
+    //             easing: Easing.ease,
+    //             useNativeDriver: true,
+    //         });
+    //     })).start();
+
+    //     Animated.stagger(100, produtoAnimValues.map(animValue => {
+    //         return Animated.timing(animValue, {
+    //             toValue: 1,
+    //             duration: 500,
+    //             easing: Easing.ease,
+    //             useNativeDriver: true,
+    //         });
+    //     })).start();
+    // }, [parcelaAnimValues, produtoAnimValues]);
+
+    // const getParcelaAnimatedStyle = (index) => {
+    //     return {
+    //         opacity: parcelaAnimValues[index],
+    //         transform: [{
+    //             translateY: parcelaAnimValues[index].interpolate({
+    //                 inputRange: [0, 1],
+    //                 outputRange: [20, 0],
+    //             }),
+    //         }],
+    //     };
+    // };
+
+    // const getProdutoAnimatedStyle = (index) => {
+    //     return {
+    //         opacity: produtoAnimValues[index],
+    //         transform: [{
+    //             translateY: produtoAnimValues[index].interpolate({
+    //                 inputRange: [0, 1],
+    //                 outputRange: [20, 0],
+    //             }),
+    //         }],
+    //     };
+    // };
     return (
         <Pressable
             style={({ pressed }) => [
@@ -69,10 +117,10 @@ const CardFarmBox = (props) => {
                     <Text style={styles.headerTitle}> {data?.code?.split('AP')}</Text>
                     <Text style={[styles.headerTitle, styles.dateTile]}> {data?.dateAp?.split('-').reverse().join('/')}</Text>
                 </View>
-                <View style={{flexDirection: 'row', alignItems: 'center', gap: 5}}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
                     <Text style={styles.headerTitle}> {data.operation}</Text>
-                    <Image source={getCultura} 
-                    style={{width: 20, height: 20}}
+                    <Image source={getCultura}
+                        style={{ width: 20, height: 20 }}
                     />
                 </View>
                 <View style={styles.progressContainer}>
@@ -89,9 +137,10 @@ const CardFarmBox = (props) => {
                             data?.parcelas?.map((parcela) => {
                                 const uniKey = data.idAp + parcela.parcela
                                 return (
-                                    <View 
-                                    key={uniKey}
-                                    style={[styles.parcelasView, { backgroundColor: parcela.fillColorParce }]}>
+                                    <View
+                                        key={uniKey}
+                                        style={[styles.parcelasView, { backgroundColor: parcela.fillColorParce }]}
+                                    >
                                         <Text style={{ color: parcela.fillColorParce === '#E4D00A' ? 'black' : 'whitesmoke' }}>{parcela.parcela}</Text>
                                         <Text style={{ color: parcela.fillColorParce === '#E4D00A' ? 'black' : 'whitesmoke' }}>-</Text>
                                         <Text style={{ color: parcela.fillColorParce === '#E4D00A' ? 'black' : 'whitesmoke' }}>{formatNumber(parcela.areaSolicitada)}</Text>
@@ -106,9 +155,10 @@ const CardFarmBox = (props) => {
                             data?.prods?.filter((pro) => pro.type !== 'Operação').map((produto) => {
                                 const uniKey = data.cultura + data.idAp + produto.product
                                 return (
-                                    <View 
-                                    key={uniKey}
-                                    style={[styles.prodsView, { backgroundColor: produto.colorChip }]}>
+                                    <View
+                                        key={uniKey}
+                                        style={[styles.prodsView, { backgroundColor: produto.colorChip }]}
+                                    >
                                         <Text style={styles.textProds}>{formatNumberProds(produto.doseSolicitada)}</Text>
                                         <Text style={styles.textProdsName}>{produto.product}</Text>
                                     </View>
