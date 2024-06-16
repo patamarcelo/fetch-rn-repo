@@ -245,7 +245,7 @@ const HomeScreen = ({ navigation }) => {
 			)
 			const result = formatDataServer(newArr, filterEndDate)
 			setListToCardApp(result)
-			console.log('result', result)
+			// console.log('result', result)
 
 		}
 	}, [selFarm, dataPlantioServer, filterEndDate, filterByDate]);

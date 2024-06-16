@@ -16,12 +16,15 @@ const endFinalDateHere = finalDate.toISOString().split("T")[0]
 
 
 export default formatDataProgram = (data, filterFinalDate) => {
+    console.log('dataHere: ', data)
     let finalArray = []
     data.forEach((farmData) => {
         const area = farmData.dados.area_colheita;
         const variedade = farmData.dados.variedade;
         const parcela = farmData.parcela;
         const dataPlantio = farmData.dados.data_plantio;
+        const projetoIdFarmbox = farmData.dados.projeto_id_farmbox
+        const plantioIdFarmbox = farmData.plantio_id_farmbox
         const dap = farmData.dados.dap
         const endFinalDate = filterFinalDate ? filterFinalDate : endFinalDateHere 
         farmData.dados.cronograma.filter((data) => data.aplicado === false && data["data prevista"] <= endFinalDate).forEach((cron) => {
@@ -29,13 +32,16 @@ export default formatDataProgram = (data, filterFinalDate) => {
             const aplicado = cron.aplicado;
             const dataPrevAp = cron["data prevista"]
             const produtos = cron.produtos
+            const dapAp = cron.dap
             const newObj = {
                 parcela, 
                 area,
+                projetoIdFarmbox,
+                plantioIdFarmbox,
                 dataPlantio,
                 dap,
                 variedade,
-                dap,
+                dapAp,
                 estagio,
                 aplicado,
                 dataPrevAp,
@@ -51,7 +57,8 @@ export default formatDataProgram = (data, filterFinalDate) => {
                 estagio: curr.estagio,
                 aplicacao: curr.estagio.split('|')[0],
                 programa: curr.estagio.split('|')[1],
-                app: [curr]
+                app: [curr],
+                dap: curr.dapAp
             }
             acc.push(objToAdd)
         } else {
@@ -61,6 +68,6 @@ export default formatDataProgram = (data, filterFinalDate) => {
         }
         return acc
     },[])
-    console.log('after reduce: ', orgData)
-    return orgData
+    const sortedDataFinal = orgData.sort((a,b) => a.dap - b.dap).sort((a,b) => a.programa.localeCompare(b.programa))
+    return sortedDataFinal
 }

@@ -6,12 +6,28 @@ import {
 	FlatList,
 	RefreshControl,
 	Pressable,
+	Image,
+	Dimensions
 } from "react-native";
 import { Colors } from "../../constants/styles";
 
 
 import { useEffect, useState } from "react";
 import * as Haptics from 'expo-haptics';
+
+import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
+
+
+import { LINK } from "../../utils/api";
+import { EXPO_PUBLIC_REACT_APP_DJANGO_TOKEN } from "@env";
+import { Skeleton } from '@rneui/themed';
+
+import {  useSelector } from "react-redux";
+import { farmsSelected } from "../../store/redux/selector";
+
+
+const customWidth = Dimensions.get('window').width;
+
 const colorDict = [
 	{
 		tipo: "inseticida",
@@ -67,6 +83,10 @@ const CardListApp = (props) => {
 	} = props;
 
 	const { data, filterByDate } = props
+	
+	const dapAp = data.dap
+
+	const selFarm = useSelector(farmsSelected);
 
 	const formatData = (data) => {
 		const date = data.replaceAll("-", "");
@@ -81,15 +101,34 @@ const CardListApp = (props) => {
 	const [showProds, setShowProds] = useState(false);
 	const [arrProds, setArrProds] = useState([]);
 
+	const [farmPlotMap, setFarmPlotMap] = useState();
+	const [parcelasPlotMap, setParcelasPlotMap] = useState([]);
+	const [displayMap, setDisplayMap] = useState("");
+	const [isLoadingMap, setIsLoadingMap] = useState(false);
+
+	useEffect(() => {
+		setDisplayMap("")
+	}, [selFarm]);
+
 	const formatNumber = (number, decimal) => {
 		return Number(number)?.toLocaleString("pt-br", {
 			minimumFractionDigits: decimal,
 			maximumFractionDigits: decimal
 		})
 	}
+
+	useEffect(() => {
+		if (data) {
+			const farmMap = data?.app?.[0]?.projetoIdFarmbox
+			const parcelasMap = data?.app?.map((parc) => parc.plantioIdFarmbox)
+			setFarmPlotMap(farmMap)
+			setParcelasPlotMap(parcelasMap)
+		}
+	}, [data]);
+
 	const handleDetailAp = (data) => {
+
 		const totalAp = data.app.reduce((acc, curr) => acc += curr.area, 0)
-		console.log('Area Total: ', totalAp.toFixed(2))
 		const totalProds = data.app[0].produtos.map((prods) => {
 			const produto = prods.produto
 			const dose = prods.dose
@@ -104,13 +143,53 @@ const CardListApp = (props) => {
 		})
 		setArrProds(totalProds)
 		setShowProds(prev => !prev)
+
 		// console.log('data da ap: ', data.app)
 		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy)
 	}
 
-	useEffect(() => {
-		console.log('trocou novamente: , ', filterByDate)
-	}, [filterByDate]);
+
+	const handleSendApiApp = async (idFarm) => {
+		console.log('gerando o mapa')
+		setIsLoadingMap(true)
+		const params = JSON.stringify({
+			projeto: farmPlotMap,
+			parcelas: parcelasPlotMap,
+			safra: {
+				safra: '2024/2025',
+				ciclo: 1
+			}
+		});
+		try {
+			const response = await fetch(LINK + "/plantio/get_matplot_draw/", {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+					Authorization: `Token ${EXPO_PUBLIC_REACT_APP_DJANGO_TOKEN}`,
+				},
+				body: params
+			});
+			const json = await response.text()
+			setDisplayMap(json)
+		} catch (error) {
+			console.log('erro ao gerar o mapa')
+			console.error(error);
+			setIsLoadingMap(false)
+		} finally {
+			setIsLoadingMap(false)
+		}
+	};
+
+
+	const handleMapApi = () => {
+		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy)
+		if(displayMap.length === 0){
+			handleSendApiApp()
+		} else {
+			setDisplayMap('')
+
+		}
+	}
 
 	return (
 		<Pressable
@@ -122,6 +201,7 @@ const CardListApp = (props) => {
 				<View style={styles.headerStlTitle}>
 					<View style={{ marginLeft: 5 }}>
 						<Text style={{ fontWeight: '600' }}>{programa.replace("Programa", "")}</Text>
+						<Text style={{marginLeft: 4,fontSize: 10, color: Colors.secondary[400]}}>{dapAp} Dias</Text>
 					</View>
 					<View style={styles.totalAreaHeader}>
 						<Text style={{ fontStyle: 'italic' }}>
@@ -150,7 +230,7 @@ const CardListApp = (props) => {
 								<Text style={[styles.textData, { width: 60 }]}>{formatData(data.dataPlantio)}</Text>
 								<Text style={[styles.textData, { width: 20 }]}>{data.dap}</Text>
 								<Text style={[styles.textData, { width: 80 }]}>{data.variedade}</Text>
-								<Text style={[styles.textData, { width: 30 }]}>
+								<Text style={[styles.textData, { width: 34 }]} numberOfLines={1}>
 									{data.area.toLocaleString("pt-br", {
 										minimumFractionDigits: 2,
 										maximumFractionDigits: 2
@@ -183,10 +263,68 @@ const CardListApp = (props) => {
 					)
 				})
 			}
+			<View>
+				<Pressable
+					style={({ pressed }) => [
+						styles.mapContainer,
+						pressed && styles.pressed]}
+					onPress={handleMapApi}
+				>
+					<FontAwesome5 name="map-marked-alt" size={24} color="black" />
+				</Pressable>
+			</View>
+			{
+				displayMap.length > 0 && !isLoadingMap &&
+				<View style={styles.imageContainer}>
+					<Image
+						style={styles.image}
+						source={{ uri: displayMap }}
+						resizeMode="contain"
+						onError={(error) => console.log('Error loading image:', error)}
+					/>
+				</View>
+			}
+			{
+				isLoadingMap &&
+				<View style={styles.skelContainer}>
+					<Skeleton
+						animation="wave"
+						width={customWidth - (customWidth * 0.05) }
+						height={300}
+					/>
+				</View>
+			}
+
 		</Pressable>
 	);
 };
 const styles = StyleSheet.create({
+	skelContainer: {
+		flex: 1,
+		justifyContent: 'center',
+		alignItems: 'center',
+		marginVertical: 10
+	},
+	imageContainer: {
+		flex: 1,
+		justifyContent: 'center',
+		alignItems: 'center'
+	},
+	image: {
+		width: 300,
+		height: 300,
+		transform: [{ rotate: '270deg' }]
+	},
+	mapContainer: {
+		marginRight: 10,
+		paddingTop: 10,
+		paddingRight: 10,
+		justifyContent: 'flex-end',
+		alignItems: 'flex-end'
+	},
+	pressed: {
+		opacity: 0.7
+	},
 	headerContainerProds: {
 		// flex: 1, 
 		justifyContent: 'center',
