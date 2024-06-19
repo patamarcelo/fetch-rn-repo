@@ -7,8 +7,11 @@ import {
 	RefreshControl,
 	Pressable,
 	Image,
-	Dimensions
+	Dimensions,
+	Modal,
+	Button
 } from "react-native";
+import ImageViewer from 'react-native-image-zoom-viewer';
 import { Colors } from "../../constants/styles";
 
 
@@ -22,11 +25,14 @@ import { LINK } from "../../utils/api";
 import { EXPO_PUBLIC_REACT_APP_DJANGO_TOKEN } from "@env";
 import { Skeleton } from '@rneui/themed';
 
-import {  useSelector } from "react-redux";
+import { useSelector } from "react-redux";
 import { farmsSelected } from "../../store/redux/selector";
 
 
 const customWidth = Dimensions.get('window').width;
+
+const { width, height } = Dimensions.get('window');
+
 
 const colorDict = [
 	{
@@ -83,7 +89,7 @@ const CardListApp = (props) => {
 	} = props;
 
 	const { data, filterByDate } = props
-	
+
 	const dapAp = data.dap
 
 	const selFarm = useSelector(farmsSelected);
@@ -105,6 +111,9 @@ const CardListApp = (props) => {
 	const [parcelasPlotMap, setParcelasPlotMap] = useState([]);
 	const [displayMap, setDisplayMap] = useState("");
 	const [isLoadingMap, setIsLoadingMap] = useState(false);
+
+	const [modalVisible, setModalVisible] = useState(false);
+
 
 	useEffect(() => {
 		setDisplayMap("")
@@ -183,7 +192,7 @@ const CardListApp = (props) => {
 
 	const handleMapApi = () => {
 		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy)
-		if(displayMap.length === 0){
+		if (displayMap.length === 0) {
 			handleSendApiApp()
 		} else {
 			setDisplayMap('')
@@ -191,114 +200,157 @@ const CardListApp = (props) => {
 		}
 	}
 
+	const images = [
+		{
+		  url: displayMap,
+		},
+	  ];
+
 	return (
-		<Pressable
-			style={({ pressed }) => [
-				styles.mainConatiner,
-				pressed && styles.pressed]}
-			onPress={handleDetailAp.bind(this, data)}>
-			<View style={styles.headerView}>
-				<View style={styles.headerStlTitle}>
-					<View style={{ marginLeft: 5 }}>
-						<Text style={{ fontWeight: '600' }}>{programa.replace("Programa", "")}</Text>
-						<Text style={{marginLeft: 4,fontSize: 10, color: Colors.secondary[400]}}>{dapAp} Dias</Text>
-					</View>
-					<View style={styles.totalAreaHeader}>
-						<Text style={{ fontStyle: 'italic' }}>
-							{totalArea.toLocaleString("pt-br", {
-								minimumFractionDigits: 2,
-								maximumFractionDigits: 2
-							})}
-						</Text>
-					</View>
-				</View>
-				<View style={[{ width: "100%", alignItems: "center" }, styles.programHeader]}>
-					<Text style={styles.textApp}>{aplicacao}</Text>
-				</View>
-			</View>
-			<View style={styles.dataContainer}>
-				{app &&
-					app.length > 0 &&
-					app.sort((a, b) =>
-						filterByDate ? a.dataPrevAp.localeCompare(b.dataPrevAp) :
-							a.parcela.localeCompare(b.parcela)
-					).map((data, i) => {
-						return (
-							// <View style={[styles.rowTable, {backgroundColor: i % 2 === 0 ? Colors.secondary[100] : Colors.primary[200]}]} key={i}>
-							<View style={[styles.rowTable]} key={i}>
-								<Text style={[styles.textData, { width: 30 }]}>{data.parcela}</Text>
-								<Text style={[styles.textData, { width: 60 }]}>{formatData(data.dataPlantio)}</Text>
-								<Text style={[styles.textData, { width: 20 }]}>{data.dap}</Text>
-								<Text style={[styles.textData, { width: 80 }]}>{data.variedade}</Text>
-								<Text style={[styles.textData, { width: 34 }]} numberOfLines={1}>
-									{data.area.toLocaleString("pt-br", {
-										minimumFractionDigits: 2,
-										maximumFractionDigits: 2
-									})}
-								</Text>
-								<Text style={[styles.textData, { width: 60 }]}>
-									{formatData(data.dataPrevAp)}
-								</Text>
-							</View>
-						);
-					})}
-			</View>
-			{
-				showProds && arrProds.length > 0 &&
-				<View style={styles.headerContainerProds}>
-					<Text style={{ fontWeight: 'bold', color: 'whitesmoke', fontSize: 12 }}>PRODUTOS</Text>
-				</View>
-			}
-			{showProds && arrProds.length > 0 &&
-				arrProds.filter((op) => op.tipo !== 'operacao').sort((a, b) => a.tipo.localeCompare(b.tipo)).map((prods, index) => {
-					console.log(prods.tipo)
-					return (
-						<View style={styles.detailProdView} key={index}>
-							<Text style={{ textAlign: 'left', width: 50, fontSize: 10, marginBottom: 2 }}>{formatNumber(prods.dose, 3)}</Text>
-							<View style={{ backgroundColor: getColorChip(prods.tipo), borderRadius: 6, padding: 3, paddingLeft: 5, marginBottom: 2 }}>
-								<Text style={{ textAlign: 'left', width: 150, fontWeight: 'bold', fontSize: 10, color: 'whitesmoke' }} numberOfLines={1}>{prods.produto}</Text>
-							</View>
-							<Text style={{ textAlign: 'right', width: 50, fontSize: 10, marginBottom: 2 }}>{formatNumber(prods.totalApp, 2)}</Text>
+		<>
+			<Pressable
+				style={({ pressed }) => [
+					styles.mainConatiner,
+					pressed && styles.pressed]}
+				onPress={handleDetailAp.bind(this, data)}>
+				<View style={styles.headerView}>
+					<View style={styles.headerStlTitle}>
+						<View style={{ marginLeft: 5 }}>
+							<Text style={{ fontWeight: '600' }}>{programa.replace("Programa", "")}</Text>
+							<Text style={{ marginLeft: 4, fontSize: 10, color: Colors.secondary[400] }}>{dapAp} Dias</Text>
 						</View>
-					)
-				})
-			}
-			<View>
-				<Pressable
-					style={({ pressed }) => [
-						styles.mapContainer,
-						pressed && styles.pressed]}
-					onPress={handleMapApi}
-				>
-					<FontAwesome5 name="map-marked-alt" size={24} color="black" />
-				</Pressable>
-			</View>
+						<View style={styles.totalAreaHeader}>
+							<Text style={{ fontStyle: 'italic' }}>
+								{totalArea.toLocaleString("pt-br", {
+									minimumFractionDigits: 2,
+									maximumFractionDigits: 2
+								})}
+							</Text>
+						</View>
+					</View>
+					<View style={[{ width: "100%", alignItems: "center" }, styles.programHeader]}>
+						<Text style={styles.textApp}>{aplicacao}</Text>
+					</View>
+				</View>
+				<View style={styles.dataContainer}>
+					{app &&
+						app.length > 0 &&
+						app.sort((a, b) =>
+							filterByDate ? a.dataPrevAp.localeCompare(b.dataPrevAp) :
+								a.parcela.localeCompare(b.parcela)
+						).map((data, i) => {
+							return (
+								// <View style={[styles.rowTable, {backgroundColor: i % 2 === 0 ? Colors.secondary[100] : Colors.primary[200]}]} key={i}>
+								<View style={[styles.rowTable]} key={i}>
+									<Text style={[styles.textData, { width: 30 }]}>{data.parcela}</Text>
+									<Text style={[styles.textData, { width: 60 }]}>{formatData(data.dataPlantio)}</Text>
+									<Text style={[styles.textData, { width: 20 }]}>{data.dap}</Text>
+									<Text style={[styles.textData, { width: 80 }]}>{data.variedade}</Text>
+									<Text style={[styles.textData, { width: 34 }]} numberOfLines={1}>
+										{data.area.toLocaleString("pt-br", {
+											minimumFractionDigits: 2,
+											maximumFractionDigits: 2
+										})}
+									</Text>
+									<Text style={[styles.textData, { width: 60 }]}>
+										{formatData(data.dataPrevAp)}
+									</Text>
+								</View>
+							);
+						})}
+				</View>
+				{
+					showProds && arrProds.length > 0 &&
+					<View style={styles.headerContainerProds}>
+						<Text style={{ fontWeight: 'bold', color: 'whitesmoke', fontSize: 12 }}>PRODUTOS</Text>
+					</View>
+				}
+				{showProds && arrProds.length > 0 &&
+					arrProds.filter((op) => op.tipo !== 'operacao').sort((a, b) => a.tipo.localeCompare(b.tipo)).map((prods, index) => {
+						console.log(prods.tipo)
+						return (
+							<View style={styles.detailProdView} key={index}>
+								<Text style={{ textAlign: 'left', width: 50, fontSize: 10, marginBottom: 2 }}>{formatNumber(prods.dose, 3)}</Text>
+								<View style={{ backgroundColor: getColorChip(prods.tipo), borderRadius: 6, padding: 3, paddingLeft: 5, marginBottom: 2 }}>
+									<Text style={{ textAlign: 'left', width: 150, fontWeight: 'bold', fontSize: 10, color: 'whitesmoke' }} numberOfLines={1}>{prods.produto}</Text>
+								</View>
+								<Text style={{ textAlign: 'right', width: 50, fontSize: 10, marginBottom: 2 }}>{formatNumber(prods.totalApp, 2)}</Text>
+							</View>
+						)
+					})
+				}
+				<View>
+					<Pressable
+						style={({ pressed }) => [
+							styles.mapContainer,
+							pressed && styles.pressed]}
+						onPress={handleMapApi}
+					>
+						<FontAwesome5 name="map-marked-alt" size={24} color="black" />
+					</Pressable>
+				</View>
+
+			</Pressable>
 			{
 				displayMap.length > 0 && !isLoadingMap &&
-				<View style={styles.imageContainer}>
+				<Pressable style={styles.imageContainer} onPress={() => setModalVisible(true)}>
 					<Image
 						style={styles.image}
 						source={{ uri: displayMap }}
 						resizeMode="contain"
 						onError={(error) => console.log('Error loading image:', error)}
 					/>
-				</View>
+				</Pressable>
 			}
 			{
 				isLoadingMap &&
 				<View style={styles.skelContainer}>
 					<Skeleton
 						animation="wave"
-						width={customWidth - (customWidth * 0.05) }
+						width={customWidth - (customWidth * 0.05)}
 						height={300}
 					/>
 				</View>
 			}
-
-		</Pressable>
+			<Modal
+				animationType="slide"
+				transparent={false}
+				visible={modalVisible}
+				onRequestClose={() => setModalVisible(false)}
+			>
+				{/* <Pressable style={styles.modalView} onPress={() => setModalVisible(false)}> */}
+					<ImageViewer
+						imageUrls={images}
+						enableSwipeDown
+						onSwipeDown={() => setModalVisible(false)}
+						backgroundColor="#fff"
+						renderFooter={() => (
+							<View style={styles.buttonContainer}>
+								{/* <Button title="Save to Camera Roll" onPress={handleSave} /> */}
+								<Button title="Close" onPress={() => setModalVisible(false)} />
+							</View>
+						)}
+					/>
+				{/* </Pressable> */}
+			</Modal>
+		</>
 	);
 };
 const styles = StyleSheet.create({
+	buttonContainer: {
+		position: 'absolute',
+		bottom: 30,
+		left: 0,
+		right: 0,
+		flexDirection: 'row',
+		justifyContent: 'space-around',
+	},
+	modalView: {
+		flex: 1,
+		alignItems: 'center',
+		justifyContent: 'center',
+		backgroundColor: 'white',
+	},
 	skelContainer: {
 		flex: 1,
 		justifyContent: 'center',
@@ -313,7 +365,6 @@ const styles = StyleSheet.create({
 	image: {
 		width: 300,
 		height: 300,
-		transform: [{ rotate: '270deg' }]
 	},
 	mapContainer: {
 		marginRight: 10,
