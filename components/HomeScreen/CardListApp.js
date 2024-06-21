@@ -9,7 +9,8 @@ import {
 	Image,
 	Dimensions,
 	Modal,
-	Button
+	Button,
+	SafeAreaView
 } from "react-native";
 import ImageViewer from 'react-native-image-zoom-viewer';
 import { Colors } from "../../constants/styles";
@@ -202,9 +203,9 @@ const CardListApp = (props) => {
 
 	const images = [
 		{
-		  url: displayMap,
+			url: displayMap,
 		},
-	  ];
+	];
 
 	return (
 		<>
@@ -319,18 +320,28 @@ const CardListApp = (props) => {
 				onRequestClose={() => setModalVisible(false)}
 			>
 				{/* <Pressable style={styles.modalView} onPress={() => setModalVisible(false)}> */}
-					<ImageViewer
-						imageUrls={images}
-						enableSwipeDown
-						onSwipeDown={() => setModalVisible(false)}
-						backgroundColor="#fff"
-						renderFooter={() => (
-							<View style={styles.buttonContainer}>
-								{/* <Button title="Save to Camera Roll" onPress={handleSave} /> */}
-								<Button title="Close" onPress={() => setModalVisible(false)} />
-							</View>
-						)}
-					/>
+				<SafeAreaView>
+					<View style={[styles.programHeader,{
+						width: width - (width * 0.10),
+						justifyContent: 'center',
+						alignItems: 'center',
+						marginHorizontal: 20,
+					}]}>
+						<Text style={styles.textApp}>{aplicacao}</Text>
+					</View>
+				</SafeAreaView>
+				<ImageViewer
+					imageUrls={images}
+					enableSwipeDown
+					onSwipeDown={() => setModalVisible(false)}
+					backgroundColor="#fff"
+					renderFooter={() => (
+						<View style={styles.buttonContainer}>
+							{/* <Button title="Save to Camera Roll" onPress={handleSave} /> */}
+							<Button title="Close" onPress={() => setModalVisible(false)} />
+						</View>
+					)}
+				/>
 				{/* </Pressable> */}
 			</Modal>
 		</>

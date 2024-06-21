@@ -6,10 +6,11 @@ import {
     RefreshControl,
     Pressable,
     Alert,
+    ActivityIndicator,
 } from 'react-native'
 
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useLayoutEffect, useRef } from 'react'
 import { Colors } from '../constants/styles';
 
 import { useDispatch, useSelector } from "react-redux";
@@ -28,6 +29,9 @@ import { EXPO_PUBLIC_REACT_APP_DJANGO_TOKEN } from "@env";
 
 import * as Haptics from 'expo-haptics';
 
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+
+import { LINK } from '../utils/api';
 
 
 
@@ -35,8 +39,11 @@ import * as Haptics from 'expo-haptics';
 
 
 
-const FarmBoxScreen = ({ navigation }) => {
+
+const FarmBoxScreen = (props) => {
     const { setFarmBoxData } = geralActions;
+
+    const stackNavigator = props.navigation.getParent()
 
     const dispatch = useDispatch()
 
@@ -52,12 +59,92 @@ const FarmBoxScreen = ({ navigation }) => {
 
     const [isLoading, setIsLoading] = useState(false);
 
+    const [isloadingDbFarm, setIsloadingDbFarm] = useState(false);
+
     const formatNumber = number => {
         return number?.toLocaleString("pt-br", {
             minimumFractionDigits: 2,
             maximumFractionDigits: 2
         })
     }
+
+    const handleUpdateApiData = async () => {
+        setIsloadingDbFarm(true)
+        try {
+            const response = await fetch(LINK + "/defensivo/update_farmbox_mongodb_data/", {
+                method: "GET",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Token ${EXPO_PUBLIC_REACT_APP_DJANGO_TOKEN}`,
+                },
+            });
+            if (response.status === 200) {
+                Alert.alert('Tudo Certo', 'Aplicações Atualizadas com sucesso!!')
+            }
+
+        } catch (error) {
+            console.error(error);
+            setIsloadingDbFarm(false)
+            Alert.alert('Problema em atualizar o banco de dados', `Erro: ${error}`)
+        } finally {
+            setIsloadingDbFarm(false)
+        }
+        console.log('update farmOperations...')
+    }
+
+    const handleClearFarm = () => {
+        setShowFarm(null)
+    }
+
+    useLayoutEffect(() => {
+        stackNavigator.setOptions({
+            title: 'FarmBox',
+            tabBarLabel: "FarmBox",
+            headerRight: ({ tintColor }) => (
+                <View style={{ flexDirection: "row", alignItems: 'center', paddingRight: 20, flex: 1 }}>
+                    <MaterialCommunityIcons
+                        name="database-refresh-outline"
+                        size={24}
+                        color={tintColor}
+                        onPress={handleUpdateApiData}
+                    />
+                </View>
+            )
+        });
+    }, []);
+
+    useLayoutEffect(() => {
+        stackNavigator.setOptions({
+            title: showFarm !== null ? showFarm.replace('Fazenda ', '') : 'FarmBox',
+            tabBarLabel: "FarmBox",
+            headerRight: ({ tintColor }) => (
+                <View style={{ flexDirection: "row", alignItems: 'center', paddingRight: 20, flex: 1 }}>
+                    {
+                        !isloadingDbFarm &&
+                        <MaterialCommunityIcons
+                            name="database-refresh-outline"
+                            size={24}
+                            color={tintColor}
+                            onPress={handleUpdateApiData}
+                        />
+                    }
+                </View>
+            ),
+            headerLeft: ({ tintColor }) => (
+                <View style={{ flexDirection: "row", alignItems: 'center', paddingLeft: 20, flex: 1 }}>
+                    {
+                        showFarm !== null &&
+                        <MaterialCommunityIcons
+                            name="keyboard-backspace"
+                            size={24}
+                            color={tintColor}
+                            onPress={handleClearFarm}
+                        />
+                    }
+                </View>
+            )
+        });
+    }, [isloadingDbFarm, showFarm]);
 
     const getData = async () => {
         setIsLoading(true);
@@ -155,6 +242,15 @@ const FarmBoxScreen = ({ navigation }) => {
         }
     }
 
+
+    if (isloadingDbFarm) {
+        return (
+            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+                <ActivityIndicator size="large" color={Colors.primary800} />
+            </View>
+        )
+    }
+
     return (
         <View style={styles.mainContainer}>
             <ScrollView ref={ref} style={[styles.mainContainer, { marginBottom: tabBarHeight }]}
@@ -174,20 +270,23 @@ const FarmBoxScreen = ({ navigation }) => {
                         const totalByFarm = farmData.filter((farmName) => farmName.farmName === farms).reduce((acc, curr) => acc += curr.saldoAreaAplicar, 0)
                         return (
                             <View key={i}>
-                                <Pressable
-                                    style={({ pressed }) => [
-                                        styles.headerContainer,
-                                        pressed && styles.pressed,
-                                        i === 0 && styles.firstHeader
-                                    ]}
+                                {
+                                    showFarm === null &&
+                                    <Pressable
+                                        style={({ pressed }) => [
+                                            styles.headerContainer,
+                                            pressed && styles.pressed,
+                                            i === 0 && styles.firstHeader
+                                        ]}
 
-                                    onPress={handleShowFarm.bind(this, farms)}
-                                >
-                                    <Text style={{ color: 'white', fontSize: 18, fontWeight: 'bold' }}>
-                                        {farms.replace('Fazenda ', '')}
-                                    </Text>
-                                    <Text style={{ fontSize: 10, color: Colors.secondary[200] }}>{formatNumber(totalByFarm)}</Text>
-                                </Pressable>
+                                        onPress={handleShowFarm.bind(this, farms)}
+                                    >
+                                        <Text style={{ color: 'white', fontSize: 18, fontWeight: 'bold' }}>
+                                            {farms.replace('Fazenda ', '')}
+                                        </Text>
+                                        <Text style={{ fontSize: 10, color: Colors.secondary[200] }}>{formatNumber(totalByFarm)}</Text>
+                                    </Pressable>
+                                }
                                 {
                                     showFarm !== null && showFarm === farms && farmData.length > 0 &&
                                     farmData.filter((farmName) => farmName.farmName === farms).map((farmDatas, i) => {
