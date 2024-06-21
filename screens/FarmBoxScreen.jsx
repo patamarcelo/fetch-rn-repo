@@ -100,6 +100,7 @@ const FarmBoxScreen = (props) => {
         stackNavigator.setOptions({
             title: 'FarmBox',
             tabBarLabel: "FarmBox",
+            headerShadowVisible: false, // applied here
             headerRight: ({ tintColor }) => (
                 <View style={{ flexDirection: "row", alignItems: 'center', paddingRight: 20, flex: 1 }}>
                     <MaterialCommunityIcons
@@ -292,7 +293,7 @@ const FarmBoxScreen = (props) => {
                                     farmData.filter((farmName) => farmName.farmName === farms).map((farmDatas, i) => {
                                         return (
                                             <View style={{ marginBottom: 10 }} key={farmDatas.idAp}>
-                                                <CardFarmBox data={farmDatas} />
+                                                <CardFarmBox data={farmDatas} indexParent={i}/>
                                             </View>
                                         )
                                     })

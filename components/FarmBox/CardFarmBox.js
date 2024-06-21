@@ -13,7 +13,7 @@ import * as Haptics from 'expo-haptics';
 
 
 const CardFarmBox = (props) => {
-    const { data } = props
+    const { data, indexParent } = props
     const [showAps, setShowAps] = useState(false);
 
 
@@ -104,7 +104,7 @@ const CardFarmBox = (props) => {
         <Pressable
             style={({ pressed }) => [
                 styles.mainContainer,
-                pressed && styles.pressed]}
+                pressed && styles.pressed,{marginTop: indexParent === 0 && 0 }]}
             onPress={handleOpen}>
             <View style={styles.infoContainer}>
                 <Text style={{ color: 'whitesmoke' }}>Area: {formatNumber(data.areaSolicitada)}</Text>
