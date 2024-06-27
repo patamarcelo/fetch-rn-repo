@@ -21,6 +21,7 @@ export default formatDataProgram = (data, filterFinalDate) => {
     data.forEach((farmData) => {
         const area = farmData.dados.area_colheita;
         const variedade = farmData.dados.variedade;
+        const cultura = farmData.dados.cultura
         const parcela = farmData.parcela;
         const dataPlantio = farmData.dados.data_plantio;
         const projetoIdFarmbox = farmData.dados.projeto_id_farmbox
@@ -41,6 +42,7 @@ export default formatDataProgram = (data, filterFinalDate) => {
                 dataPlantio,
                 dap,
                 variedade,
+                cultura,
                 dapAp,
                 estagio,
                 aplicado,

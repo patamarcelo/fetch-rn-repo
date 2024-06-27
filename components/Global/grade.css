@@ -1,0 +1,54 @@
+.main-container{
+    border: 1px solid black ;
+    border-radius: 8px;
+    display: grid;
+    grid-template-columns: 30% auto;
+    padding: 20px;
+}
+
+.main-container-produtos{
+    display: flex;
+    justify-content: center;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+}
+.container-produtos-detail{
+    width: 100%;
+}
+
+.container-produtos-row{
+    display: flex;
+    justify-content: space-around;
+    margin: 5px 0;
+}
+
+.container-produtos-row-detail{
+    display: flex;
+    flex-direction: row;
+    gap: 5px;
+}
+
+.main-container-parcelas{
+    width: 100%;
+}
+
+table{
+    width: 100%;
+    table-layout: fixed;
+    font-size: 7px;
+}
+td, th {
+    width: 12%;
+    text-align: center
+}
+
+table>thead>tr>th{
+    border-bottom: 1px dotted black;
+}
+
+tbody tr td{
+    /* background-color: red; */
+    padding-top: 4px;
+    
+}

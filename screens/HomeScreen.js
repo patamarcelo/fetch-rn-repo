@@ -32,6 +32,7 @@ import CardListApp from "../components/HomeScreen/CardListApp";
 
 
 import DateTimePicker from '@react-native-community/datetimepicker';
+import createAndPrintPDF from "../components/Global/PrintPage";
 
 
 
@@ -113,6 +114,11 @@ const HomeScreen = ({ navigation }) => {
 		});
 	}, [farmTitle]);
 
+	const handlerPrintData = () => {
+		createAndPrintPDF(listToCardApp)
+	}
+
+
 	useLayoutEffect(() => {
 		navigation.setOptions({
 			title: farmTitle.replace('Projeto ', ''),
@@ -160,7 +166,7 @@ const HomeScreen = ({ navigation }) => {
 						onPress={handlerOpenCalendar}
 						btnStyles={{ marginRight: 25, marginTop: 10 }}
 					/>
-					
+
 					{date && (
 						<IconButton
 							type={""}
@@ -203,17 +209,28 @@ const HomeScreen = ({ navigation }) => {
 				</View>
 			),
 			headerRight: ({ tintColor }) => (
-				<View style={{ flexDirection: "row" , alignItems: 'center'}}>
+				<View style={{ flexDirection: "row", alignItems: 'center', gap: 5 }}>
 					{
 						selFarm && listToCardApp.length > 0 &&
-						<IconButton
-							type={"awesome"}
-							icon={!filterByDate ? "sort-alpha-asc" : "sort-alpha-desc"}
-							color={'green'}
-							size={18}
-							onPress={handlerSortData}
-							btnStyles={{ marginLeft: 5, marginTop: 10 }}
-						/>
+						<>
+							<IconButton
+								type={"awesome"}
+								icon={'print'}
+								color={tintColor}
+								size={22}
+								onPress={handlerPrintData}
+								btnStyles={{ marginLeft: 5, marginTop: 10 }}
+							/>
+							<IconButton
+								type={"awesome"}
+								icon={!filterByDate ? "sort-alpha-asc" : "sort-alpha-desc"}
+								color={'green'}
+								size={18}
+								onPress={handlerSortData}
+								btnStyles={{ marginLeft: 5, marginTop: 10 }}
+							/>
+						</>
+
 					}
 					<IconButton
 						type={"awesome"}
@@ -245,7 +262,7 @@ const HomeScreen = ({ navigation }) => {
 			)
 			const result = formatDataServer(newArr, filterEndDate)
 			setListToCardApp(result)
-			// console.log('result', result)
+			console.log('result', result)
 
 		}
 	}, [selFarm, dataPlantioServer, filterEndDate, filterByDate]);
@@ -374,6 +391,7 @@ const HomeScreen = ({ navigation }) => {
 								{ marginTop: 3, paddingBottom: tabBarHeight + 5 }
 							]}
 						>
+							{/* <PrintPage /> */}
 							{listToCardApp.length > 0 ? (
 								<FlatList
 									// scrollEnabled={false}
