@@ -1,7 +1,20 @@
 import * as Print from "expo-print";
 import { shareAsync } from "expo-sharing";
 
-const createAndPrintPDF = async (data) => {
+const createAndPrintPDF = async (data, farmName, filterEndDate) => {
+
+  const today = new Date();
+  const lastSunday = (today) => {
+      var t = new Date(today);
+      t.setDate(t.getDate() - t.getDay());
+      return [t.toISOString().slice(0, 10), t];
+  };
+  // setInitialDate(lastSunday(today)[0]);
+  // setInitialDate("2023-05-01");
+  const finalDate = lastSunday(today)[1];
+  finalDate.setDate(finalDate.getDate() + 6);
+  // setFinalDateForm(finalDate.toISOString().split("T")[0]);
+  const endFinalDateHere = finalDate.toISOString().split("T")[0]
 
   const formatNumber = number => number?.toLocaleString("pt-br", {
     minimumFractionDigits: 2,
@@ -12,10 +25,11 @@ const formatDoseNumber = number => number?.toLocaleString("pt-br", {
     minimumFractionDigits: 3,
     maximumFractionDigits: 3
 });
-
+  let areaTotalGeral = 0
   const prodsList = data?.map((item, index) => {
     const totalArea = item.app.reduce((totalArea, item) => totalArea += item.area, 0)
-    const prods = item.app[0].produtos.filter((op) => op.tipo !== 'operacao').map((prod) => (
+    areaTotalGeral += totalArea
+    const prods = item.app[0].produtos.filter((op) => op.tipo !== 'operacao').sort((a,b) => a.tipo.localeCompare(b.tipo)).map((prod) => (
       `
       <div class="container-produtos-detail">
           <div class="container-produtos-row">
@@ -30,7 +44,7 @@ const formatDoseNumber = number => number?.toLocaleString("pt-br", {
       </div>
       `
     )).join('');
-    const parcelasDiv = item.app.map((parcela) =>(
+    const parcelasDiv = item.app.sort((a,b) => a.dataPrevAp.localeCompare(b.dataPrevAp)).map((parcela) =>(
       `
       <tr>
         <td>${parcela.parcela}</td>
@@ -48,33 +62,33 @@ const formatDoseNumber = number => number?.toLocaleString("pt-br", {
 
     return `
     <div class="main-container page-break">
-    <div class="main-container-produtos">
-        <b>${item.programa}</b>
-        <span>${item.aplicacao}</span>
-        <span>Area total: ${formatNumber(totalArea)}</span>
-        ${prods}
-    </div>
-    <div class="main-container-parcelas">
-        <table>
-            <thead>
-                <tr>
-                    <th>Parcela</th>
-                    <th>Plantio</th>
-                    <th>Dap</th>
-                    <th>Cultura</th>
-                    <th>Variedade</th>
-                    <th>Prev.</th>
-                    <th>DapAp</th>
-                    <th>Area</th>
-                </tr>
-            </thead>
-            <tbody>
-                ${parcelasDiv}
-            </tbody>
-        </table>
+      <div class="main-container-produtos">
+          <b>${item.programa}</b>
+          <span>${item.aplicacao}</span>
+          <span style="margin-bottom: 20px">Area total: ${formatNumber(totalArea)}</span>
+          ${prods}
+      </div>
+      <div class="main-container-parcelas">
+          <table>
+              <thead>
+                  <tr>
+                      <th>Parcela</th>
+                      <th>Plantio</th>
+                      <th>Dap</th>
+                      <th>Cultura</th>
+                      <th>Variedade</th>
+                      <th>Prev.</th>
+                      <th>DapAp</th>
+                      <th>Area</th>
+                  </tr>
+              </thead>
+              <tbody>
+                  ${parcelasDiv}
+              </tbody>
+          </table>
 
-    </div>
-</div>
+      </div>
+  </div>
     `
   }).join('');
   
@@ -85,21 +99,26 @@ const formatDoseNumber = number => number?.toLocaleString("pt-br", {
           <meta name="viewport" content="width=device-width, initial-scale=0.7">
           <title>PDF Document</title>
           <style>
-          body{
+          @page {
+            margin: 10px 10px; /* top/bottom, left/right margins for each page */
+          }
+            body{
             font-size: 7px;
-            padding: 20px;
+            padding: 20px 10px !important;
           }
           .page-break {
             margin-top: 10px;
             margin-bottom: 10px;
           }
+          
           .main-container{
-            border: 1px solid black ;
+            border: 0.5px solid black ;
             border-radius: 8px;
             display: grid;
             grid-template-columns: 30% auto;
             padding: 20px;
-            margin-bottom: 25px;
+            margin-bottom: 15px;
+            margin-top: 15px;
             page-break-inside: avoid; /* Prevent breaking inside a card */
 
         }
@@ -150,27 +169,55 @@ const formatDoseNumber = number => number?.toLocaleString("pt-br", {
         }
         
         table>thead>tr>th{
-            border-bottom: 1px dotted black;
+            border-bottom: 0.3px dotted black;
         }
         
         tbody tr td{
             /* background-color: red; */
-            padding-top: 4px;
+            padding-top: 2px;
             
+        }
+        .main-container-header{
+          width: 100%;  
+          display: flex;
+          justify-content: center;
+          text-align: center;
+        }
+        .container-header{
+          width: 100%;  
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          text-align: center;
+          padding: 20px 40px;
+          margin-top: 10px;
+          font-size: 8px;
         }
           </style>
         </head>
         <body>
-        ${prodsList}
+        <div class="main-container-header">
+          <div class="container-header">
+          <div>Até: ${filterEndDate ? filterEndDate.split('-').reverse().join('/') : endFinalDateHere.split('-').reverse().join('/')}</div>
+          <div style="font-size: 15px"><b>${farmName.replace('Projeto ', '')}</b></div>
+          <div>Área Total: ${formatNumber(areaTotalGeral)}</div>
+          </div>
+        </div>
+        <div style="padding: 20px 10px;">
+          ${prodsList}
+        </div>
         </body>
       </html>
     `;
 
   try {
     // Create a PDF from HTML content
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const filename = `${farmName}_${timestamp}.pdf`;
     const { uri } = await Print.printToFileAsync({
       html: htmlContent,
-      base64: false
+      base64: false,
+      filename: filename
     });
 
     // Optionally share the PDF

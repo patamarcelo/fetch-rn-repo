@@ -115,7 +115,7 @@ const HomeScreen = ({ navigation }) => {
 	}, [farmTitle]);
 
 	const handlerPrintData = () => {
-		createAndPrintPDF(listToCardApp)
+		createAndPrintPDF(listToCardApp, selFarm, filterEndDate)
 	}
 
 
