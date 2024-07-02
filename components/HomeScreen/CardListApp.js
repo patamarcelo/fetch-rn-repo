@@ -84,10 +84,33 @@ const getColorChip = (data) => {
 };
 
 
+const iconDict = [
+	{ cultura: "Feijão", icon: require('../../utils/assets/icons/beans2.png'), alt: "feijao" },
+	{ cultura: "Arroz", icon: require('../../utils/assets/icons/rice.png'), alt: "arroz" },
+	{ cultura: "Soja", icon: require('../../utils/assets/icons/soy.png'), alt: "soja" },
+	{ cultura: undefined, icon: require('../../utils/assets/icons/question.png'), alt: "?" }
+];
+
+const filteredIcon = (data) => {
+	const filtered = iconDict.filter((dictD) => dictD.cultura === data);
+
+	if (filtered.length > 0) {
+		return filtered[0].icon;
+	}
+	return iconDict[3].icon;
+	// return "";
+};
+const getCultura = cultura => filteredIcon(cultura)
+
+
+
 const CardListApp = (props) => {
 	const {
 		data: { aplicacao, programa, app }
 	} = props;
+
+
+	const culturaIcon = app[0]['cultura']
 
 	const { data, filterByDate } = props
 
@@ -229,8 +252,11 @@ const CardListApp = (props) => {
 							</Text>
 						</View>
 					</View>
-					<View style={[{ width: "100%", alignItems: "center" }, styles.programHeader]}>
+					<View style={[{ width: "100%", alignItems: "center", flexDirection: 'row', justifyContent: 'center', gap: 10 }, styles.programHeader]}>
 						<Text style={styles.textApp}>{aplicacao}</Text>
+						<Image source={getCultura(culturaIcon)}
+							style={{ width: 20, height: 20 }}
+						/>
 					</View>
 				</View>
 				<View style={styles.dataContainer}>
@@ -240,6 +266,7 @@ const CardListApp = (props) => {
 							filterByDate ? a.dataPrevAp.localeCompare(b.dataPrevAp) :
 								a.parcela.localeCompare(b.parcela)
 						).map((data, i) => {
+							console.log('data Here: ', data.cultura)
 							return (
 								// <View style={[styles.rowTable, {backgroundColor: i % 2 === 0 ? Colors.secondary[100] : Colors.primary[200]}]} key={i}>
 								<View style={[styles.rowTable]} key={i}>
@@ -321,13 +348,18 @@ const CardListApp = (props) => {
 			>
 				{/* <Pressable style={styles.modalView} onPress={() => setModalVisible(false)}> */}
 				<SafeAreaView>
-					<View style={[styles.programHeader,{
+					<View style={[styles.programHeader, {
 						width: width - (width * 0.10),
 						justifyContent: 'center',
 						alignItems: 'center',
 						marginHorizontal: 20,
+						flexDirection: 'row',
+						gap: 10
 					}]}>
 						<Text style={styles.textApp}>{aplicacao}</Text>
+						<Image source={getCultura(culturaIcon)}
+							style={{ width: 20, height: 20 }}
+						/>
 					</View>
 				</SafeAreaView>
 				<ImageViewer

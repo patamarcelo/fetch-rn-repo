@@ -219,7 +219,7 @@ const formatDoseNumber = number => number?.toLocaleString("pt-br", {
       base64: false,
       filename: filename
     });
-
+    
     // Optionally share the PDF
     await shareAsync(uri, { dialogTitle: "Share your PDF" });
 
