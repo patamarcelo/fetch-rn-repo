@@ -75,7 +75,7 @@ const ProgramScreen = ({ navigation }) => {
 		navigation.setOptions({
 			headerShadowVisible: false, // applied here,
 			title: programSelected
-				? programSelected.nome_fantasia.replace("Programa", "")
+				? programSelected.nome_fantasia.replace("Programa", "").replace("Aplicação ", '')
 				: "Programas",
 			headerLeft: ({ tintColor }) => {
 				if (

@@ -30,14 +30,18 @@ const ProgramList = ({ refresh, isLoading, innerRef }) => {
 	const [filteredEstagios, setFilteredEstagios] = useState([]);
 
 	useEffect(() => {
+		// console.log('estagios', estagios);
+		const ts_programas = estagios.find((data) => data.estagio.toLowerCase().includes('tratamento'))
+		// console.log('ts_programas',ts_programas);
 		const estagiosFiltered = estagios
 			.filter(
 				(data, i) =>
 					data.programa__nome === programa.nome && data.prazo_dap >= 0
 			)
 			.sort((a, b) => a.prazo_dap - b.prazo_dap);
-		console.log(estagios);
-		setFilteredEstagios(estagiosFiltered);
+		// console.log(estagios);
+		const newArray = [ts_programas, ...estagiosFiltered]
+		setFilteredEstagios(newArray);
 	}, [programa]);
 
 	return (
