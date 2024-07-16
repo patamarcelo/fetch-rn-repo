@@ -162,7 +162,7 @@ const ProgramScreen = ({ navigation }) => {
 			{programSelected === null && (
 				<View style={styles.mainContainer}>
 					<Button onPress={handleSelectProgram}>
-						Selecione um programa
+						Selecione um Programa
 					</Button>
 				</View>
 			)}

@@ -72,7 +72,7 @@ const FarmsScreen = ({ setModalVisible, modalVisible, route }) => {
 						paddingTop: 20
 					}}
 					>
-					Selecione a Fazenda
+					Selecione o Projeto
 				</Text>
 					</View>
 				{farmsList.length > 0 && (
@@ -107,7 +107,7 @@ const FarmsScreen = ({ setModalVisible, modalVisible, route }) => {
 													styles.checked
 											]}
 										>
-											{data}
+											{data.replace('Projeto ', '')}
 										</Text>
 									</Pressable>
 								);

@@ -8,6 +8,9 @@ import {
 	Alert,
 	Modal
 } from "react-native";
+
+import Button from "../components/ui/Button";
+
 import { EXPO_PUBLIC_REACT_APP_DJANGO_TOKEN } from "@env";
 
 import { useDispatch, useSelector } from "react-redux";
@@ -61,7 +64,7 @@ const HomeScreen = ({ navigation }) => {
 	const [filterByDate, setFilterByDate] = useState(false);
 
 
-	const farmTitle = selFarm ? selFarm : "Plantio";
+	const farmTitle = selFarm ? selFarm : "Programações";
 
 	const dispatch = useDispatch();
 
@@ -125,23 +128,26 @@ const HomeScreen = ({ navigation }) => {
 			tabBarLabel: "Programações",
 			headerLeft: ({ tintColor }) => (
 				<View style={{ flexDirection: "row" }}>
-					<IconButton
-						type={"awesome"}
-						icon="filter"
-						color={selFarm ? '#3d8bfd' : tintColor}
-						size={22}
-						onPress={handlerFarms}
-						btnStyles={{ marginLeft: 25, marginTop: 10 }}
-					/>
 					{selFarm && (
-						<IconButton
-							type={""}
-							icon="close-circle"
-							color={tintColor}
-							size={22}
-							onPress={handleClear}
-							btnStyles={{ marginLeft: 5, marginTop: 10 }}
-						/>
+						<>
+							<IconButton
+								type={"awesome"}
+								icon="filter"
+								color={selFarm ? '#3d8bfd' : tintColor}
+								size={22}
+								onPress={handlerFarms}
+								btnStyles={{ marginLeft: 25, marginTop: 10 }}
+							/>
+
+							<IconButton
+								type={""}
+								icon="close-circle"
+								color={tintColor}
+								size={22}
+								onPress={handleClear}
+								btnStyles={{ marginLeft: 5, marginTop: 10 }}
+							/>
+						</>
 					)}
 				</View>
 			),
@@ -188,23 +194,26 @@ const HomeScreen = ({ navigation }) => {
 			tabBarLabel: "Programações",
 			headerLeft: ({ tintColor }) => (
 				<View style={{ flexDirection: "row" }}>
-					<IconButton
-						type={"awesome"}
-						icon="filter"
-						color={selFarm ? '#3d8bfd' : tintColor}
-						size={22}
-						onPress={handlerFarms}
-						btnStyles={{ marginLeft: 25, marginTop: 10 }}
-					/>
 					{selFarm && (
-						<IconButton
-							type={""}
-							icon="close-circle-outline"
-							color={tintColor}
-							size={22}
-							onPress={handleClear}
-							btnStyles={{ marginLeft: 5, marginTop: 10 }}
-						/>
+						<>
+							<IconButton
+								type={"awesome"}
+								icon="filter"
+								color={selFarm ? '#3d8bfd' : tintColor}
+								size={22}
+								onPress={handlerFarms}
+								btnStyles={{ marginLeft: 25, marginTop: 10 }}
+							/>
+
+							<IconButton
+								type={""}
+								icon="close-circle-outline"
+								color={tintColor}
+								size={22}
+								onPress={handleClear}
+								btnStyles={{ marginLeft: 5, marginTop: 10 }}
+							/>
+						</>
 					)}
 				</View>
 			),
@@ -380,8 +389,10 @@ const HomeScreen = ({ navigation }) => {
 					</Modal>
 
 					{!selFarm && (
-						<View>
-							<Text>Dados do Plantio</Text>
+						<View style={styles.buttonContainer}>
+							<Button onPress={handlerFarms} btnStyles={{ backgroundColor: Colors.primary[500] }}>
+								Selecione um Projeto
+							</Button>
 						</View>
 					)}
 					{selFarm && (
@@ -428,6 +439,11 @@ const HomeScreen = ({ navigation }) => {
 };
 
 const styles = StyleSheet.create({
+	buttonContainer: {
+		flex: 1,
+		justifyContent: "center",
+		alignItems: "center"
+	},
 	mainContainer: {
 		backgroundColor: "whitesmoke",
 		flex: 1,
