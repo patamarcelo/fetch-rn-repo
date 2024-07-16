@@ -2,7 +2,7 @@
   "expo": {
     "name": "Farm Applicações",
     "slug": "fetch-app",
-    "version": "1.0.13",
+    "version": "1.0.14",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
@@ -23,12 +23,12 @@
       "**/*"
     ],
     "ios": {
-      "buildNumber": "1.0.13",
+      "buildNumber": "1.0.14",
       "supportsTablet": true,
       "bundleIdentifier": "com.patamarcelo.fetchapp"
     },
     "android": {
-      "versionCode": 13,
+      "versionCode": 14,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#031633"
