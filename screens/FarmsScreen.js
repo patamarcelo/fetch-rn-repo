@@ -9,6 +9,8 @@ import { geralActions } from "../store/redux/geral";
 import { useDispatch, useSelector } from "react-redux";
 import { Colors } from "../constants/styles";
 
+import * as Haptics from 'expo-haptics';
+
 const FarmsScreen = ({ setModalVisible, modalVisible, route }) => {
 	const farmsList = useSelector(farmsSelector);
 	const [checkedIndex, setCheckedIndex] = useState(null);
@@ -35,6 +37,7 @@ const FarmsScreen = ({ setModalVisible, modalVisible, route }) => {
 
 	const handleFilter = () => {
 		console.log("FilterFarm", selectedFarmHook);
+		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy)
 		dispatch(selectedFarm(selectedFarmHook));
 		if (params === undefined) {
 			navigation.navigate("HomeStackScreen");
@@ -48,10 +51,12 @@ const FarmsScreen = ({ setModalVisible, modalVisible, route }) => {
 
 	const handlerCancel = () => {
 		navigation.navigate("HomeStackScreen");
+		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy)
 		// setModalVisible(!modalVisible);
 	};
 
 	const handleCheck = (farm, index) => {
+		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy)
 		setSelectedFarm(farm);
 		if (checkedIndex === index) {
 			setCheckedIndex(null);

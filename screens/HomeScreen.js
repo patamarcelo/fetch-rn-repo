@@ -37,6 +37,8 @@ import CardListApp from "../components/HomeScreen/CardListApp";
 import DateTimePicker from '@react-native-community/datetimepicker';
 import createAndPrintPDF from "../components/Global/PrintPage";
 
+import * as Haptics from 'expo-haptics';
+
 
 
 const FarmList = (itemData, filterByDate) => {
@@ -74,11 +76,13 @@ const HomeScreen = ({ navigation }) => {
 
 	const handlerOpenCalendar = () => {
 		console.log('Open Calendar')
+		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy)
 		setDate(new Date())
 		setOpen(true);
 	}
 
 	const handleClearDate = () => {
+		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy)
 		setDate()
 		setfilterEndDate()
 		setOpen(false);
@@ -98,12 +102,14 @@ const HomeScreen = ({ navigation }) => {
 
 
 	const handlerFarms = () => {
+		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy)
 		console.log("logout");
 		navigation.navigate("FarmsScren");
 		// setModalVisible(true);
 	};
 
 	const handleClear = () => {
+		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy)
 		dispatch(selectedFarm(""));
 	};
 
@@ -118,6 +124,7 @@ const HomeScreen = ({ navigation }) => {
 	}, [farmTitle]);
 
 	const handlerPrintData = () => {
+		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy)
 		createAndPrintPDF(listToCardApp, selFarm, filterEndDate)
 	}
 
