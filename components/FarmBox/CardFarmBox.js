@@ -154,13 +154,15 @@ const CardFarmBox = (props) => {
                         {
                             data?.prods?.filter((pro) => pro.type !== 'Operação').map((produto) => {
                                 const uniKey = data.cultura + data.idAp + produto.product
+                                console.log('parcela Color backgrounc: ', produto.colorChip)
                                 return (
                                     <View
                                         key={uniKey}
-                                        style={[styles.prodsView, { backgroundColor: produto.colorChip }]}
+                                        style={[styles.prodsView, { backgroundColor: produto.colorChip === 'rgb(255,255,255,0.1)' ? 'whitesmoke' : produto.colorChip }]}
                                     >
-                                        <Text style={styles.textProds}>{formatNumberProds(produto.doseSolicitada)}</Text>
-                                        <Text style={styles.textProdsName}>{produto.product}</Text>
+                                        <Text style={[styles.textProds, {color: produto.colorChip === 'rgb(255,255,255,0.1)' ? '#455d7a' : 'whitesmoke'}]}>{formatNumberProds(produto.doseSolicitada)}</Text>
+                                        <Text style={[styles.textProdsName, {color: produto.colorChip === 'rgb(255,255,255,0.1)' ? '#455d7a' : 'whitesmoke'}]}>{produto.product}</Text>
+                                        <Text style={[styles.totalprods, {color: produto.colorChip === 'rgb(255,255,255,0.1)' ? '#455d7a' : 'whitesmoke'}]}>{formatNumber(produto.doseSolicitada * data.areaSolicitada)}</Text>
                                     </View>
                                 )
                             })
@@ -246,7 +248,14 @@ const styles = StyleSheet.create({
         padding: 2
     },
     textProds: {
-        marginLeft: 80,
+        marginLeft: 10,
+        color: 'whitesmoke',
+        fontWeight: 'bold'
+    },
+    totalprods: {
+        textAlign: 'right',
+        marginRight: 10,
+        marginLeft: 'auto',
         color: 'whitesmoke',
         fontWeight: 'bold'
     },
