@@ -27,6 +27,8 @@ import { LINK } from "../utils/api";
 import ProgramList from "../components/ProgramasScreen/ProgramList";
 import { useScrollToTop } from "@react-navigation/native";
 
+import PrintProgramPage from "../components/Global/PrintProgramPage";
+
 import * as Haptics from 'expo-haptics';
 
 const ProgramScreen = ({ navigation }) => {
@@ -44,6 +46,8 @@ const ProgramScreen = ({ navigation }) => {
 	const programasAvai = useSelector(programasSelector);
 	const programSelected = useSelector(programSelector);
 	const dataProgram = useSelector(dataProgramSelector);
+
+	const [printableData, setPrintableData] = useState(null);
 
 	const handleSelectProgram = () => {
 		console.log("selecionar um programa");
@@ -70,6 +74,20 @@ const ProgramScreen = ({ navigation }) => {
 	);
 
 	console.log('EXPO_PUBLIC_REACT_APP_DJANGO_TOKEN', EXPO_PUBLIC_REACT_APP_DJANGO_TOKEN)
+	
+	const handlerPrintData = () => {
+		console.log("print Program")
+		console.log('current Program: ', programSelected)
+		const filteredProds = dataProgram.filter((data) => data.operacao__programa__nome === programSelected.nome).sort((a,b) => a.defensivo__tipo.localeCompare(b.defensivo__tipo))
+		const onlyEstagios = filteredProds.sort((a,b) => a.operacao__prazo_dap - b.operacao__prazo_dap).map((data) =>  {
+			const newName = `${data.operacao__estagio} | ${data.operacao__prazo_dap}`
+			return newName
+		})
+		const filteredEstagios = [...new Set(onlyEstagios)]
+		console.log('estagios: ', filteredEstagios)
+		console.log('produtos: ', filteredProds)
+		PrintProgramPage(programSelected, filteredProds, filteredEstagios)
+	}
 
 	useEffect(() => {
 		navigation.setOptions({
@@ -91,6 +109,25 @@ const ProgramScreen = ({ navigation }) => {
 								size={22}
 								onPress={handleSelectProgram}
 								btnStyles={{ marginLeft: 25, marginTop: 10 }}
+							/>
+						</View>
+					);
+				}
+			},
+			headerRight: ({ tintColor }) => {
+				if (
+					programSelected !== "Programas" &&
+					programSelected !== null
+				) {
+					return (
+						<View style={{ flexDirection: "row", marginRight: 10 }}>
+							<IconButton
+								type={"awesome"}
+								icon={'print'}
+								color={tintColor}
+								size={22}
+								onPress={handlerPrintData}
+								btnStyles={{ marginLeft: 5, marginTop: 10 }}
 							/>
 						</View>
 					);
@@ -171,6 +208,7 @@ const ProgramScreen = ({ navigation }) => {
 					innerRef={ref}
 					refresh={handlerRefresh}
 					isLoading={isLoading}
+					setPrintableData={setPrintableData}
 				/>
 			)}
 			<BottomSheet ref={sheetRef} style={styles.bottomSheetStl}>

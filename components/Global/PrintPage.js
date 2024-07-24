@@ -120,7 +120,6 @@ const formatDoseNumber = number => number?.toLocaleString("pt-br", {
             margin-bottom: 15px;
             margin-top: 15px;
             page-break-inside: avoid; /* Prevent breaking inside a card */
-
         }
         
         .main-container-produtos{

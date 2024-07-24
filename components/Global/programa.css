@@ -1,0 +1,94 @@
+.main-container {
+    display: flex;
+    justify-content: center;
+    flex-direction: column;
+    padding: 10px 30px;
+    font-family: Arial, Helvetica, sans-serif
+}
+
+.header-main-container {
+    border: 1px solid black;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    border-radius: 8px;
+    background-color: #1275b5;
+    color: whitesmoke;
+}
+
+.safra-info {
+    margin-left: auto;
+    font-weight: bold;
+    margin-top: 5px;
+
+}
+
+.program-main-container {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.programa-grid-container {
+    display: grid;
+    grid-template-columns: repeat(5, 17.5%) 12.5%;
+    border: 1px solid black;
+    border-radius: 8px;
+    background-color: rgba(245, 245, 245, 0.1);
+    page-break-inside: avoid;
+}
+
+
+.program-header-container {
+    margin-bottom: -5px;
+    display: grid;
+    grid-template-columns: repeat(5, 17.5%) 12.5%;
+    font-weight: bold;
+    justify-items: center;
+
+}
+
+.programa-detail-title {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    border: 0.5px dotted black;
+    white-space: normal;
+    text-align: center;
+}
+
+.programa-detail-title h4,
+.programa-detail-title h6 {
+    margin: 0px;
+}
+
+.program-detail-list div {
+    padding-left: 5px;
+    padding-top: 2px;
+    padding-bottom: 2px;
+    border-bottom: 0.5px dotted black;
+    border-right: 0.5px dotted black;
+}
+
+.program-detail-list div:last-child {
+    border-bottom: 0px;
+}
+
+.program-detail-list-type {
+    text-align: center;
+}
+
+.program-detail-list-dose {
+    text-align: center;
+}
+
+
+.program-detail-list-quantity div {
+    text-align: right;
+    padding-right: 42%;
+}
+
+.page-break {
+    margin-top: 10px;
+    margin-bottom: 10px;
+}

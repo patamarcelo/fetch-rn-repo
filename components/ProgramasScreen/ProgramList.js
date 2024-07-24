@@ -21,7 +21,7 @@ import {
 
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 
-const ProgramList = ({ refresh, isLoading, innerRef }) => {
+const ProgramList = ({ refresh, isLoading, innerRef, setPrintableData }) => {
 	const tabBarHeight = useBottomTabBarHeight();
 	const estagios = useSelector(estagiosSelector);
 	const programa = useSelector(programSelector);
@@ -42,6 +42,14 @@ const ProgramList = ({ refresh, isLoading, innerRef }) => {
 		// console.log(estagios);
 		const newArray = [ts_programas, ...estagiosFiltered]
 		setFilteredEstagios(newArray);
+		const programName = programa.nome;
+		const produtosFilter = dataProgram.filter((prods) => prods.operacao__programa__nome === programName)
+		const objToAdd = {
+			estagios: newArray,
+			produtos: produtosFilter,
+			program: programa
+		}
+		setPrintableData(prev => objToAdd);
 	}, [programa]);
 
 	return (
