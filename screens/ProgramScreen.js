@@ -18,7 +18,7 @@ import { Colors } from "../constants/styles";
 
 import { useDispatch, useSelector } from "react-redux";
 import { geralActions } from "../store/redux/geral";
-import { programasSelector, programSelector, dataProgramSelector } from "../store/redux/selector";
+import { programasSelector, programSelector, dataProgramSelector, selectAreaTotal } from "../store/redux/selector";
 
 import BottomSheetList from "../components/ProgramasScreen/BottomSheetList";
 
@@ -41,11 +41,13 @@ const ProgramScreen = ({ navigation }) => {
 		setProgramsAvaiable,
 		setSelectedProgram,
 		setDataProgram,
-		setEstagiosProgram
+		setEstagiosProgram,
+		setAreaTotal
 	} = geralActions;
 	const programasAvai = useSelector(programasSelector);
 	const programSelected = useSelector(programSelector);
 	const dataProgram = useSelector(dataProgramSelector);
+	const areaTotalPrograms = useSelector(selectAreaTotal);
 
 	const [printableData, setPrintableData] = useState(null);
 
@@ -86,7 +88,9 @@ const ProgramScreen = ({ navigation }) => {
 		const filteredEstagios = [...new Set(onlyEstagios)]
 		console.log('estagios: ', filteredEstagios)
 		console.log('produtos: ', filteredProds)
-		PrintProgramPage(programSelected, filteredProds, filteredEstagios)
+		console.log("area total: ", areaTotalPrograms)
+		const areaTotalProgram = areaTotalPrograms.find((program) => program.programa__nome === programSelected.nome)
+		PrintProgramPage(programSelected, filteredProds, filteredEstagios, areaTotalProgram)
 	}
 
 	useEffect(() => {
@@ -158,10 +162,10 @@ const ProgramScreen = ({ navigation }) => {
 			});
 
 			const data = await response.json();
-			// console.log(data);
 			dispatch(setProgramsAvaiable(data.programas));
 			dispatch(setEstagiosProgram(data.estagios));
 			dispatch(setDataProgram(data.dados));
+			dispatch(setAreaTotal(data.area_total));
 		} catch (error) {
 			console.log("erro ao pegar os dados", error);
 			Alert.alert(

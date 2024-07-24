@@ -8,7 +8,8 @@ const initialState = {
 	estagiosProgram: [],
 	dataProgram: [],
 	plantioData: [],
-	farmBoxData: []
+	farmBoxData: [],
+	areaTotal: []
 };
 
 const geralSlice = createSlice({
@@ -38,6 +39,9 @@ const geralSlice = createSlice({
 		},
 		setDataProgram: (state, action) => {
 			state.dataProgram = action.payload;
+		},
+		setAreaTotal: (state, action) => {
+			state.areaTotal = action.payload;
 		}
 	}
 });

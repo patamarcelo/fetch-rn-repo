@@ -13,3 +13,5 @@ export const dataProgramSelector = (state) => state.geral.dataProgram;
 export const selectDataPlantio = (state) => state.geral.plantioData
 
 export const selectFarmBoxData = (state) => state.geral.farmBoxData
+
+export const selectAreaTotal = (state) => state.geral.areaTotal

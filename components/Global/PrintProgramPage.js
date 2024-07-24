@@ -1,20 +1,21 @@
 import * as Print from "expo-print";
 import { shareAsync } from "expo-sharing";
-import ProgramList from "../ProgramasScreen/ProgramList";
+import * as FileSystem from 'expo-file-system';
 
-const PrintProgramPage = async (program, product, estagio) => {
+const PrintProgramPage = async (program, product, estagio, areaTotal) => {
 
- 
-
+  const totalArea = areaTotal.total
+  console.log('AreaTotal geral: ', totalArea);
+  
   const formatNumber = number => number?.toLocaleString("pt-br", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2
-});
+  });
   
-const formatDoseNumber = number => number?.toLocaleString("pt-br", {
-    minimumFractionDigits: 3,
-    maximumFractionDigits: 3
-});
+  const formatDoseNumber = number => number?.toLocaleString("pt-br", {
+      minimumFractionDigits: 3,
+      maximumFractionDigits: 3
+  });
 
 
 const programList = estagio?.map((estag) => {
@@ -43,6 +44,12 @@ const programList = estagio?.map((estag) => {
     `
   }).join('');
   
+  const prodsQuantTotal = product.filter((prods) => prods.operacao__estagio.trim() === estName).map((aps) => {
+    return `
+    <div>${formatNumber(aps.dose * totalArea)}</div>
+    `
+  }).join('');
+  
   return `
   <div class="programa-grid-container page-break">
     <div class="programa-detail-title">
@@ -61,7 +68,7 @@ const programList = estagio?.map((estag) => {
         ${prodsDose}
     </div>
     <div class="program-detail-list program-detail-list-quantity">
-        ${prodsDose}
+        ${prodsQuantTotal}
     </div>
     <div></div>
   </div>
@@ -103,8 +110,16 @@ const htmlContent = `
               background-color: rgb(18, 117, 181);
               color: whitesmoke;
           }
+          .info-container{
+            display: flex;
+            width: 97%;
+            justify-content: space-between;
+          }
           .safra-info {
-              margin-left: auto;
+              font-weight: bold;
+              margin-top: 5px;
+          }
+          .quantity-info {
               font-weight: bold;
               margin-top: 5px;
           }
@@ -182,10 +197,14 @@ const htmlContent = `
                   </head>
                   <body>
               <div class="main-container">
+                  <div class="info-container">
+                    <span class="safra-info">${program.safra__safra} - ${program.ciclo__ciclo}</span>
+                    <span class="safra-info">Versão: ${program.versao}</span>
+                    <span class="quantity-info">${formatNumber(totalArea)}</span>
+                  </div>
                   <div class="header-main-container">
                       <h1>${program.nome_fantasia}</h1>
                   </div>
-                  <span class="safra-info">2023/2024 - 3</span>
                   <div class="program-header-container">
                       <div>Estagio</div>
                       <div>Produto</div>
@@ -206,11 +225,30 @@ const htmlContent = `
     // Create a PDF from HTML content
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
     const filename = `${program.nome}_${timestamp}.pdf`;
+    const newUri = `${FileSystem.documentDirectory}${filename}`;
+
     const { uri } = await Print.printToFileAsync({
       html: htmlContent,
       base64: false,
-      filename: filename
     });
+
+    const fileInfo = await FileSystem.getInfoAsync(uri);
+    if (!fileInfo.exists) {
+      throw new Error("PDF file was not created successfully");
+    }
+
+
+     // Ensure the target directory exists
+    const directoryInfo = await FileSystem.getInfoAsync(FileSystem.documentDirectory);
+    if (!directoryInfo.exists) {
+      throw new Error("Target directory does not exist");
+    }
+    
+    
+    // await FileSystem.moveAsync({
+    //   from: uri,
+    //   to: newUri
+    // });
     
     // Optionally share the PDF
     await shareAsync(uri, { dialogTitle: "Share your PDF" });
