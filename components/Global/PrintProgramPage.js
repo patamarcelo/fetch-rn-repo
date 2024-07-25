@@ -28,7 +28,7 @@ const programList = estagio?.map((estag) => {
     // console.log(aps.operacao__estagio.trim() === estName.trim())
 
     return `
-    <div>${aps.defensivo__produto}</div>
+    <div style="border-left: 1px dotted black">${aps.defensivo__produto}</div>
     `
   }).join('');
 
@@ -109,6 +109,7 @@ const htmlContent = `
               border-radius: 6px;
               background-color: rgb(18, 117, 181);
               color: whitesmoke;
+              print-color-adjust: exact !important;
           }
           .info-container{
             display: flex;
@@ -152,8 +153,6 @@ const htmlContent = `
           .programa-detail-title {
               display: flex;
               flex-direction: column;
-              padding-top: 5px;
-              padding-bottom: 5px;
               border-right: 0.5px dotted black;
               white-space: normal;
               text-align: center;
@@ -169,7 +168,7 @@ const htmlContent = `
               padding-top: 2px;
               padding-bottom: 2px;
               border-bottom: 0.5px dotted black;
-              border-right: 0.5px dotted black;
+              border-right: 1px dotted black;
           }
 
           .program-detail-list div:last-child {
