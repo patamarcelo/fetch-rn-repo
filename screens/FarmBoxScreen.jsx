@@ -33,6 +33,8 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 import { LINK } from '../utils/api';
 
+import { newMapArr } from "./plot-helper";
+
 
 
 
@@ -61,12 +63,26 @@ const FarmBoxScreen = (props) => {
 
     const [isloadingDbFarm, setIsloadingDbFarm] = useState(false);
 
+    const [showPlotMap, setshowPlotMap] = useState(false);
+
     const formatNumber = number => {
         return number?.toLocaleString("pt-br", {
             minimumFractionDigits: 2,
             maximumFractionDigits: 2
         })
     }
+
+    useEffect(() => {
+		if (newMapArr.length > 0 && showFarm) {
+			const filteredFarm = newMapArr.filter((data) => data.farmName == showFarm.replace('Fazenda', 'Projeto').replace('Cacique', 'Cacíque'))
+			console.log('filteredFarm', showFarm)
+			if(filteredFarm.length > 0){
+                setshowPlotMap(true)
+            } else {
+                setshowPlotMap(false)
+            }
+		}
+	}, [showFarm]);
 
     const handleUpdateApiData = async () => {
         setIsloadingDbFarm(true)
@@ -163,6 +179,7 @@ const FarmBoxScreen = (props) => {
             if (response.status === 200) {
                 console.log('atualização OK')
                 const data = await response.json();
+                console.log('data from Farmbox', data)
                 dispatch(setFarmBoxData(data))
             }
         } catch (error) {
@@ -192,6 +209,7 @@ const FarmBoxScreen = (props) => {
                 if (response.status === 200) {
                     console.log('atualização OK here')
                     const data = await response.json();
+                    console.log(data)
                     dispatch(setFarmBoxData(data))
                 }
             } catch (error) {
@@ -265,8 +283,7 @@ const FarmBoxScreen = (props) => {
                     />
                 }
             >
-                {farmData &&
-
+                {farmData && 
                     onlyFarms.filter((farmArr) => showFarm !== null ? farmArr === showFarm : farmArr.length > 0).map((farms, i) => {
                         const totalByFarm = farmData.filter((farmName) => farmName.farmName === farms).reduce((acc, curr) => acc += curr.saldoAreaAplicar, 0)
                         return (
@@ -293,7 +310,7 @@ const FarmBoxScreen = (props) => {
                                     farmData.filter((farmName) => farmName.farmName === farms).map((farmDatas, i) => {
                                         return (
                                             <View style={{ marginBottom: 10 }} key={farmDatas.idAp}>
-                                                <CardFarmBox data={farmDatas} indexParent={i}/>
+                                                <CardFarmBox data={farmDatas} indexParent={i} showMapPlot={showPlotMap}/>
                                             </View>
                                         )
                                     })

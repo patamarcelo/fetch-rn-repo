@@ -414,10 +414,12 @@ const styles = StyleSheet.create({
 		paddingTop: 10,
 		paddingRight: 10,
 		justifyContent: 'flex-end',
-		alignItems: 'flex-end'
+		alignItems: 'flex-end',
+		borderRadius: 8,
 	},
 	pressed: {
-		opacity: 0.7
+		opacity: 0.7,
+		// backgroundColor: 'rgba(25, 31, 52, 0.1)'
 	},
 	headerContainerProds: {
 		// flex: 1, 
@@ -510,9 +512,6 @@ const styles = StyleSheet.create({
 		// paddingHorizontal: 10,
 		// paddingVertical: 10,
 		// backgroundColor: Colors.secondary[400]
-	},
-	pressed: {
-		opacity: 0.7
 	},
 });
 export default CardListApp;

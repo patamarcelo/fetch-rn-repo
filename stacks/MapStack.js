@@ -6,7 +6,13 @@ import { Colors } from "../constants/styles";
 import IconButton from "../components/ui/IconButton";
 import MapScreen from "../screens/MapScreen";
 
+import { useRoute } from '@react-navigation/native';
+
+
 const MapStack = () => {
+
+	const route = useRoute();
+	const newData =  route.params.data
 	return (
 		<Stack.Navigator
 			screenOptions={{
@@ -16,7 +22,11 @@ const MapStack = () => {
 				// contentStyle: { backgroundColor: Colors.secondary[100] }
 			}}
 		>
-			<Stack.Screen name="MapStackScreen" component={MapScreen} />
+			<Stack.Screen 
+			name="MapStackScreen"
+			component={MapScreen} 
+			initialParams={{ data: newData }}  // Pass data as initialParams
+			/>
 		</Stack.Navigator>
 	);
 };

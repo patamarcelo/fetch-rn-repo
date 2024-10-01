@@ -2,4 +2,6 @@
 
 export const LINK = "https://diamante-quality.up.railway.app/diamante";
 
+// export const NODELINK = "http://localhost:5050/defensivos/";
+
 export const NODELINK = "https://ubs-nodeserver.up.railway.app/defensivos/";

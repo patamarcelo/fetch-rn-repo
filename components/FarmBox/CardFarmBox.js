@@ -11,10 +11,14 @@ import * as Progress from 'react-native-progress';
 
 import * as Haptics from 'expo-haptics';
 
+import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
+import { useNavigation } from "@react-navigation/native";
+
 
 const CardFarmBox = (props) => {
-    const { data, indexParent } = props
+    const { data, indexParent, showMapPlot } = props
     const [showAps, setShowAps] = useState(false);
+    const navigation = useNavigation();
 
 
     const formatNumber = number => {
@@ -52,6 +56,14 @@ const CardFarmBox = (props) => {
         // return "";
     };
     const getCultura = filteredIcon(data.cultura)
+
+    const handleMapApi = (data) => {
+        console.log('handle MAP FArmbox', data)
+        navigation.navigate('MapsCreenStack', { data })
+
+    }
+
+
 
     //Animated View by chatgpt
     // const parcelaAnimValues = useRef(data?.parcelas?.map(() => new Animated.Value(0))).current;
@@ -104,7 +116,7 @@ const CardFarmBox = (props) => {
         <Pressable
             style={({ pressed }) => [
                 styles.mainContainer,
-                pressed && styles.pressed,{marginTop: indexParent === 0 && 0 }]}
+                pressed && styles.pressed, { marginTop: indexParent === 0 && 0 }]}
             onPress={handleOpen}>
             <View style={styles.infoContainer}>
                 <Text style={{ color: 'whitesmoke' }}>Area: {formatNumber(data.areaSolicitada)}</Text>
@@ -160,14 +172,27 @@ const CardFarmBox = (props) => {
                                         key={uniKey}
                                         style={[styles.prodsView, { backgroundColor: produto.colorChip === 'rgb(255,255,255,0.1)' ? 'whitesmoke' : produto.colorChip }]}
                                     >
-                                        <Text style={[styles.textProds, {color: produto.colorChip === 'rgb(255,255,255,0.1)' ? '#455d7a' : 'whitesmoke'}]}>{formatNumberProds(produto.doseSolicitada)}</Text>
-                                        <Text style={[styles.textProdsName, {color: produto.colorChip === 'rgb(255,255,255,0.1)' ? '#455d7a' : 'whitesmoke'}]}>{produto.product}</Text>
-                                        <Text style={[styles.totalprods, {color: produto.colorChip === 'rgb(255,255,255,0.1)' ? '#455d7a' : 'whitesmoke'}]}>{formatNumber(produto.doseSolicitada * data.areaSolicitada)}</Text>
+                                        <Text style={[styles.textProds, { color: produto.colorChip === 'rgb(255,255,255,0.1)' ? '#455d7a' : 'whitesmoke' }]}>{formatNumberProds(produto.doseSolicitada)}</Text>
+                                        <Text style={[styles.textProdsName, { color: produto.colorChip === 'rgb(255,255,255,0.1)' ? '#455d7a' : 'whitesmoke' }]}>{produto.product}</Text>
+                                        <Text style={[styles.totalprods, { color: produto.colorChip === 'rgb(255,255,255,0.1)' ? '#455d7a' : 'whitesmoke' }]}>{formatNumber(produto.doseSolicitada * data.areaSolicitada)}</Text>
                                     </View>
                                 )
                             })
                         }
                     </View>
+                    {
+                        showMapPlot &&
+                        <View>
+                            <Pressable
+                                style={({ pressed }) => [
+                                    styles.mapContainer,
+                                    pressed && styles.pressed]}
+                                onPress={handleMapApi.bind(this, data)}
+                            >
+                                <FontAwesome5 name="map-marked-alt" size={24} color="black" />
+                            </Pressable>
+                        </View>
+                    }
                 </View>
             }
 
@@ -265,5 +290,13 @@ const styles = StyleSheet.create({
     },
     pressed: {
         opacity: 0.7
+    },
+    mapContainer: {
+        marginRight: 10,
+        paddingTop: 10,
+        paddingRight: 10,
+        justifyContent: 'flex-end',
+        alignItems: 'flex-end',
+        borderRadius: 8,
     },
 })

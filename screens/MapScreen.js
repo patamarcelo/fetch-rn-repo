@@ -1,95 +1,79 @@
-import MapView, { Callout, Marker, Polygon } from "react-native-maps";
-import { View, Text, StyleSheet } from "react-native";
+import MapView, {
+	PROVIDER_GOOGLE,
+	Callout,
+	Marker,
+	Polygon
+} from "react-native-maps";
+import { View, Text, StyleSheet, Platform } from "react-native";
 import Button from "../components/ui/Button";
 import IconButton from "../components/ui/IconButton";
 
 import { useState, useEffect, createRef } from "react";
+import * as Haptics from "expo-haptics";
 
 import * as Location from "expo-location";
 
-const coordArr = [
-	{
-		latitude: -10.88233,
-		longitude: -49.9350669
-	},
-	{
-		latitude: -10.882247,
-		longitude: -49.93516899999999
-	},
-	{
-		latitude: -10.8821619,
-		longitude: -49.935194
-	},
-	{
-		latitude: -10.882033,
-		longitude: -49.9352019
-	},
-	{
-		latitude: -10.8818769,
-		longitude: -49.93514199999999
-	},
-	{
-		latitude: -10.881799,
-		longitude: -49.93665799999999
-	},
-	{
-		latitude: -10.884914,
-		longitude: -49.936794
-	},
-	{
-		latitude: -10.885208,
-		longitude: -49.92834999999999
-	},
-	{
-		latitude: -10.8849009,
-		longitude: -49.928396
-	},
-	{
-		latitude: -10.884024,
-		longitude: -49.9290469
-	},
-	{
-		latitude: -10.8826389,
-		longitude: -49.92860599999999
-	},
-	{
-		latitude: -10.882231,
-		longitude: -49.92826900000001
-	},
-	{
-		latitude: -10.8819009,
-		longitude: -49.93467099999998
-	},
-	{
-		latitude: -10.882064,
-		longitude: -49.93459690000001
-	},
-	{
-		latitude: -10.882171,
-		longitude: -49.9345909
-	},
-	{
-		latitude: -10.882236,
-		longitude: -49.934627
-	},
-	{
-		latitude: -10.8823709,
-		longitude: -49.934968
-	}
-];
+
+import { newMapArr } from "./plot-helper";
+
 
 // API GET GEOPOINTS PLANTED
 // http://127.0.0.1:8000/diamante/plantio/get_plantio_detail_map/
 
 // http://127.0.0.1:8000/diamante/plantio/get_produtividade_plantio/
 
-const MapScreen = ({ navigation }) => {
+const MapScreen = ({ navigation, route }) => {
 	const [location, setLocation] = useState(null);
 	const [errorMsg, setErrorMsg] = useState(null);
 	const [latitude, setLatitude] = useState(null);
 	const [longitude, setLongitude] = useState(null);
+	const [farmName, setFarmName] = useState(null);
+	const [filteredFarmArr, setfilteredFarmArr] = useState([]);
 
 	const mapRef = createRef();
+
+	const { data } = route?.params
+
+
+	const [zoomLevel, setZoomLevel] = useState(0);
+	const [mapRegion, setMapRegion] = useState(null);
+
+
+	// Function to calculate zoom level from map's region
+	const calculateZoomLevel = (region) => {
+		const zoom = Math.log(360 / region.longitudeDelta) / Math.LN2;
+
+		// Adjust zoom logic for Apple Maps
+		if (Platform.OS === 'ios' && !region.provider) {
+			return zoom - 2;  // Adjust zoom value to suit Apple Maps
+		}
+
+		return zoom;
+	};
+
+	const onRegionChangeComplete = (region) => {
+		const newZoomLevel = calculateZoomLevel(region);
+		setZoomLevel(newZoomLevel);
+		setMapRegion(region);
+	};
+
+	useEffect(() => {
+		if (newMapArr.length > 0 && farmName) {
+			const filteredFarm = newMapArr.filter((data) => data.farmName == farmName.replace('Fazenda', 'Projeto').replace('Cacique', 'Cacíque'))
+			console.log('filteredFarm', farmName)
+			console.log('filteredFarm Arr: ', filteredFarm)
+			setfilteredFarmArr(filteredFarm)
+		}
+	}, [farmName]);
+
+	useEffect(() => {
+		console.log('params', zoomLevel)
+		setFarmName(data?.farmName)
+	}, []);
+	useEffect(() => {
+		console.log('zoom', zoomLevel)
+		console.log('zoom', zoomLevel > 12)
+	}, [zoomLevel]);
 
 	useEffect(() => {
 		(async () => {
@@ -112,9 +96,10 @@ const MapScreen = ({ navigation }) => {
 	}
 
 	const handleSetLocation = () => {
+		console.log("farmCenterGeo: ", filteredFarmArr[0]?.farmCenterGeo?.latitude,)
 		mapRef.current.animateToRegion({
-			latitude: location.coords.latitude,
-			longitude: location.coords.longitude,
+			// latitude: filteredFarmArr[0]?.farmCenterGeo?.lat,
+			// longitude: filteredFarmArr[0]?.farmCenterGeo?.lng,
 			latitudeDelta: 0.0922,
 			longitudeDelta: 0.0421
 		});
@@ -128,39 +113,61 @@ const MapScreen = ({ navigation }) => {
 		// setModalVisible(true);
 	};
 
+	if (filteredFarmArr.length === 0) {
+		return <Text>Loading..</Text>
+	}
+
 	return (
 		<View style={styles.container}>
 			<MapView
+				onRegionChangeComplete={onRegionChangeComplete}
+				// provider={PROVIDER_GOOGLE}
 				ref={mapRef}
 				showsUserLocation={true}
 				// followsUserLocation={true}
 				style={styles.map}
 				initialRegion={{
-					latitude: -10.882247,
-					longitude: -49.93516899999999,
-					latitudeDelta: 0.0922,
-					longitudeDelta: 0.0421
+					latitude: filteredFarmArr[0]?.farmCenterGeo?.lat,
+					longitude: filteredFarmArr[0]?.farmCenterGeo?.lng,
+					latitudeDelta: 0.2222,
+					longitudeDelta: 0.0821
 				}}
 				mapType="satellite"
 			>
-				<Polygon
-					fillColor="#FBBF70"
-					coordinates={coordArr}
-					onPress={(e) => console.log(e)}
-					tappable={true}
-				/>
-				{/* <Marker
-					hideCallout={true}
-					// showCallout={true}
-					tracksViewChanges={false}
-					coordinate={{
-						latitude: -10.883546571189807,
-						longitude: -49.93271570290045
-					}}
-				> */}
-				{/* <Text>SF</Text>
-					<Text>SF</Text> */}
-				{/* </Marker> */}
+				{
+					filteredFarmArr.length > 0 && filteredFarmArr.map((coordArr, i) => {
+						return (
+							<View key={i}>
+								<Polygon
+									fillColor="rgba(245,245,245,0.6)"
+									// fillColor="#FBBF70"
+									coordinates={coordArr.coords}
+									onPress={e => {
+										console.log(coordArr)
+										Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+									}}
+									tappable={true}
+								/>
+								{zoomLevel < 15 && (
+									<Marker
+										key={zoomLevel}  // Force re-render by using zoom level as key
+										hideCallout={true}
+										showCallout={true}
+										tracksViewChanges={false}
+										coordinate={{
+											latitude: coordArr.talhaoCenterGeo.lat,
+											longitude: coordArr.talhaoCenterGeo.lng
+										}}
+									>
+
+										<Text>{coordArr.talhao}</Text>
+									</Marker>
+								)}
+
+							</View>
+						)
+					})
+				}
 			</MapView>
 			<View
 				style={{

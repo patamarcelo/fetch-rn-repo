@@ -53,7 +53,7 @@ const programList = estagio?.map((estag) => {
   return `
   <div class="programa-grid-container page-break">
     <div class="programa-detail-title">
-      <div>
+      <div class="program-detail-title-children">
           <h4>${estName}</h4>
           <h6 class="dap-title">DAP: ${estDap}</h6>
       </div>
@@ -151,11 +151,13 @@ const htmlContent = `
           }
 
           .programa-detail-title {
-              display: flex;
-              flex-direction: column;
+              display: grid;
               border-right: 0.5px dotted black;
               white-space: normal;
               text-align: center;
+          }
+          .program-detail-title-children{
+              justify-self: center;
           }
     
           .programa-detail-title h4,

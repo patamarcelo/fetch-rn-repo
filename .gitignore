@@ -42,3 +42,9 @@ eas.json
 # .expo
 dist/
 web-build/
+
+
+# FILES LOCAL DATA
+*.plot-helper.js
+.plot-helper
+/screens/plot-helper.js
