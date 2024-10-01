@@ -98,8 +98,8 @@ const MapScreen = ({ navigation, route }) => {
 	const handleSetLocation = () => {
 		console.log("farmCenterGeo: ", filteredFarmArr[0]?.farmCenterGeo?.latitude,)
 		mapRef.current.animateToRegion({
-			// latitude: filteredFarmArr[0]?.farmCenterGeo?.lat,
-			// longitude: filteredFarmArr[0]?.farmCenterGeo?.lng,
+			latitude: location.coords.latitude,
+			longitude: location.coords.longitude,
 			latitudeDelta: 0.0922,
 			longitudeDelta: 0.0421
 		});
