@@ -16,6 +16,9 @@ import * as Location from "expo-location";
 
 import { newMapArr } from "./plot-helper";
 
+import { Linking, Alert } from 'react-native';
+
+
 
 // API GET GEOPOINTS PLANTED
 // http://127.0.0.1:8000/diamante/plantio/get_plantio_detail_map/
@@ -76,17 +79,56 @@ const MapScreen = ({ navigation, route }) => {
 	}, [zoomLevel]);
 
 	useEffect(() => {
-		(async () => {
-			let { status } = await Location.requestForegroundPermissionsAsync();
-			if (status !== "granted") {
-				setErrorMsg("Permission to access location was denied");
+
+		const getLocationPermission = async () => {
+			const { status } = await Location.getForegroundPermissionsAsync();
+
+			if (status === 'denied') {
+				Alert.alert(
+					"Location Permission Required",
+					"Location permission is denied. Would you like to open the app settings to enable location access?",
+					[
+						{
+							text: "Cancel",
+							style: "cancel"
+						},
+						{
+							text: "Open Settings",
+							onPress: () => Linking.openSettings() // Open settings if user agrees
+						}
+					],
+					{ cancelable: true }
+				);
 				return;
+			}
+
+			if (status !== 'granted') {
+				let { status } = await Location.requestForegroundPermissionsAsync();
+				if (status !== "granted") {
+					setErrorMsg("Permission to access location was denied");
+					return;
+				}
 			}
 
 			let location = await Location.getCurrentPositionAsync({});
 			setLocation(location);
-		})();
+		};
+		getLocationPermission()
 	}, []);
+
+	// useEffect(() => {
+	// 	(async () => {
+	// 		let { status } = await Location.requestForegroundPermissionsAsync();
+	// 		if (status !== "granted") {
+	// 			setErrorMsg("Permission to access location was denied");
+	// 			return;
+	// 		}
+
+	// 		let location = await Location.getCurrentPositionAsync({});
+	// 		console.log('location', location)
+	// 		setLocation(location);
+	// 	})();
+	// }, []);
 
 	let text = "Waiting..";
 	if (errorMsg) {
@@ -96,14 +138,14 @@ const MapScreen = ({ navigation, route }) => {
 	}
 
 	const handleSetLocation = () => {
-		console.log("farmCenterGeo: ", filteredFarmArr[0]?.farmCenterGeo?.latitude,)
+		console.log(location, 'location')
 		mapRef.current.animateToRegion({
 			latitude: location.coords.latitude,
 			longitude: location.coords.longitude,
 			latitudeDelta: 0.0922,
 			longitudeDelta: 0.0421
 		});
-		setLongitude(location.coords.latitude);
+		setLatitude(location.coords.latitude);
 		setLongitude(location.coords.longitude);
 	};
 
