@@ -75,7 +75,7 @@ const FarmBoxScreen = (props) => {
     }
 
     useEffect(() => {
-		if (mapPlotData.length > 0 && showFarm) {
+		if (mapPlotData?.length > 0 && showFarm) {
             const dataFromMap = newMapArr(mapPlotData)
 			const filteredFarm = dataFromMap.filter((data) => data.farmName == showFarm.replace('Fazenda', 'Projeto').replace('Cacique', 'Cacíque'))
 			console.log('filteredFarm', showFarm)
