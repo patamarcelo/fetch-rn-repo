@@ -8,7 +8,7 @@ import { View, Text, StyleSheet, Platform } from "react-native";
 import Button from "../components/ui/Button";
 import IconButton from "../components/ui/IconButton";
 
-import { useState, useEffect, createRef } from "react";
+import { useState, useEffect, createRef, useRef } from "react";
 import * as Haptics from "expo-haptics";
 
 import * as Location from "expo-location";
@@ -17,6 +17,8 @@ import * as Location from "expo-location";
 import { newMapArr } from "./plot-helper";
 
 import { Linking, Alert } from 'react-native';
+
+import BottomSheetApp from "../components/MapComp/BottomSheet";
 
 
 
@@ -31,7 +33,15 @@ const MapScreen = ({ navigation, route }) => {
 	const [latitude, setLatitude] = useState(null);
 	const [longitude, setLongitude] = useState(null);
 	const [farmName, setFarmName] = useState(null);
+
 	const [filteredFarmArr, setfilteredFarmArr] = useState([]);
+	const [getOperationAp, setGetOperationAp] = useState(null);
+
+	const [isPressed, setIsPressed] = useState(null);
+
+	const [propsToBottom, setPropsToBottom] = useState({});
+
+	const refRBSheet = useRef();
 
 	const mapRef = createRef();
 
@@ -41,6 +51,10 @@ const MapScreen = ({ navigation, route }) => {
 	const [zoomLevel, setZoomLevel] = useState(0);
 	const [mapRegion, setMapRegion] = useState(null);
 
+
+	useEffect(() => {
+		console.log('shhetRef: ', refRBSheet)
+	}, [refRBSheet]);
 
 	// Function to calculate zoom level from map's region
 	const calculateZoomLevel = (region) => {
@@ -63,20 +77,28 @@ const MapScreen = ({ navigation, route }) => {
 	useEffect(() => {
 		if (newMapArr.length > 0 && farmName) {
 			const filteredFarm = newMapArr.filter((data) => data.farmName == farmName.replace('Fazenda', 'Projeto').replace('Cacique', 'Cacíque'))
-			console.log('filteredFarm', farmName)
-			console.log('filteredFarm Arr: ', filteredFarm)
 			setfilteredFarmArr(filteredFarm)
 		}
 	}, [farmName]);
 
 	useEffect(() => {
-		console.log('params', zoomLevel)
+		if (data) {
+			const onlyOp = data.prods.find((prod) => prod.type === 'Operação')
+			if (onlyOp) {
+				setGetOperationAp(onlyOp?.product);
+			} else {
+				setGetOperationAp('Sem Operação')
+			}
+		}
+	}, [data]);
+	useEffect(() => {
+		// console.log('params', data)
 		setFarmName(data?.farmName)
 	}, []);
-	useEffect(() => {
-		console.log('zoom', zoomLevel)
-		console.log('zoom', zoomLevel > 12)
-	}, [zoomLevel]);
+	// useEffect(() => {
+	// 	console.log('zoom', zoomLevel)
+	// 	console.log('zoom', zoomLevel > 12)
+	// }, [zoomLevel]);
 
 	useEffect(() => {
 
@@ -155,9 +177,14 @@ const MapScreen = ({ navigation, route }) => {
 		// setModalVisible(true);
 	};
 
+	const handleCloseSheet = () => {
+		setIsPressed(null)
+	}
+
 	if (filteredFarmArr.length === 0) {
 		return <Text>Loading..</Text>
 	}
+
 
 	return (
 		<View style={styles.container}>
@@ -178,15 +205,30 @@ const MapScreen = ({ navigation, route }) => {
 			>
 				{
 					filteredFarmArr.length > 0 && filteredFarmArr.map((coordArr, i) => {
+						const canPress = data.parcelas.find((parc) => parc.parcela.split(" ").join("") === coordArr.talhao.split(" ").join(""))
+						const isPressedHere = isPressed && isPressed === canPress?.parcela ? 1 : 0.6
 						return (
 							<View key={i}>
 								<Polygon
-									fillColor="rgba(245,245,245,0.6)"
+									fillColor={canPress ? `rgba(251,191,112,${isPressedHere})` : "rgba(245,245,245,0.6)"}
 									// fillColor="#FBBF70"
 									coordinates={coordArr.coords}
 									onPress={e => {
-										console.log(coordArr)
-										Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+										console.log('Press Event',)
+										if (canPress) {
+											setIsPressed(coordArr.talhao)
+											const parcela = data.parcelas.find((parc) => parc.parcela === coordArr.talhao)
+											const objToAdd = {
+												talhao: coordArr.talhao,
+												prods: data.prods.filter((prod) => prod.type !== "Operação"),
+												area: parcela.areaSolicitada,
+												cultura: data.cultura
+											}
+											console.log('data to bottom', objToAdd)
+											setPropsToBottom(objToAdd)
+											refRBSheet.current.open()
+											Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+										}
 									}}
 									tappable={true}
 								/>
@@ -211,49 +253,55 @@ const MapScreen = ({ navigation, route }) => {
 					})
 				}
 			</MapView>
-			<View
-				style={{
-					width: 50,
-					height: 50,
-					backgroundColor: "transparent",
-					position: "absolute",
-					bottom: "20%",
-					left: "80%",
-					zIndex: 10,
-					borderRadius: 50
-				}}
-			>
-				<IconButton
-					type={"paper"}
-					icon="target-account"
-					color={"grey"}
-					size={28}
-					onPress={handleSetLocation}
-					btnStyles={{
-						backgroundColor: "rgba(255,255,255,0.9)",
-						borderRadius: 50,
-						justifyContent: "center",
-						alignItems: "center",
-						height: 50,
-						width: 50
-					}}
-				/>
-				<IconButton
-					type={"awesome"}
-					icon="filter"
-					color={"grey"}
-					size={22}
-					onPress={handlerFarms}
-					btnStyles={{
-						backgroundColor: "rgba(255,255,255,0.9)",
-						borderRadius: 50,
-						justifyContent: "center",
-						alignItems: "center",
-						height: 50,
-						width: 50
-					}}
-				/>
-			</View>
+			{
+				!isPressed &&
+				<>
+
+					<View
+						style={{
+							width: 50,
+							height: 50,
+							backgroundColor: "transparent",
+							position: "absolute",
+							bottom: "20%",
+							left: "80%",
+							zIndex: 10,
+							borderRadius: 50
+						}}
+					>
+						<IconButton
+							type={"paper"}
+							icon="target-account"
+							color={"grey"}
+							size={28}
+							onPress={handleSetLocation}
+							btnStyles={{
+								backgroundColor: "rgba(255,255,255,0.9)",
+								borderRadius: 50,
+								justifyContent: "center",
+								alignItems: "center",
+								height: 50,
+								width: 50
+							}}
+						/>
+						{/* <IconButton
+							type={"awesome"}
+							icon="filter"
+							color={"grey"}
+							size={22}
+							onPress={handlerFarms}
+							btnStyles={{
+								backgroundColor: "rgba(255,255,255,0.9)",
+								borderRadius: 50,
+								justifyContent: "center",
+								alignItems: "center",
+								height: 50,
+								width: 50
+							}}
+						/> */}
+					</View>
+				</>
+			}
 
 			<View
 				style={{
@@ -283,6 +331,26 @@ const MapScreen = ({ navigation, route }) => {
 					}}
 				/>
 			</View>
+
+			<View
+				style={{
+					width: 240,
+					height: 40,
+					// backgroundColor: "transparent",
+					backgroundColor: "rgba(255,255,255,0.9)",
+					backgroundColor: "rgba(0,0,255,0.6)",
+					position: "absolute",
+					top: "9.5%",
+					right: "5%",
+					zIndex: 10,
+					borderRadius: 12,
+					justifyContent: 'center',
+					alignItems: 'center',
+				}}
+			>
+				<Text style={{ textAlign: 'center', color: 'whitesmoke', fontWeight: 'bold' }}>{data.code.replace(/([A-Za-z]+)(\d+)/, '$1 $2')} - {getOperationAp && getOperationAp}</Text>
+			</View>
+			<BottomSheetApp refRBSheet={refRBSheet} data={propsToBottom} handleCloseSheet={handleCloseSheet} />
 		</View>
 	);
 };
