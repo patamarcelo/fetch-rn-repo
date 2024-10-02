@@ -15,7 +15,7 @@ import { Colors } from '../constants/styles';
 
 import { useDispatch, useSelector } from "react-redux";
 import { geralActions } from "../store/redux/geral";
-import { selectFarmBoxData } from "../store/redux/selector";
+import { selectFarmBoxData, selectMapDataPlot } from "../store/redux/selector";
 
 
 import { useScrollToTop } from "@react-navigation/native";
@@ -43,7 +43,7 @@ import { newMapArr } from "./plot-helper";
 
 
 const FarmBoxScreen = (props) => {
-    const { setFarmBoxData } = geralActions;
+    const { setFarmBoxData, setMapPlot } = geralActions;
 
     const stackNavigator = props.navigation.getParent()
 
@@ -56,12 +56,14 @@ const FarmBoxScreen = (props) => {
     const tabBarHeight = useBottomTabBarHeight();
 
     const farmBoxData = useSelector(selectFarmBoxData)
+    const mapPlotData = useSelector(selectMapDataPlot)
 
     const [showFarm, setShowFarm] = useState(null);
 
     const [isLoading, setIsLoading] = useState(false);
 
     const [isloadingDbFarm, setIsloadingDbFarm] = useState(false);
+    const [isLoadingMapData, setIsLoadingMapData] = useState(false);
 
     const [showPlotMap, setshowPlotMap] = useState(false);
 
@@ -73,8 +75,9 @@ const FarmBoxScreen = (props) => {
     }
 
     useEffect(() => {
-		if (newMapArr.length > 0 && showFarm) {
-			const filteredFarm = newMapArr.filter((data) => data.farmName == showFarm.replace('Fazenda', 'Projeto').replace('Cacique', 'Cacíque'))
+		if (mapPlotData.length > 0 && showFarm) {
+            const dataFromMap = newMapArr(mapPlotData)
+			const filteredFarm = dataFromMap.filter((data) => data.farmName == showFarm.replace('Fazenda', 'Projeto').replace('Cacique', 'Cacíque'))
 			console.log('filteredFarm', showFarm)
 			if(filteredFarm.length > 0){
                 setshowPlotMap(true)
@@ -163,6 +166,43 @@ const FarmBoxScreen = (props) => {
         });
     }, [isloadingDbFarm, showFarm]);
 
+
+    useEffect(() => {
+        const getMapData = async () => {
+            setIsLoadingMapData(true);
+            try {
+                const response = await fetch(
+                    `${LINK}/plantio/get_map_plot_app_fetch_app/`,
+                    {
+                        headers: {
+                            Authorization: `Token ${EXPO_PUBLIC_REACT_APP_DJANGO_TOKEN}`,
+                            "Content-Type": "application/json"
+                        },
+                        method: "GET"
+                    }
+                );
+                if (response.status === 200) {
+                    console.log('atualização OK')
+                    const data = await response.json();
+                    console.log('data to plot Map', data)
+                    dispatch(setMapPlot(data.dados))
+                    setIsLoadingMapData(false)
+                }
+            } catch (error) {
+                console.log("erro ao pegar os dados", error);
+                Alert.alert(
+                    `Problema na API', 'possível erro de internet para pegar os dados para plotar o mapa ${error}`
+                );
+                setIsLoadingMapData(false)
+            } finally {
+                setIsLoadingMapData(false);
+            }
+        }
+        getMapData()    
+    }, []);
+    
+
+
     const getData = async () => {
         setIsLoading(true);
         try {
@@ -223,6 +263,8 @@ const FarmBoxScreen = (props) => {
         }
         getData()
     }, []);
+
+    
 
     useEffect(() => {
         if (farmBoxData) {

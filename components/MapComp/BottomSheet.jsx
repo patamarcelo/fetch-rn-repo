@@ -55,13 +55,15 @@ const BottomSheetApp = (props) => {
                 style={styles.headerContainer}
             >
                 <View>
-
+                    <Text style={{fontWeight: 'bold'}}>{data?.farmName?.replace("Fazenda ",'')}</Text>
+                    <Text>{data.talhao}</Text>
+                </View>
+                <View>
                     <Image source={filteredIcon(data.cultura)}
                         style={{ width: 20, height: 20 }}
                     />
-                    <Text>{data.talhao}</Text>
+                    <Text>{data?.area && formatNumber(data.area)}</Text>
                 </View>
-                <Text>{data?.area && formatNumber(data.area)}</Text>
             </View>
             <View style={{ marginTop: 0 }}>
                 {

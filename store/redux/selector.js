@@ -15,3 +15,5 @@ export const selectDataPlantio = (state) => state.geral.plantioData
 export const selectFarmBoxData = (state) => state.geral.farmBoxData
 
 export const selectAreaTotal = (state) => state.geral.areaTotal
+
+export const selectMapDataPlot = (state) => state.geral.mapDataPlot

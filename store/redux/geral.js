@@ -9,7 +9,8 @@ const initialState = {
 	dataProgram: [],
 	plantioData: [],
 	farmBoxData: [],
-	areaTotal: []
+	areaTotal: [],
+	mapDataPlot: []
 };
 
 const geralSlice = createSlice({
@@ -42,6 +43,9 @@ const geralSlice = createSlice({
 		},
 		setAreaTotal: (state, action) => {
 			state.areaTotal = action.payload;
+		},
+		setMapPlot: (state, action) => {
+			state.mapDataPlot = action.payload;
 		}
 	}
 });

@@ -20,6 +20,9 @@ import { Linking, Alert } from 'react-native';
 
 import BottomSheetApp from "../components/MapComp/BottomSheet";
 
+import { useSelector } from "react-redux";
+import { selectMapDataPlot } from "../store/redux/selector";
+
 
 
 // API GET GEOPOINTS PLANTED
@@ -39,7 +42,15 @@ const MapScreen = ({ navigation, route }) => {
 
 	const [isPressed, setIsPressed] = useState(null);
 
+	const mapPlotData = useSelector(selectMapDataPlot)
+
 	const [propsToBottom, setPropsToBottom] = useState({});
+	const [mapCoordsInit, setmapCoordsInit] = useState({
+		latitude: "",
+		latitudeDelta: null,
+		longitude: '',
+		longitudeDelta: null,
+	});
 
 	const refRBSheet = useRef();
 
@@ -75,8 +86,43 @@ const MapScreen = ({ navigation, route }) => {
 	};
 
 	useEffect(() => {
-		if (newMapArr.length > 0 && farmName) {
-			const filteredFarm = newMapArr.filter((data) => data.farmName == farmName.replace('Fazenda', 'Projeto').replace('Cacique', 'Cacíque'))
+		if (mapPlotData.length > 0 && farmName) {
+			const dataFromMap = newMapArr(mapPlotData)
+			const filteredFarm = dataFromMap.filter((data) => data.farmName == farmName.replace('Fazenda', 'Projeto').replace('Cacique', 'Cacíque'))
+			const onlyCoords = filteredFarm.map((data) => data.coords)
+			console.log('onlyCoords: ', onlyCoords)
+
+			const getRegionForCoordinates = (coordinates) => {
+				let minLat, maxLat, minLng, maxLng;
+
+				// Loop through the coordinates to find min and max latitudes/longitudes
+				coordinates.forEach(subArray => {
+					subArray.forEach(coord => {
+						// console.log('coords: ', coord)
+						const { latitude, longitude } = coord;
+
+						minLat = minLat !== undefined ? Math.min(minLat, latitude) : latitude;
+						maxLat = maxLat !== undefined ? Math.max(maxLat, latitude) : latitude;
+						minLng = minLng !== undefined ? Math.min(minLng, longitude) : longitude;
+						maxLng = maxLng !== undefined ? Math.max(maxLng, longitude) : longitude;
+					})
+				});
+
+				// Calculate the deltas (adding some padding)
+				const latitudeDelta = (maxLat - minLat) * 1.2; // Adding 20% padding
+				const longitudeDelta = (maxLng - minLng) * 1.2;
+
+				// Return the region object that can be used in `animateToRegion`
+				return {
+					latitude: (maxLat + minLat) / 2, // Center latitude
+					longitude: (maxLng + minLng) / 2, // Center longitude
+					latitudeDelta: latitudeDelta,
+					longitudeDelta: longitudeDelta
+				};
+			};
+			const getMapCords = getRegionForCoordinates(onlyCoords)
+			setmapCoordsInit(getMapCords)
+
 			setfilteredFarmArr(filteredFarm)
 		}
 	}, [farmName]);
@@ -185,106 +231,114 @@ const MapScreen = ({ navigation, route }) => {
 		return <Text>Loading..</Text>
 	}
 
+	if (mapCoordsInit.latitude !== null) {
 
-	return (
-		<View style={styles.container}>
-			<MapView
-				onRegionChangeComplete={onRegionChangeComplete}
-				// provider={PROVIDER_GOOGLE}
-				ref={mapRef}
-				showsUserLocation={true}
-				// followsUserLocation={true}
-				style={styles.map}
-				initialRegion={{
-					latitude: filteredFarmArr[0]?.farmCenterGeo?.lat,
-					longitude: filteredFarmArr[0]?.farmCenterGeo?.lng,
-					latitudeDelta: 0.2222,
-					longitudeDelta: 0.0821
-				}}
-				mapType="satellite"
-			>
-				{
-					filteredFarmArr.length > 0 && filteredFarmArr.map((coordArr, i) => {
-						const canPress = data.parcelas.find((parc) => parc.parcela.split(" ").join("") === coordArr.talhao.split(" ").join(""))
-						const isPressedHere = isPressed && isPressed === canPress?.parcela ? 1 : 0.6
-						return (
-							<View key={i}>
-								<Polygon
-									fillColor={canPress ? `rgba(251,191,112,${isPressedHere})` : "rgba(245,245,245,0.6)"}
-									// fillColor="#FBBF70"
-									coordinates={coordArr.coords}
-									onPress={e => {
-										console.log('Press Event',)
-										if (canPress) {
-											setIsPressed(coordArr.talhao)
-											const parcela = data.parcelas.find((parc) => parc.parcela === coordArr.talhao)
-											const objToAdd = {
-												talhao: coordArr.talhao,
-												prods: data.prods.filter((prod) => prod.type !== "Operação"),
-												area: parcela.areaSolicitada,
-												cultura: data.cultura
+
+		return (
+			<View style={styles.container}>
+				<MapView
+					onRegionChangeComplete={onRegionChangeComplete}
+					// provider={PROVIDER_GOOGLE}
+					ref={mapRef}
+					showsUserLocation={true}
+					// followsUserLocation={true}
+					style={styles.map}
+					initialRegion={{
+						latitude: mapCoordsInit.latitude,
+						longitude: mapCoordsInit.longitude,
+						latitudeDelta: mapCoordsInit.latitudeDelta,
+						longitudeDelta: mapCoordsInit.longitudeDelta,
+						// latitude: filteredFarmArr[0]?.farmCenterGeo?.lat,
+						// longitude: filteredFarmArr[0]?.farmCenterGeo?.lng,
+						// latitudeDelta: 0.111098,
+						// longitudeDelta: 0.076567
+					}}
+					mapType="satellite"
+				>
+					{
+						filteredFarmArr.length > 0 && filteredFarmArr.map((coordArr, i) => {
+							const canPress = data.parcelas.find((parc) => parc.parcela.split(" ").join("") === coordArr.talhao.split(" ").join(""))
+							const isPressedHere = isPressed && isPressed === canPress?.parcela ? 1 : 0.6
+							return (
+								<View key={i}>
+									<Polygon
+										fillColor={canPress ? `rgba(251,191,112,${isPressedHere})` : "rgba(245,245,245,0.6)"}
+										// fillColor="#FBBF70"
+										coordinates={coordArr.coords}
+										onPress={e => {
+											console.log('Press Event',)
+											if (canPress) {
+												setIsPressed(coordArr.talhao)
+												const parcela = data.parcelas.find((parc) => parc.parcela === coordArr.talhao)
+												const objToAdd = {
+													talhao: coordArr.talhao,
+													prods: data.prods.filter((prod) => prod.type !== "Operação"),
+													area: parcela.areaSolicitada,
+													cultura: data.cultura,
+													farmName: data.farmName
+												}
+												console.log('data to bottom', objToAdd)
+												console.log('data to bottom', data)
+												setPropsToBottom(objToAdd)
+												refRBSheet.current.open()
+												Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
 											}
-											console.log('data to bottom', objToAdd)
-											setPropsToBottom(objToAdd)
-											refRBSheet.current.open()
-											Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-										}
-									}}
-									tappable={true}
-								/>
-								{zoomLevel < 15 && (
-									<Marker
-										key={zoomLevel}  // Force re-render by using zoom level as key
-										hideCallout={true}
-										showCallout={true}
-										tracksViewChanges={false}
-										coordinate={{
-											latitude: coordArr.talhaoCenterGeo.lat,
-											longitude: coordArr.talhaoCenterGeo.lng
 										}}
-									>
+										tappable={true}
+									/>
+									{zoomLevel < 15 && (
+										<Marker
+											key={zoomLevel}  // Force re-render by using zoom level as key
+											hideCallout={true}
+											showCallout={true}
+											tracksViewChanges={false}
+											coordinate={{
+												latitude: coordArr.talhaoCenterGeo.lat,
+												longitude: coordArr.talhaoCenterGeo.lng
+											}}
+										>
 
-										<Text>{coordArr.talhao}</Text>
-									</Marker>
-								)}
+											<Text>{coordArr.talhao}</Text>
+										</Marker>
+									)}
 
-							</View>
-						)
-					})
-				}
-			</MapView>
-			{
-				!isPressed &&
-				<>
+								</View>
+							)
+						})
+					}
+				</MapView>
+				{
+					!isPressed &&
+					<>
 
-					<View
-						style={{
-							width: 50,
-							height: 50,
-							backgroundColor: "transparent",
-							position: "absolute",
-							bottom: "20%",
-							left: "80%",
-							zIndex: 10,
-							borderRadius: 50
-						}}
-					>
-						<IconButton
-							type={"paper"}
-							icon="target-account"
-							color={"grey"}
-							size={28}
-							onPress={handleSetLocation}
-							btnStyles={{
-								backgroundColor: "rgba(255,255,255,0.9)",
-								borderRadius: 50,
-								justifyContent: "center",
-								alignItems: "center",
+						<View
+							style={{
+								width: 50,
 								height: 50,
-								width: 50
+								backgroundColor: "transparent",
+								position: "absolute",
+								bottom: "10%",
+								left: "80%",
+								zIndex: 10,
+								borderRadius: 50
 							}}
-						/>
-						{/* <IconButton
+						>
+							<IconButton
+								type={"paper"}
+								icon="target-account"
+								color={"grey"}
+								size={28}
+								onPress={handleSetLocation}
+								btnStyles={{
+									backgroundColor: "rgba(255,255,255,0.9)",
+									borderRadius: 50,
+									justifyContent: "center",
+									alignItems: "center",
+									height: 50,
+									width: 50
+								}}
+							/>
+							{/* <IconButton
 							type={"awesome"}
 							icon="filter"
 							color={"grey"}
@@ -299,60 +353,66 @@ const MapScreen = ({ navigation, route }) => {
 								width: 50
 							}}
 						/> */}
-					</View>
-				</>
-			}
+						</View>
+					</>
+				}
 
-			<View
-				style={{
-					width: 50,
-					height: 50,
-					backgroundColor: "transparent",
-					position: "absolute",
-					top: "8%",
-					right: "84%",
-					zIndex: 10,
-					borderRadius: 50
-				}}
-			>
-				<IconButton
-					type={""}
-					icon="arrow-back-outline"
-					color={"grey"}
-					size={22}
-					onPress={() => navigation.navigate("HomeStackScreen")}
-					btnStyles={{
-						backgroundColor: "rgba(255,255,255,0.9)",
-						borderRadius: 50,
-						justifyContent: "center",
-						alignItems: "center",
+				<View
+					style={{
+						width: 50,
 						height: 50,
-						width: 50
+						backgroundColor: "transparent",
+						position: "absolute",
+						top: "8%",
+						right: "84%",
+						zIndex: 10,
+						borderRadius: 50
 					}}
-				/>
-			</View>
+				>
+					<IconButton
+						type={""}
+						icon="arrow-back-outline"
+						color={"grey"}
+						size={22}
+						onPress={() => navigation.navigate("HomeStackScreen")}
+						btnStyles={{
+							backgroundColor: "rgba(255,255,255,0.9)",
+							borderRadius: 50,
+							justifyContent: "center",
+							alignItems: "center",
+							height: 50,
+							width: 50
+						}}
+					/>
+				</View>
 
-			<View
-				style={{
-					width: 240,
-					height: 40,
-					// backgroundColor: "transparent",
-					backgroundColor: "rgba(255,255,255,0.9)",
-					backgroundColor: "rgba(0,0,255,0.6)",
-					position: "absolute",
-					top: "9.5%",
-					right: "5%",
-					zIndex: 10,
-					borderRadius: 12,
-					justifyContent: 'center',
-					alignItems: 'center',
-				}}
-			>
-				<Text style={{ textAlign: 'center', color: 'whitesmoke', fontWeight: 'bold' }}>{data.code.replace(/([A-Za-z]+)(\d+)/, '$1 $2')} - {getOperationAp && getOperationAp}</Text>
+				<View
+					style={{
+						width: 240,
+						height: 40,
+						// backgroundColor: "transparent",
+						backgroundColor: "rgba(255,255,255,0.8)",
+						// backgroundColor: "rgba(0,0,255,0.6)",
+						position: "absolute",
+						top: "9.5%",
+						right: "5%",
+						zIndex: 10,
+						borderRadius: 12,
+						justifyContent: 'center',
+						alignItems: 'center',
+					}}
+				>
+					<Text style={{ textAlign: 'center', color: 'black', fontWeight: '500' }}>
+						<Text style={{ fontWeight: 'bold' }}>
+							{data.code.replace(/([A-Za-z]+)(\d+)/, '$1 $2')}
+						</Text>
+						{getOperationAp && " " + getOperationAp}
+					</Text>
+				</View>
+				<BottomSheetApp refRBSheet={refRBSheet} data={propsToBottom} handleCloseSheet={handleCloseSheet} />
 			</View>
-			<BottomSheetApp refRBSheet={refRBSheet} data={propsToBottom} handleCloseSheet={handleCloseSheet} />
-		</View>
-	);
+		);
+	}
 };
 const styles = StyleSheet.create({
 	container: {
