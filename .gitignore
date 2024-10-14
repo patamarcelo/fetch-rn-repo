@@ -38,6 +38,10 @@ yarn-error.*
 *.env
 /eas.json
 eas.json
+
+app.json
+/app.json
+
 # Expo
 # .expo
 dist/

@@ -238,7 +238,7 @@ const MapScreen = ({ navigation, route }) => {
 			<View style={styles.container}>
 				<MapView
 					onRegionChangeComplete={onRegionChangeComplete}
-					// provider={PROVIDER_GOOGLE}
+					provider={Platform.OS === 'android' ? PROVIDER_GOOGLE : undefined} // Use Google Maps for Android, default (Apple Maps) for iOS
 					ref={mapRef}
 					showsUserLocation={true}
 					// followsUserLocation={true}
