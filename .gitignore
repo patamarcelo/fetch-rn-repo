@@ -47,4 +47,6 @@ app.json
 dist/
 web-build/
 
+android
+gradle.properties
 
