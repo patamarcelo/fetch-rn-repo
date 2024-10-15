@@ -90,7 +90,6 @@ android {
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 18
         versionName "1.0.18"
-        resValue "string", "EXPO_PUBLIC_GOOGLE_MAPS_API_KEY", EXPO_PUBLIC_GOOGLE_MAPS_API_KEY
 
     }
     signingConfigs {
