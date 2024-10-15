@@ -39,14 +39,12 @@ yarn-error.*
 /eas.json
 eas.json
 
-app.json
-/app.json
 
 # Expo
 # .expo
 dist/
 web-build/
 
-android
-gradle.properties
+# android
+# gradle.properties
 

@@ -1,0 +1,57 @@
+{
+  "expo": {
+    "name": "Farm Applicações",
+    "slug": "fetch-app",
+    "version": "1.0.18",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "plugins": [
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Permitir que o $(PRODUCT_NAME) use sua localização."
+        }
+      ]
+    ],
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#031633"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "buildNumber": "1.0.18",
+      "supportsTablet": true,
+      "bundleIdentifier": "com.patamarcelo.fetchapp"
+    },
+    "android": {
+      "versionCode": 18,
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#031633"
+      },
+      "package": "com.patamarcelo.fetchapp",
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyC74WnhqSXYu2RFGeIxKUC46yWAoSFRx9U"
+        }
+      }
+    },
+    
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "6f296023-01ce-4d08-ae54-437fdd9cb693"
+      }
+    },
+    "runtimeVersion": "exposdk:46.0.0",
+    "updates": {
+      "url": "https://u.expo.dev/6f296023-01ce-4d08-ae54-437fdd9cb693"
+    }
+  }
+}
