@@ -9,7 +9,8 @@ import {
 	Text,
 	StyleSheet,
 	Pressable,
-	ScrollView
+	ScrollView,
+	Alert
 } from "react-native";
 import Button from "../components/ui/Button";
 
