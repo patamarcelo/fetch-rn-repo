@@ -69,7 +69,7 @@ const HomeStack = () => {
 				}}
 			/>
 			{/* <Tab.Screen
-				name="Maps"
+				name="Kmls"
 				component={MapStack}
 				listeners={{
 					tabPress: (e) => {
@@ -81,7 +81,7 @@ const HomeStack = () => {
 					}
 				}}
 				options={{
-					title: "Mapas",
+					title: "KML",
 					tabBarIcon: ({ color, size }) => (
 						<Ionicons name="map" color={color} size={size} />
 					)

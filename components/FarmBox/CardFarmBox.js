@@ -64,54 +64,6 @@ const CardFarmBox = (props) => {
     }
 
 
-
-    //Animated View by chatgpt
-    // const parcelaAnimValues = useRef(data?.parcelas?.map(() => new Animated.Value(0))).current;
-    // const produtoAnimValues = useRef(data?.prods?.filter((pro) => pro.type !== 'Operação').map(() => new Animated.Value(0))).current;
-
-    // useEffect(() => {
-    //     Animated.stagger(100, parcelaAnimValues.map(animValue => {
-    //         return Animated.timing(animValue, {
-    //             toValue: 1,
-    //             duration: 500,
-    //             easing: Easing.ease,
-    //             useNativeDriver: true,
-    //         });
-    //     })).start();
-
-    //     Animated.stagger(100, produtoAnimValues.map(animValue => {
-    //         return Animated.timing(animValue, {
-    //             toValue: 1,
-    //             duration: 500,
-    //             easing: Easing.ease,
-    //             useNativeDriver: true,
-    //         });
-    //     })).start();
-    // }, [parcelaAnimValues, produtoAnimValues]);
-
-    // const getParcelaAnimatedStyle = (index) => {
-    //     return {
-    //         opacity: parcelaAnimValues[index],
-    //         transform: [{
-    //             translateY: parcelaAnimValues[index].interpolate({
-    //                 inputRange: [0, 1],
-    //                 outputRange: [20, 0],
-    //             }),
-    //         }],
-    //     };
-    // };
-
-    // const getProdutoAnimatedStyle = (index) => {
-    //     return {
-    //         opacity: produtoAnimValues[index],
-    //         transform: [{
-    //             translateY: produtoAnimValues[index].interpolate({
-    //                 inputRange: [0, 1],
-    //                 outputRange: [20, 0],
-    //             }),
-    //         }],
-    //     };
-    // };
     return (
         <Pressable
             style={({ pressed }) => [
@@ -231,6 +183,7 @@ const styles = StyleSheet.create({
         // flexDirection: 'row'
     },
     parcelasContainer: {
+        marginTop: 6,
         gap: 5,
         flexDirection: 'row',
         paddingHorizontal: 4,
@@ -240,11 +193,11 @@ const styles = StyleSheet.create({
     },
     parcelasView: {
         flexDirection: 'row',
-        gap: 10,
-        width: 90,
+        gap: 1,
+        width: 91,
         borderRadius: 12,
-        padding: 8,
-        // paddingVertical: 12,
+        paddingHorizontal: 3,
+        paddingVertical: 6,
         backgroundColor: 'green',
         justifyContent: 'space-around'
     },

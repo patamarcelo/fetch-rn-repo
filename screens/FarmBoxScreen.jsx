@@ -7,6 +7,7 @@ import {
     Pressable,
     Alert,
     ActivityIndicator,
+    TextInput
 } from 'react-native'
 
 
@@ -34,6 +35,8 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LINK } from '../utils/api';
 
 import { newMapArr } from "./plot-helper";
+
+import { FAB } from "react-native-paper"; // Floating Action Button
 
 
 
@@ -67,6 +70,9 @@ const FarmBoxScreen = (props) => {
 
     const [showPlotMap, setshowPlotMap] = useState(false);
 
+    const [searchQuery, setSearchQuery] = useState(""); // State for search input
+    const [showSearch, setShowSearch] = useState(false); // Toggle for search bar visibility
+
     const formatNumber = number => {
         return number?.toLocaleString("pt-br", {
             minimumFractionDigits: 2,
@@ -75,17 +81,17 @@ const FarmBoxScreen = (props) => {
     }
 
     useEffect(() => {
-		if (mapPlotData?.length > 0 && showFarm) {
+        if (mapPlotData?.length > 0 && showFarm) {
             const dataFromMap = newMapArr(mapPlotData)
-			const filteredFarm = dataFromMap.filter((data) => data.farmName == showFarm.replace('Fazenda', 'Projeto').replace('Cacique', 'Cacíque'))
-			console.log('filteredFarm', showFarm)
-			if(filteredFarm.length > 0){
+            const filteredFarm = dataFromMap.filter((data) => data.farmName == showFarm.replace('Fazenda', 'Projeto').replace('Cacique', 'Cacíque'))
+            console.log('filteredFarm', showFarm)
+            if (filteredFarm.length > 0) {
                 setshowPlotMap(true)
             } else {
                 setshowPlotMap(false)
             }
-		}
-	}, [showFarm]);
+        }
+    }, [showFarm]);
 
     const handleUpdateApiData = async () => {
         setIsloadingDbFarm(true)
@@ -198,9 +204,9 @@ const FarmBoxScreen = (props) => {
                 setIsLoadingMapData(false);
             }
         }
-        getMapData()    
+        getMapData()
     }, []);
-    
+
 
 
     const getData = async () => {
@@ -264,7 +270,7 @@ const FarmBoxScreen = (props) => {
         getData()
     }, []);
 
-    
+
 
     useEffect(() => {
         if (farmBoxData) {
@@ -303,6 +309,35 @@ const FarmBoxScreen = (props) => {
         }
     }
 
+    const handleFilterProps = () => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy)
+        setShowSearch((prev) => !prev)
+        setSearchQuery("")
+    }
+
+    useEffect(() => {
+        function removeAccents(str) {
+            return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        }
+
+        const filterApplications = (applications) => {
+            if (searchQuery.trim() === "") {
+                // Return the full array if the search query is empty
+                setfarmData(applications);
+            } else {
+                const filteredData = applications
+                    .filter((data) =>
+                        data.prods.some((prod) =>
+                            removeAccents(prod.product).toLowerCase().includes(searchQuery.toLowerCase())
+                        )
+                    )
+                setfarmData(filteredData);
+            }
+        };
+
+        filterApplications(farmBoxData.data);
+    }, [searchQuery, farmBoxData.data]);
+
 
     if (isloadingDbFarm) {
         return (
@@ -314,6 +349,16 @@ const FarmBoxScreen = (props) => {
 
     return (
         <View style={styles.mainContainer}>
+            {showSearch && (
+                <TextInput
+                    style={styles.searchBar}
+                    placeholder="Selecione um produto ou operação..."
+                    placeholderTextColor="#888"
+                    value={searchQuery}
+                    onChangeText={setSearchQuery}
+                    autoFocus={true} // Automatically focuses when shown
+                />
+            )}
             <ScrollView ref={ref} style={[styles.mainContainer, { marginBottom: tabBarHeight }]}
                 horizontal={false}
                 refreshControl={
@@ -325,45 +370,55 @@ const FarmBoxScreen = (props) => {
                     />
                 }
             >
-                {farmData && 
+                {farmData &&
                     onlyFarms.filter((farmArr) => showFarm !== null ? farmArr === showFarm : farmArr.length > 0).map((farms, i) => {
                         const totalByFarm = farmData.filter((farmName) => farmName.farmName === farms).reduce((acc, curr) => acc += curr.saldoAreaAplicar, 0)
-                        return (
-                            <View key={i}>
-                                {
-                                    showFarm === null &&
-                                    <Pressable
-                                        style={({ pressed }) => [
-                                            styles.headerContainer,
-                                            pressed && styles.pressed,
-                                            i === 0 && styles.firstHeader
-                                        ]}
+                        const getTeste = farmData[0]
+                        if (totalByFarm > 0) {
+                            return (
+                                <View key={i}>
+                                    {
+                                        showFarm === null &&
+                                        <Pressable
+                                            style={({ pressed }) => [
+                                                styles.headerContainer,
+                                                pressed && styles.pressed,
+                                                i === 0 && styles.firstHeader
+                                            ]}
 
-                                        onPress={handleShowFarm.bind(this, farms)}
-                                    >
-                                        <Text style={{ color: 'white', fontSize: 18, fontWeight: 'bold' }}>
-                                            {farms.replace('Fazenda ', '')}
-                                        </Text>
-                                        <Text style={{ fontSize: 10, color: Colors.secondary[200] }}>{formatNumber(totalByFarm)}</Text>
-                                    </Pressable>
-                                }
-                                {
-                                    showFarm !== null && showFarm === farms && farmData.length > 0 &&
-                                    farmData.filter((farmName) => farmName.farmName === farms).map((farmDatas, i) => {
-                                        return (
-                                            <View style={{ marginBottom: 10 }} key={farmDatas.idAp}>
-                                                <CardFarmBox data={farmDatas} indexParent={i} showMapPlot={showPlotMap}/>
-                                            </View>
-                                        )
-                                    })
-                                }
-                            </View>
-
-
-                        )
+                                            onPress={handleShowFarm.bind(this, farms)}
+                                        >
+                                            <Text style={{ color: 'white', fontSize: 18, fontWeight: 'bold' }}>
+                                                {farms.replace('Fazenda ', '')}
+                                            </Text>
+                                            <Text style={{ fontSize: 10, color: Colors.secondary[200] }}>{formatNumber(totalByFarm)}</Text>
+                                        </Pressable>
+                                    }
+                                    {
+                                        showFarm !== null && showFarm === farms && farmData.length > 0 && totalByFarm > 0 &&
+                                        farmData.filter((farmName) => farmName.farmName === farms).map((farmDatas, i) => {
+                                            return (
+                                                <View style={{ marginBottom: 10 }} key={farmDatas.idAp}>
+                                                    <CardFarmBox data={farmDatas} indexParent={i} showMapPlot={showPlotMap} />
+                                                </View>
+                                            )
+                                        })
+                                    }
+                                </View>
+                            )
+                        }
                     })
                 }
             </ScrollView>
+            {/* Floating Action Button */}
+            <View style={styles.fabContainer}>
+                <FAB
+                    style={styles.fab}
+                    icon={showSearch ? "close" : "magnify"}
+                    color="black" // Icon color
+                    onPress={handleFilterProps}
+                />
+            </View>
         </View>
     );
 }
@@ -373,6 +428,34 @@ export default FarmBoxScreen;
 const styles = StyleSheet.create({
     firstHeader: {
         marginTop: 0
+    },
+    searchBar: {
+        height: 40,
+        margin: 10,
+        paddingHorizontal: 15,
+        borderRadius: 20,
+        backgroundColor: "#f0f0f0",
+        backgroundColor: Colors.secondary[200],
+        borderWidth: 1,
+        borderColor: "#ddd",
+        color: "#333"
+    },
+    fabContainer: {
+        position: "absolute",
+        right: 20,
+        bottom: 20
+    },
+    fab: {
+        position: "absolute",
+        right: 30,
+        bottom: 100,
+        backgroundColor: "rgba(200, 200, 200, 0.3)", // Grey, almost transparent
+        width: 50,
+        height: 50,
+        borderRadius: 25, // Makes it perfectly circular
+        justifyContent: "center",
+        alignItems: "center",
+        elevation: 4
     },
     mainContainer: {
         flex: 1,

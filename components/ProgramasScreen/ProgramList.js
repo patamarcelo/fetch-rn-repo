@@ -25,6 +25,8 @@ import {
 
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 
+import * as Haptics from 'expo-haptics';
+
 
 
 
@@ -62,21 +64,26 @@ const ProgramList = ({ refresh, isLoading, innerRef, setPrintableData }) => {
 			program: programa
 		}
 		setPrintableData(prev => objToAdd);
-	}, [programa]);
+	}, [programa, estagios]);
 
+	
 	// Function to filter applications based on the search query
+	function removeAccents(str) {
+		return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+	}
 	const filterApplications = (applications) => {
 		if (searchQuery.trim() === "") {
 			return applications; // Return full array if search query is empty
 		}
 		return applications.filter((data) =>
-			data.defensivo__produto
+			removeAccents(data.defensivo__produto)
 				.toLowerCase()
 				.includes(searchQuery.toLowerCase())
 		);
 	};
 
 	const handleFilterProps = () => {
+		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy)
 		setShowSearch((prev) => !prev)
 		setSearchQuery("")
 	}
