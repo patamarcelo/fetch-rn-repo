@@ -24,6 +24,21 @@ const CardFarmBox = (props) => {
 
     const [showAps, setShowAps] = useState(false);
     const navigation = useNavigation();
+    const [selectedParcelas, setSelectedParcelas] = useState([]);
+    const [totalSelected, setTotalSelected] = useState(0);
+
+    useEffect(() => {
+        setSelectedParcelas([])
+    }, []);
+
+    useEffect(() => {
+        if (selectedParcelas?.length > 0) {
+            const total = selectedParcelas.reduce((acc, curr) => acc += (curr.areaSolicitada - curr.areaAplicada), 0)
+            setTotalSelected(total)
+        } else{
+            setTotalSelected(0)
+        }
+    }, [selectedParcelas]);
 
 
     const formatNumber = number => {
@@ -41,7 +56,24 @@ const CardFarmBox = (props) => {
 
     const handleOpen = () => {
         setShowAps(prev => !prev)
+        setSelectedParcelas([])
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy)
+    }
+
+    const handleSelected = (parcela) => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy)
+        setSelectedParcelas((prev) => {
+            // Check if the object exists in the array by comparing a unique property (e.g., parcelaId)
+            const exists = prev.some((item) => item.parcelaId === parcela.parcelaId);
+
+            if (exists) {
+                // If it exists, remove it
+                return prev.filter((item) => item.parcelaId !== parcela.parcelaId);
+            } else {
+                // If it doesn't exist, add it
+                return [...prev, parcela];
+            }
+        });
     }
 
     const iconDict = [
@@ -72,7 +104,7 @@ const CardFarmBox = (props) => {
     const handleKmlGenerator = (data, mapPlotData) => {
         console.log('handle kml')
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy)
-        exportPolygonsAsKML(data, mapPlotData)
+        exportPolygonsAsKML(data, mapPlotData, selectedParcelas)
 
     }
 
@@ -83,8 +115,8 @@ const CardFarmBox = (props) => {
                 styles.mainContainer,
                 // pressed && styles.pressed, 
                 { marginTop: indexParent === 0 && 0 }]}
-            // onPress={handleOpen}
-            >
+        // onPress={handleOpen}
+        >
             <View style={styles.infoContainer}>
                 <Text style={{ color: 'whitesmoke' }}>Area: {formatNumber(data.areaSolicitada)}</Text>
                 <Text style={{ color: 'whitesmoke' }}>Aplicado: {formatNumber(data.areaAplicada)}</Text>
@@ -122,15 +154,17 @@ const CardFarmBox = (props) => {
                         {
                             data?.parcelas?.map((parcela) => {
                                 const uniKey = data.idAp + parcela.parcela
+                                const isSelected = selectedParcelas.find((filt) => filt.parcelaId === parcela.parcelaId)
                                 return (
-                                    <View
+                                    <Pressable
                                         key={uniKey}
-                                        style={[styles.parcelasView, { backgroundColor: parcela.fillColorParce }]}
+                                        style={[styles.parcelasView, isSelected && styles.selectedParcelas, { backgroundColor: parcela.fillColorParce }]}
+                                        onPress={handleSelected.bind(this, parcela)}
                                     >
                                         <Text style={{ color: parcela.fillColorParce === '#E4D00A' ? 'black' : 'whitesmoke' }}>{parcela.parcela}</Text>
                                         <Text style={{ color: parcela.fillColorParce === '#E4D00A' ? 'black' : 'whitesmoke' }}>-</Text>
                                         <Text style={{ color: parcela.fillColorParce === '#E4D00A' ? 'black' : 'whitesmoke' }}>{formatNumber(parcela.areaSolicitada)}</Text>
-                                    </View>
+                                    </Pressable>
                                 )
                             })
                         }
@@ -156,24 +190,31 @@ const CardFarmBox = (props) => {
                     </View>
                     {
                         showMapPlot &&
-                        <View style={styles.buttonContainer}>
-                            <Pressable
-                                style={({ pressed }) => [
-                                    styles.mapContainer,
-                                    pressed && styles.pressed]}
-                                onPress={handleKmlGenerator.bind(this, data, mapPlotData)}
-                            >
-                                <FontAwesome5 name="plane" size={24} color={Colors.succes[600]} />
-                            </Pressable>
-                            <Pressable
-                                style={({ pressed }) => [
-                                    styles.mapContainer,
-                                    pressed && styles.pressed]}
-                                onPress={handleMapApi.bind(this, data)}
-                            >
-                                <FontAwesome5 name="map-marked-alt" size={24} color={Colors.primary[600]} />
-                            </Pressable>
+
+                        <View style={styles.footerContainer}>
+                            <View style={styles.totalSelected}>
+                                <Text style={styles.textTotalSelected}>{totalSelected > 0 ? formatNumber(totalSelected) : '-'}</Text>
+                            </View>
+                            <View style={styles.buttonContainer}>
+                                <Pressable
+                                    style={({ pressed }) => [
+                                        styles.mapContainer,
+                                        pressed && styles.pressed]}
+                                    onPress={handleKmlGenerator.bind(this, data, mapPlotData)}
+                                >
+                                    <FontAwesome5 name="plane" size={24} color={Colors.succes[600]} />
+                                </Pressable>
+                                <Pressable
+                                    style={({ pressed }) => [
+                                        styles.mapContainer,
+                                        pressed && styles.pressed]}
+                                    onPress={handleMapApi.bind(this, data)}
+                                >
+                                    <FontAwesome5 name="map-marked-alt" size={24} color={Colors.primary[600]} />
+                                </Pressable>
+                            </View>
                         </View>
+
                     }
                 </View>
             }
@@ -187,6 +228,21 @@ export default CardFarmBox
 
 
 const styles = StyleSheet.create({
+    textTotalSelected:{
+        fontWeight: 'bold'
+    },
+    totalSelected:{
+        marginLeft: 15
+    },  
+    footerContainer:{
+        flexDirection: 'row',
+        alignItems: 'baseline',
+        justifyContent: 'space-between'
+    },
+    selectedParcelas: {
+        borderColor: 'white',
+        borderWidth: 2
+    },
     buttonContainer: {
         flexDirection: 'row',
         justifyContent: 'flex-end',
@@ -281,7 +337,7 @@ const styles = StyleSheet.create({
     pressed: {
         opacity: 0.3,
         // backgroundColor: Colors.secondary[200],
-        
+
     },
     mapContainer: {
         marginRight: 10,
