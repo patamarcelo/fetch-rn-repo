@@ -78,7 +78,7 @@ const ProgramList = ({ refresh, isLoading, innerRef, setPrintableData }) => {
 		return applications.filter((data) =>
 			removeAccents(data.defensivo__produto)
 				.toLowerCase()
-				.includes(searchQuery.toLowerCase())
+				.includes(removeAccents(searchQuery).toLowerCase())
 		);
 	};
 

@@ -328,7 +328,7 @@ const FarmBoxScreen = (props) => {
                 const filteredData = applications
                     .filter((data) =>
                         data.prods.some((prod) =>
-                            removeAccents(prod.product).toLowerCase().includes(searchQuery.toLowerCase())
+                            removeAccents(prod.product).toLowerCase().includes(removeAccents(searchQuery).toLowerCase())
                         )
                     )
                 setfarmData(filteredData);

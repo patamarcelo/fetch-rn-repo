@@ -25,6 +25,8 @@ import { selectMapDataPlot } from "../store/redux/selector";
 
 
 
+
+
 // API GET GEOPOINTS PLANTED
 // http://127.0.0.1:8000/diamante/plantio/get_plantio_detail_map/
 
@@ -232,7 +234,6 @@ const MapScreen = ({ navigation, route }) => {
 	}
 
 	if (mapCoordsInit.latitude !== null) {
-
 
 		return (
 			<View style={styles.container}>

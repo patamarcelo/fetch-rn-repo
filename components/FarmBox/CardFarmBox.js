@@ -13,10 +13,15 @@ import * as Haptics from 'expo-haptics';
 
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import { useNavigation } from "@react-navigation/native";
-
+import { exportPolygonsAsKML } from "../../utils/kml-generator";
+import { selectMapDataPlot } from "../../store/redux/selector";
+import { useSelector } from "react-redux";
 
 const CardFarmBox = (props) => {
     const { data, indexParent, showMapPlot } = props
+
+    const mapPlotData = useSelector(selectMapDataPlot)
+
     const [showAps, setShowAps] = useState(false);
     const navigation = useNavigation();
 
@@ -58,8 +63,16 @@ const CardFarmBox = (props) => {
     const getCultura = filteredIcon(data.cultura)
 
     const handleMapApi = (data) => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy)
         console.log('handle MAP FArmbox', data)
         navigation.navigate('MapsCreenStack', { data })
+
+    }
+
+    const handleKmlGenerator = (data, mapPlotData) => {
+        console.log('handle kml')
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy)
+        exportPolygonsAsKML(data, mapPlotData)
 
     }
 
@@ -68,29 +81,38 @@ const CardFarmBox = (props) => {
         <Pressable
             style={({ pressed }) => [
                 styles.mainContainer,
-                pressed && styles.pressed, { marginTop: indexParent === 0 && 0 }]}
-            onPress={handleOpen}>
+                // pressed && styles.pressed, 
+                { marginTop: indexParent === 0 && 0 }]}
+            // onPress={handleOpen}
+            >
             <View style={styles.infoContainer}>
                 <Text style={{ color: 'whitesmoke' }}>Area: {formatNumber(data.areaSolicitada)}</Text>
                 <Text style={{ color: 'whitesmoke' }}>Aplicado: {formatNumber(data.areaAplicada)}</Text>
                 <Text style={{ color: 'whitesmoke' }}>Saldo: {formatNumber(data.saldoAreaAplicar)}</Text>
 
             </View>
-            <View style={styles.headerContainer}>
-                <View>
-                    <Text style={styles.headerTitle}> {data?.code?.split('AP')}</Text>
-                    <Text style={[styles.headerTitle, styles.dateTile]}> {data?.dateAp?.split('-').reverse().join('/')}</Text>
+            <Pressable
+                style={({ pressed }) => [
+                    styles.mainContainer,
+                    pressed && styles.pressed, { marginTop: indexParent === 0 && 0 }]}
+                onPress={handleOpen}>
+
+                <View style={styles.headerContainer}>
+                    <View>
+                        <Text style={styles.headerTitle}> {data?.code?.split('AP')}</Text>
+                        <Text style={[styles.headerTitle, styles.dateTile]}> {data?.dateAp?.split('-').reverse().join('/')}</Text>
+                    </View>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+                        <Text style={styles.headerTitle}> {data.operation}</Text>
+                        <Image source={getCultura}
+                            style={{ width: 20, height: 20 }}
+                        />
+                    </View>
+                    <View style={styles.progressContainer}>
+                        <Progress.Pie size={30} indeterminate={false} progress={data.percent} color={data.percentColor} />
+                    </View>
                 </View>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
-                    <Text style={styles.headerTitle}> {data.operation}</Text>
-                    <Image source={getCultura}
-                        style={{ width: 20, height: 20 }}
-                    />
-                </View>
-                <View style={styles.progressContainer}>
-                    <Progress.Pie size={30} indeterminate={false} progress={data.percent} color={data.percentColor} />
-                </View>
-            </View>
+            </Pressable>
 
             {
                 showAps &&
@@ -134,14 +156,22 @@ const CardFarmBox = (props) => {
                     </View>
                     {
                         showMapPlot &&
-                        <View>
+                        <View style={styles.buttonContainer}>
+                            <Pressable
+                                style={({ pressed }) => [
+                                    styles.mapContainer,
+                                    pressed && styles.pressed]}
+                                onPress={handleKmlGenerator.bind(this, data, mapPlotData)}
+                            >
+                                <FontAwesome5 name="plane" size={24} color={Colors.succes[600]} />
+                            </Pressable>
                             <Pressable
                                 style={({ pressed }) => [
                                     styles.mapContainer,
                                     pressed && styles.pressed]}
                                 onPress={handleMapApi.bind(this, data)}
                             >
-                                <FontAwesome5 name="map-marked-alt" size={24} color="black" />
+                                <FontAwesome5 name="map-marked-alt" size={24} color={Colors.primary[600]} />
                             </Pressable>
                         </View>
                     }
@@ -149,7 +179,7 @@ const CardFarmBox = (props) => {
             }
 
 
-        </Pressable>
+        </Pressable >
     );
 }
 
@@ -157,6 +187,13 @@ export default CardFarmBox
 
 
 const styles = StyleSheet.create({
+    buttonContainer: {
+        flexDirection: 'row',
+        justifyContent: 'flex-end',
+        gap: 0,
+        marginRight: -5,
+        marginTop: 10
+    },
     mainContainer: {
         backgroundColor: Colors.secondary[300],
         paddingBottom: 10,
@@ -242,7 +279,9 @@ const styles = StyleSheet.create({
         fontWeight: 'bold'
     },
     pressed: {
-        opacity: 0.7
+        opacity: 0.3,
+        // backgroundColor: Colors.secondary[200],
+        
     },
     mapContainer: {
         marginRight: 10,
