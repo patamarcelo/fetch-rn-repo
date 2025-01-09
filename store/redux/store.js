@@ -1,6 +1,7 @@
 import { configureStore } from "@reduxjs/toolkit";
 import { combineReducers } from "redux";
 import GeralReducer from "./geral";
+import authReducer from "./authSlice"
 
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { persistStore, persistReducer } from "redux-persist";
@@ -12,7 +13,8 @@ const persistConfig = {
 };
 
 const reducer = combineReducers({
-	geral: GeralReducer
+	geral: GeralReducer,
+	auth: authReducer,
 });
 
 const persistedReducer = persistReducer(persistConfig, reducer);
@@ -22,6 +24,7 @@ export const store = configureStore({
 	// middleware: [thunk]
 	middleware: (getDefaultMiddleware) =>
 		getDefaultMiddleware({
+			thunk,
 			serializableCheck: false,
 			immutableCheck: false,
 		})

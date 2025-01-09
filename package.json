@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "@devvie/bottom-sheet": "^0.3.0",
-    "@react-native-async-storage/async-storage": "1.23.1",
+    "@react-native-async-storage/async-storage": "^1.23.1",
     "@react-native-community/datetimepicker": "8.2.0",
     "@react-navigation/bottom-tabs": "^6.5.12",
     "@react-navigation/drawer": "^6.6.7",
@@ -28,6 +28,7 @@
     "expo-sharing": "~13.0.0",
     "expo-status-bar": "~2.0.0",
     "expo-updates": "~0.26.10",
+    "firebase": "^11.1.0",
     "react": "18.3.1",
     "react-native": "0.76.5",
     "react-native-config": "^1.5.3",

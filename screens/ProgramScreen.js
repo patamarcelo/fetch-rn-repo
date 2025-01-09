@@ -32,6 +32,9 @@ import PrintProgramPage from "../components/Global/PrintProgramPage";
 
 import * as Haptics from 'expo-haptics';
 
+import { logout } from "../store/redux/authSlice";
+
+
 
 const ProgramScreen = ({ navigation }) => {
 	const sheetRef = useRef(null);
@@ -78,12 +81,12 @@ const ProgramScreen = ({ navigation }) => {
 	);
 
 	console.log('EXPO_PUBLIC_REACT_APP_DJANGO_TOKEN', EXPO_PUBLIC_REACT_APP_DJANGO_TOKEN)
-	
+
 	const handlerPrintData = () => {
 		console.log("print Program")
 		console.log('current Program: ', programSelected)
-		const filteredProds = dataProgram.filter((data) => data.operacao__programa__nome === programSelected.nome).sort((a,b) => a.defensivo__tipo.localeCompare(b.defensivo__tipo))
-		const onlyEstagios = filteredProds.sort((a,b) => a.operacao__prazo_dap - b.operacao__prazo_dap).map((data) =>  {
+		const filteredProds = dataProgram.filter((data) => data.operacao__programa__nome === programSelected.nome).sort((a, b) => a.defensivo__tipo.localeCompare(b.defensivo__tipo))
+		const onlyEstagios = filteredProds.sort((a, b) => a.operacao__prazo_dap - b.operacao__prazo_dap).map((data) => {
 			const newName = `${data.operacao__estagio} | ${data.operacao__prazo_dap}`
 			return newName
 		})
@@ -94,6 +97,11 @@ const ProgramScreen = ({ navigation }) => {
 		const areaTotalProgram = areaTotalPrograms.find((program) => program.programa__nome === programSelected.nome)
 		PrintProgramPage(programSelected, filteredProds, filteredEstagios, areaTotalProgram)
 	}
+
+	const handleLogout = () => {
+		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy)
+		dispatch(logout());
+	};
 
 	useEffect(() => {
 		navigation.setOptions({
@@ -121,25 +129,34 @@ const ProgramScreen = ({ navigation }) => {
 				}
 			},
 			headerRight: ({ tintColor }) => {
-				if (
-					programSelected !== "Programas" &&
-					programSelected !== null
-				) {
-					return (
-						<View style={{ flexDirection: "row", marginRight: 10 }}>
-							<IconButton
-								type={"awesome"}
-								icon={'print'}
-								color={tintColor}
-								size={22}
-								onPress={handlerPrintData}
-								btnStyles={{ marginLeft: 5, marginTop: 10 }}
-							/>
-						</View>
-					);
-				}
+				return (
+					<View style={{ flexDirection: "row", marginRight: 10 }}>
+						{
+							programSelected !== "Programas" &&
+							programSelected !== null ?
+								<IconButton
+									type={"awesome"}
+									icon={'print'}
+									color={tintColor}
+									size={22}
+									onPress={handlerPrintData}
+									btnStyles={{ marginLeft: 5, marginTop: 10 }}
+								/>
+								:
+								<IconButton
+									type={"awesome"}
+									icon={'power-off'}
+									color={tintColor}
+									size={22}
+									onPress={handleLogout}
+									btnStyles={{ marginLeft: 5, marginTop: 10 }}
+								/>
+						}
+					</View>
+				)
 			}
-		});
+		}
+		);
 	}, [programSelected]);
 
 	useScrollToTop(ref);
@@ -185,6 +202,9 @@ const ProgramScreen = ({ navigation }) => {
 	const handlerRefresh = () => {
 		getData();
 	};
+
+	
+	
 
 	if (isLoading && dataProgram.length === 0) {
 		return (

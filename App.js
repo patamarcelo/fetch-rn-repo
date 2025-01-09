@@ -12,17 +12,23 @@ import { store, persistor } from "./store/redux/store";
 import HomeStack from "./stacks/HomeStack";
 import MainStack from "./stacks/MainStack";
 
+import { useSelector } from 'react-redux';
+import LoginStack from "./stacks/LoginStack";
+
+
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
 
 const Navigation = () => {
+	const isAuthenticated = useSelector((state) => state.auth.isAuthenticated);
+
 	return (
 		<NavigationContainer>
-			{/* {!context.isAuth ? ( */}
-			<MainStack />
-			{/* ) : (
-				<AuthenticatedStack context={context} />
-			)} */}
+			{!isAuthenticated ? (
+				<LoginStack />
+			) : (
+				<MainStack />
+			)}
 		</NavigationContainer>
 	);
 };
