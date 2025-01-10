@@ -12,6 +12,8 @@ import { Colors } from '../constants/styles';
 
 import * as Haptics from "expo-haptics";
 
+import { expo } from "../app.json";
+
 
 const LoginScreen = ({ navigation }) => {
     const [email, setEmail] = useState('');
@@ -132,7 +134,8 @@ const LoginScreen = ({ navigation }) => {
                     />
                     <Text
                         style={{
-                            color: "grey"
+                            color: "grey",
+                            opacity: 0.5
                         }}
                     >
                         {expo.version}
