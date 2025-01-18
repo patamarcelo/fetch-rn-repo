@@ -133,7 +133,7 @@ const ProgramScreen = ({ navigation }) => {
 					<View style={{ flexDirection: "row", marginRight: 10 }}>
 						{
 							programSelected !== "Programas" &&
-							programSelected !== null ?
+								programSelected !== null ?
 								<IconButton
 									type={"awesome"}
 									icon={'print'}
@@ -203,8 +203,8 @@ const ProgramScreen = ({ navigation }) => {
 		getData();
 	};
 
-	
-	
+
+
 
 	if (isLoading && dataProgram.length === 0) {
 		return (

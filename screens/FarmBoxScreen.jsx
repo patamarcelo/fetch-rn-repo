@@ -7,11 +7,14 @@ import {
     Pressable,
     Alert,
     ActivityIndicator,
-    TextInput
+    TextInput,
+    TouchableOpacity
 } from 'react-native'
+import { useFocusEffect } from '@react-navigation/native';
 
 
-import { useState, useEffect, useLayoutEffect, useRef } from 'react'
+
+import { useState, useCallback, useEffect, useLayoutEffect, useRef } from 'react'
 import { Colors } from '../constants/styles';
 
 import { useDispatch, useSelector } from "react-redux";
@@ -38,9 +41,13 @@ import { newMapArr } from "./plot-helper";
 
 import { FAB } from "react-native-paper"; // Floating Action Button
 
+import { useNavigation } from '@react-navigation/native';
+import { useRoute } from '@react-navigation/native';
 
 
-
+import MaterialIcons from 'react-native-vector-icons/MaterialIcons'
+import { HeaderBackButton } from '@react-navigation/elements';
+import SearchBar from '../components/Global/SearchBar';
 
 
 
@@ -49,6 +56,13 @@ const FarmBoxScreen = (props) => {
     const { setFarmBoxData, setMapPlot } = geralActions;
 
     const stackNavigator = props.navigation.getParent()
+    // const navigation = useNavigation();
+    const { navigation } = props
+    console.log('navigatesss', navigation)
+    const route = useRoute();
+    
+
+
 
     const dispatch = useDispatch()
 
@@ -72,6 +86,8 @@ const FarmBoxScreen = (props) => {
 
     const [searchQuery, setSearchQuery] = useState(""); // State for search input
     const [showSearch, setShowSearch] = useState(false); // Toggle for search bar visibility
+
+    const [selectedFarm, setSelectedFarm] = useState(null);
 
     const formatNumber = number => {
         return number?.toLocaleString("pt-br", {
@@ -121,56 +137,43 @@ const FarmBoxScreen = (props) => {
         setShowFarm(null)
     }
 
+    
     useLayoutEffect(() => {
-        stackNavigator.setOptions({
-            title: 'FarmBox',
-            tabBarLabel: "FarmBox",
-            headerShadowVisible: false, // applied here
-            headerRight: ({ tintColor }) => (
-                <View style={{ flexDirection: "row", alignItems: 'center', paddingRight: 20, flex: 1 }}>
-                    <MaterialCommunityIcons
-                        name="database-refresh-outline"
-                        size={24}
-                        color={tintColor}
-                        onPress={handleUpdateApiData}
-                    />
-                </View>
-            )
-        });
-    }, []);
+        const unsubscribeFocus = navigation.addListener("focus", () => {
+            const currentStack = navigation.getState();
+            const stackName =  currentStack.routes[0]['name']
 
-    useLayoutEffect(() => {
-        stackNavigator.setOptions({
-            title: showFarm !== null ? showFarm.replace('Fazenda ', '') : 'FarmBox',
-            tabBarLabel: "FarmBox",
-            headerRight: ({ tintColor }) => (
-                <View style={{ flexDirection: "row", alignItems: 'center', paddingRight: 20, flex: 1 }}>
-                    {
-                        !isloadingDbFarm &&
+            console.log("Now on FarmBoxStack", navigation);
+            stackNavigator.setOptions({
+                title: stackName === 'FarmBoxStack' ? 'FarmBox' : selectedFarm?.replace('Fazenda ', ''),
+                headerShadowVisible: false,
+                headerRight: ({ tintColor }) => (
+                    <View style={{ flexDirection: "row", alignItems: 'center', paddingRight: 20, flex: 1 }}>
                         <MaterialCommunityIcons
                             name="database-refresh-outline"
                             size={24}
                             color={tintColor}
                             onPress={handleUpdateApiData}
                         />
-                    }
-                </View>
-            ),
-            headerLeft: ({ tintColor }) => (
-                <View style={{ flexDirection: "row", alignItems: 'center', paddingLeft: 20, flex: 1 }}>
-                    {
-                        showFarm !== null &&
-                        <MaterialCommunityIcons
-                            name="keyboard-backspace"
-                            size={24}
-                            color={tintColor}
-                            onPress={handleClearFarm}
+                    </View>
+                ),
+                headerLeft: stackName !== 'FarmBoxStack'
+                    ? () => (
+                        <HeaderBackButton
+                            {...props}
+                            onPress={() => {
+                                navigation.navigate('FarmBoxStack');
+                            }}
                         />
-                    }
-                </View>
-            )
+                    )
+                    : null, // No arrow-back if on FarmBoxStack
+            });
+            // Add logic specific to FarmBoxStack screen
         });
-    }, [isloadingDbFarm, showFarm]);
+
+        return unsubscribeFocus
+
+    }, [selectedFarm, navigation, route]);
 
 
     useEffect(() => {
@@ -190,7 +193,6 @@ const FarmBoxScreen = (props) => {
                 if (response.status === 200) {
                     console.log('atualização OK')
                     const data = await response.json();
-                    console.log('data to plot Map', data)
                     dispatch(setMapPlot(data.dados))
                     setIsLoadingMapData(false)
                 }
@@ -296,15 +298,19 @@ const FarmBoxScreen = (props) => {
     );
 
     const handleShowFarm = (farms) => {
+        const data = farmData.filter((farmName) => farmName.farmName === farms)
+        console.log('farmshere:::', farms)
+        setSelectedFarm(farms)
+        navigation.navigate('FarmBoxFarms', { data, farm: farms, showSearch });
         if (showFarm === farms) {
             setShowFarm(null)
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy)
         } else {
-            setShowFarm(farms)
-            ref.current?.scrollTo({
-                y: 0,
-                animated: true,
-            });
+            // setShowFarm(farms)
+            // ref.current?.scrollTo({
+            //     y: 0,
+            //     animated: true,
+            // });
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy)
         }
     }
@@ -350,16 +356,21 @@ const FarmBoxScreen = (props) => {
     return (
         <View style={styles.mainContainer}>
             {showSearch && (
-                <TextInput
-                    style={styles.searchBar}
+                <SearchBar 
                     placeholder="Selecione um produto ou operação..."
-                    placeholderTextColor="#888"
                     value={searchQuery}
                     onChangeText={setSearchQuery}
-                    autoFocus={true} // Automatically focuses when shown
                 />
+                // <TextInput
+                // style={styles.searchBar}
+                // placeholder="Selecione um produto ou operação..."
+                // placeholderTextColor="#888"
+                // autoFocus={true} // Automatically focuses when shown
+                // />
             )}
-            <ScrollView ref={ref} style={[styles.mainContainer, { marginBottom: tabBarHeight }]}
+            <ScrollView 
+            ref={ref}
+            style={[styles.mainContainer, { marginBottom: tabBarHeight }]}
                 horizontal={false}
                 refreshControl={
                     <RefreshControl
@@ -377,33 +388,19 @@ const FarmBoxScreen = (props) => {
                         if (totalByFarm > 0) {
                             return (
                                 <View key={i}>
-                                    {
-                                        showFarm === null &&
-                                        <Pressable
-                                            style={({ pressed }) => [
-                                                styles.headerContainer,
-                                                pressed && styles.pressed,
-                                                i === 0 && styles.firstHeader
-                                            ]}
-
-                                            onPress={handleShowFarm.bind(this, farms)}
-                                        >
-                                            <Text style={{ color: 'white', fontSize: 18, fontWeight: 'bold' }}>
-                                                {farms.replace('Fazenda ', '')}
-                                            </Text>
-                                            <Text style={{ fontSize: 10, color: Colors.secondary[200] }}>{formatNumber(totalByFarm)}</Text>
-                                        </Pressable>
-                                    }
-                                    {
-                                        showFarm !== null && showFarm === farms && farmData.length > 0 && totalByFarm > 0 &&
-                                        farmData.filter((farmName) => farmName.farmName === farms).map((farmDatas, i) => {
-                                            return (
-                                                <View style={{ marginBottom: 10 }} key={farmDatas.idAp}>
-                                                    <CardFarmBox data={farmDatas} indexParent={i} showMapPlot={showPlotMap} />
-                                                </View>
-                                            )
-                                        })
-                                    }
+                                    <Pressable
+                                        style={({ pressed }) => [
+                                            styles.headerContainer,
+                                            pressed && styles.pressed,
+                                            i === 0 && styles.firstHeader
+                                        ]}
+                                        onPress={handleShowFarm.bind(this, farms)}
+                                    >
+                                        <Text style={{ color: 'white', fontSize: 18, fontWeight: 'bold' }}>
+                                            {farms.replace('Fazenda ', '')}
+                                        </Text>
+                                        <Text style={{ fontSize: 10, color: Colors.secondary[200] }}>{formatNumber(totalByFarm)}</Text>
+                                    </Pressable>
                                 </View>
                             )
                         }
@@ -429,17 +426,26 @@ const styles = StyleSheet.create({
     firstHeader: {
         marginTop: 0
     },
-    searchBar: {
-        height: 40,
-        margin: 10,
-        paddingHorizontal: 15,
-        borderRadius: 20,
-        backgroundColor: "#f0f0f0",
-        backgroundColor: Colors.secondary[200],
-        borderWidth: 1,
-        borderColor: "#ddd",
-        color: "#333"
-    },
+    // searchBar: {
+    //     height: 40,
+    //     marginHorizontal: 5,
+    //     marginVertical: 10,
+    //     paddingHorizontal: 15,
+    //     borderRadius: 12,
+    //     backgroundColor: Colors.secondary[200],
+    //     backgroundColor: "#f0f0f0",
+    //     borderWidth: 1,
+    //     borderColor: "#ddd",
+    //     color: "#333",
+    //     shadowColor: '#000', // Shadow color
+    //     shadowOffset: {
+    //         width: 0, // No horizontal shadow
+    //         height: 4, // Bottom shadow
+    //     },
+    //     shadowOpacity: 0.25, // Adjust opacity
+    //     shadowRadius: 4, // Adjust the blur radius
+    //     elevation: 5, // Add elevation for Android (optional, see below)
+    // },
     fabContainer: {
         position: "absolute",
         right: 20,
@@ -459,13 +465,21 @@ const styles = StyleSheet.create({
     },
     mainContainer: {
         flex: 1,
+        shadowColor: '#000', // Shadow color
+        shadowOffset: {
+            width: 0, // No horizontal shadow
+            height: 4, // Bottom shadow
+        },
+        shadowOpacity: 0.25, // Adjust opacity
+        shadowRadius: 4, // Adjust the blur radius
+        elevation: 5, // Add elevation for Android (optional, see below)
         // marginBottom: 10
     },
     headerContainer: {
         // flex: 1,
         // flexDirection: 'row',
-        paddingVertical: 18,
-        marginVertical: 10,
+        paddingVertical: 12,
+        marginVertical: 8,
         backgroundColor: Colors.primary500,
         fontSize: 18,
         // paddingLeft: 10,

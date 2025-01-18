@@ -1,7 +1,7 @@
-import { Pressable, View, Text, StyleSheet, Image, Animated, Easing } from "react-native"
+import { Pressable, View, Text, StyleSheet, Image, Animated, Easing, ScrollView, SafeAreaView, TouchableOpacity } from "react-native"
 import { Colors } from "../../constants/styles";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useLayoutEffect } from "react";
 
 import { Divider } from '@rneui/themed';
 
@@ -16,16 +16,64 @@ import { useNavigation } from "@react-navigation/native";
 import { exportPolygonsAsKML } from "../../utils/kml-generator";
 import { selectMapDataPlot } from "../../store/redux/selector";
 import { useSelector } from "react-redux";
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import MaterialIcons from 'react-native-vector-icons/MaterialIcons'
 
-const CardFarmBox = (props) => {
-    const { data, indexParent, showMapPlot } = props
+import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
+
+import { HeaderBackButton } from '@react-navigation/elements';
+
+import { useScrollToTop } from "@react-navigation/native";
+
+
+const CardFarmBox = ({ route, navigation }) => {
+    // const { data, indexParent, showMapPlot } = props
+    const { data, indexParent, farm , showSearch} = route.params; // Extract route parameters
+    const stackNavigator = navigation.getParent()
+
+    const tabBarHeight = useBottomTabBarHeight();
+    const ref = useRef(null);
+
 
     const mapPlotData = useSelector(selectMapDataPlot)
 
-    const [showAps, setShowAps] = useState(false);
-    const navigation = useNavigation();
+    const [showAps, setShowAps] = useState({});
+
     const [selectedParcelas, setSelectedParcelas] = useState([]);
     const [totalSelected, setTotalSelected] = useState(0);
+
+    useLayoutEffect(() => {
+        const unsubscribeFocus = navigation.addListener("focus", () => {
+            const currentStack = navigation.getState();
+            const stackName =  currentStack.routes[0]['name']
+
+            console.log("Now on FarmBoxStack", navigation);
+            stackNavigator.setOptions({
+                title: stackName !== 'FarmBoxStack' ? 'FarmBox' : farm?.replace('Fazenda ', ''),
+                headerShadowVisible: false,
+                headerRight: ({ tintColor }) => (
+                    <View style={{ flexDirection: "row", alignItems: 'center', paddingRight: 20, flex: 1 }}>
+                    </View>
+                ),
+                headerLeft: stackName === 'FarmBoxStack'
+                    ? (props) => (
+                        <HeaderBackButton
+                            {...props}
+                            label="Voltar"  // Directly set label
+                            onPress={() => {
+                                navigation.navigate('FarmBoxStack');
+                            }}
+                        />
+                    )
+                    : null, // No arrow-back if on FarmBoxStack
+            });
+            // Add logic specific to FarmBoxStack screen
+        });
+
+        return unsubscribeFocus
+
+    }, [navigation, route]);
+
 
     useEffect(() => {
         setSelectedParcelas([])
@@ -35,7 +83,7 @@ const CardFarmBox = (props) => {
         if (selectedParcelas?.length > 0) {
             const total = selectedParcelas.reduce((acc, curr) => acc += (curr.areaSolicitada - curr.areaAplicada), 0)
             setTotalSelected(total)
-        } else{
+        } else {
             setTotalSelected(0)
         }
     }, [selectedParcelas]);
@@ -54,8 +102,16 @@ const CardFarmBox = (props) => {
         })
     }
 
-    const handleOpen = () => {
-        setShowAps(prev => !prev)
+    const handleOpen = (code) => {
+        setShowAps((prev) => {
+            const newDict = { ...prev };
+            if (newDict[code]) {
+                delete newDict[code]
+            } else {
+                newDict[code] = true
+            }
+            return newDict
+        })
         setSelectedParcelas([])
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy)
     }
@@ -92,7 +148,7 @@ const CardFarmBox = (props) => {
         return iconDict[3].icon;
         // return "";
     };
-    const getCultura = filteredIcon(data.cultura)
+    const getCultura = (dataCult) =>  filteredIcon(dataCult.cultura)
 
     const handleMapApi = (data) => {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy)
@@ -108,136 +164,155 @@ const CardFarmBox = (props) => {
 
     }
 
+    useScrollToTop(ref);
+
+    useScrollToTop(
+        useRef({
+            scrollToTop: () => ref?.current?.scrollTo({ y: 0 })
+        })
+    );
 
     return (
-        <Pressable
-            style={({ pressed }) => [
-                styles.mainContainer,
-                // pressed && styles.pressed, 
-                { marginTop: indexParent === 0 && 0 }]}
-        // onPress={handleOpen}
-        >
-            <View style={styles.infoContainer}>
-                <Text style={{ color: 'whitesmoke' }}>Area: {formatNumber(data.areaSolicitada)}</Text>
-                <Text style={{ color: 'whitesmoke' }}>Aplicado: {formatNumber(data.areaAplicada)}</Text>
-                <Text style={{ color: 'whitesmoke' }}>Saldo: {formatNumber(data.saldoAreaAplicar)}</Text>
+        <SafeAreaView>
+            <ScrollView 
+            ref={ref}
+            contentContainerStyle={{
+                paddingBottom: tabBarHeight, // Adjust this value based on your bottom tab height
+            }}>
+                {
+                    data && data.map((data, i) => {
+                        return (
+                            <Pressable
+                                key={i}
+                                style={({ pressed }) => [
+                                    styles.mainContainerAll,
+                                    // pressed && styles.pressed, 
+                                    { marginTop: i !== 0 && 10, backgroundColor: !showAps[data.code] ? 'whitesmoke' : Colors.secondary[200], opacity: !showAps[data.code] ? 0.8 : 1 }]}
+                            // onPress={handleOpen}
+                            >
+                                <View style={[styles.infoContainer, { backgroundColor: showAps[data.code] ? Colors.primary500 : Colors.primary800 }]}>
+                                    <Text style={{ color: 'whitesmoke', fontWeight: 'bold' }}>Área: {formatNumber(data.areaSolicitada)}</Text>
+                                    <Text style={{ color: 'whitesmoke', fontWeight: 'bold' }}>Aplicado: {formatNumber(data.areaAplicada)}</Text>
+                                    <Text style={{ color: 'whitesmoke', fontWeight: 'bold' }}>Saldo: {formatNumber(data.saldoAreaAplicar)}</Text>
 
-            </View>
-            <Pressable
-                style={({ pressed }) => [
-                    styles.mainContainer,
-                    pressed && styles.pressed, { marginTop: indexParent === 0 && 0 }]}
-                onPress={handleOpen}>
+                                </View>
+                                <Pressable
+                                    style={({ pressed }) => [
+                                        styles.mainContainer,
+                                        pressed && styles.pressed, { marginTop: indexParent === 0 && 0, backgroundColor: !showAps[data.code] ? 'whitesmoke' : Colors.secondary[200] }]}
+                                    onPress={handleOpen.bind(this, data.code)}>
 
-                <View style={styles.headerContainer}>
-                    <View>
-                        <Text style={styles.headerTitle}> {data?.code?.split('AP')}</Text>
-                        <Text style={[styles.headerTitle, styles.dateTile]}> {data?.dateAp?.split('-').reverse().join('/')}</Text>
-                    </View>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
-                        <Text style={styles.headerTitle}> {data.operation}</Text>
-                        <Image source={getCultura}
-                            style={{ width: 20, height: 20 }}
-                        />
-                    </View>
-                    <View style={styles.progressContainer}>
-                        <Progress.Pie size={30} indeterminate={false} progress={data.percent} color={data.percentColor} />
-                    </View>
-                </View>
-            </Pressable>
-
-            {
-                showAps &&
-
-                <View style={styles.bodyContainer}>
-                    <View style={styles.parcelasContainer}>
-                        {
-                            data?.parcelas?.map((parcela) => {
-                                const uniKey = data.idAp + parcela.parcela
-                                const isSelected = selectedParcelas.find((filt) => filt.parcelaId === parcela.parcelaId)
-                                return (
-                                    <Pressable
-                                        key={uniKey}
-                                        style={[styles.parcelasView, isSelected && styles.selectedParcelas, { backgroundColor: parcela.fillColorParce }]}
-                                        onPress={handleSelected.bind(this, parcela)}
-                                    >
-                                        <Text style={{ color: parcela.fillColorParce === '#E4D00A' ? 'black' : 'whitesmoke' }}>{parcela.parcela}</Text>
-                                        <Text style={{ color: parcela.fillColorParce === '#E4D00A' ? 'black' : 'whitesmoke' }}>-</Text>
-                                        <Text style={{ color: parcela.fillColorParce === '#E4D00A' ? 'black' : 'whitesmoke' }}>{formatNumber(parcela.areaSolicitada)}</Text>
-                                    </Pressable>
-                                )
-                            })
-                        }
-                    </View>
-                    <Divider width={1} color={Colors.secondary[300]} />
-                    <View style={styles.produtosContainer}>
-                        {
-                            data?.prods?.filter((pro) => pro.type !== 'Operação').map((produto) => {
-                                const uniKey = data.cultura + data.idAp + produto.product
-                                console.log('parcela Color backgrounc: ', produto.colorChip)
-                                return (
-                                    <View
-                                        key={uniKey}
-                                        style={[styles.prodsView, { backgroundColor: produto.colorChip === 'rgb(255,255,255,0.1)' ? 'whitesmoke' : produto.colorChip }]}
-                                    >
-                                        <Text style={[styles.textProds, { color: produto.colorChip === 'rgb(255,255,255,0.1)' ? '#455d7a' : 'whitesmoke' }]}>{formatNumberProds(produto.doseSolicitada)}</Text>
-                                        <Text style={[styles.textProdsName, { color: produto.colorChip === 'rgb(255,255,255,0.1)' ? '#455d7a' : 'whitesmoke' }]}>{produto.product}</Text>
-                                        <Text style={[styles.totalprods, { color: produto.colorChip === 'rgb(255,255,255,0.1)' ? '#455d7a' : 'whitesmoke' }]}>{formatNumber(produto.doseSolicitada * data.areaSolicitada)}</Text>
+                                    <View style={styles.headerContainer}>
+                                        <View>
+                                            <Text style={styles.headerTitle}> {data?.code?.split('AP')}</Text>
+                                            <Text style={[styles.headerTitle, styles.dateTile]}> {data?.dateAp?.split('-').reverse().join('/')}</Text>
+                                        </View>
+                                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+                                            <Text style={styles.headerTitle}> {data.operation}</Text>
+                                            <Image source={getCultura(data)}
+                                                style={{ width: 20, height: 20 }}
+                                            />
+                                        </View>
+                                        <View style={styles.progressContainer}>
+                                            <Progress.Pie size={30} indeterminate={false} progress={data.percent} color={data.percentColor === "#E4D00A" ? Colors.gold[700] : data.percentColor} />
+                                        </View>
                                     </View>
-                                )
-                            })
-                        }
-                    </View>
-                    {
-                        showMapPlot &&
-
-                        <View style={styles.footerContainer}>
-                            <View style={styles.totalSelected}>
-                                <Text style={styles.textTotalSelected}>{totalSelected > 0 ? formatNumber(totalSelected) : '-'}</Text>
-                            </View>
-                            <View style={styles.buttonContainer}>
-                                <Pressable
-                                    style={({ pressed }) => [
-                                        styles.mapContainer,
-                                        pressed && styles.pressed]}
-                                    onPress={handleKmlGenerator.bind(this, data, mapPlotData)}
-                                >
-                                    <FontAwesome5 name="plane" size={24} color={Colors.succes[600]} />
                                 </Pressable>
-                                <Pressable
-                                    style={({ pressed }) => [
-                                        styles.mapContainer,
-                                        pressed && styles.pressed]}
-                                    onPress={handleMapApi.bind(this, data)}
-                                >
-                                    <FontAwesome5 name="map-marked-alt" size={24} color={Colors.primary[600]} />
-                                </Pressable>
-                            </View>
-                        </View>
 
-                    }
-                </View>
-            }
+                                {
+                                    showAps[data.code] &&
+
+                                    <View style={styles.bodyContainer}>
+                                        <View style={styles.parcelasContainer}>
+                                            {
+                                                data?.parcelas?.map((parcela) => {
+                                                    const uniKey = data.idAp + parcela.parcela
+                                                    const isSelected = selectedParcelas.find((filt) => filt.parcelaId === parcela.parcelaId)
+                                                    return (
+                                                        <Pressable
+                                                            key={uniKey}
+                                                            style={[styles.parcelasView, isSelected && styles.selectedParcelas, { backgroundColor: parcela.fillColorParce }]}
+                                                            onPress={handleSelected.bind(this, parcela)}
+                                                        >
+                                                            <Text style={{ color: parcela.fillColorParce === '#E4D00A' ? 'black' : 'whitesmoke', fontWeight: 'bold' }}>{parcela.parcela}</Text>
+                                                            <Text style={{ color: parcela.fillColorParce === '#E4D00A' ? 'black' : 'whitesmoke' }}>-</Text>
+                                                            <Text style={{ color: parcela.fillColorParce === '#E4D00A' ? 'black' : 'whitesmoke', fontWeight: 'bold' }}>{formatNumber(parcela.areaSolicitada)}</Text>
+                                                        </Pressable>
+                                                    )
+                                                })
+                                            }
+                                        </View>
+                                        <Divider width={1} color={"rgba(245,245,245,0.3)"} />
+                                        <View style={styles.produtosContainer}>
+                                            {
+                                                data?.prods?.filter((pro) => pro.type !== 'Operação').map((produto) => {
+                                                    const uniKey = data.cultura + data.idAp + produto.product
+                                                    console.log('parcela Color backgrounc: ', produto.colorChip)
+                                                    return (
+                                                        <View
+                                                            key={uniKey}
+                                                            style={[styles.prodsView, { backgroundColor: produto.colorChip === 'rgb(255,255,255,0.1)' ? 'whitesmoke' : produto.colorChip }]}
+                                                        >
+                                                            <Text style={[styles.textProds, { color: produto.colorChip === 'rgb(255,255,255,0.1)' ? '#455d7a' : 'whitesmoke' }]}>{formatNumberProds(produto.doseSolicitada)}</Text>
+                                                            <Text style={[styles.textProdsName, { color: produto.colorChip === 'rgb(255,255,255,0.1)' ? '#455d7a' : 'whitesmoke' }]}>{produto.product}</Text>
+                                                            <Text style={[styles.totalprods, { color: produto.colorChip === 'rgb(255,255,255,0.1)' ? '#455d7a' : 'whitesmoke' }]}>{formatNumber(produto.doseSolicitada * data.areaSolicitada)}</Text>
+                                                        </View>
+                                                    )
+                                                })
+                                            }
+                                        </View>
+                                        <View style={styles.footerContainer}>
+                                            <View style={styles.totalSelected}>
+                                                <Text style={styles.textTotalSelected}>{totalSelected > 0 ? formatNumber(totalSelected) : '-'}</Text>
+                                            </View>
+                                            <View style={styles.buttonContainer}>
+                                                <Pressable
+                                                    style={({ pressed }) => [
+                                                        styles.mapContainer,
+                                                        pressed && styles.pressed]}
+                                                    onPress={handleKmlGenerator.bind(this, data, mapPlotData)}
+                                                >
+                                                    <FontAwesome5 name="plane" size={24} color={Colors.succes[600]} />
+                                                </Pressable>
+                                                <Pressable
+                                                    style={({ pressed }) => [
+                                                        styles.mapContainer,
+                                                        pressed && styles.pressed]}
+                                                    onPress={handleMapApi.bind(this, data)}
+                                                >
+                                                    <FontAwesome5 name="map-marked-alt" size={24} color={Colors.primary[600]} />
+                                                </Pressable>
+                                            </View>
+                                        </View>
 
 
-        </Pressable >
-    );
+                                    </View>
+                                }
+
+                            </Pressable >
+                        )
+                    })
+                }
+            </ScrollView>
+        </SafeAreaView>
+    )
 }
 
 export default CardFarmBox
 
 
 const styles = StyleSheet.create({
-    textTotalSelected:{
+    textTotalSelected: {
         fontWeight: 'bold'
     },
-    totalSelected:{
+    totalSelected: {
         marginLeft: 15
-    },  
-    footerContainer:{
+    },
+    footerContainer: {
         flexDirection: 'row',
         alignItems: 'baseline',
-        justifyContent: 'space-between'
+        justifyContent: 'space-between',
+        marginBottom: 10
     },
     selectedParcelas: {
         borderColor: 'white',
@@ -251,9 +326,22 @@ const styles = StyleSheet.create({
         marginTop: 10
     },
     mainContainer: {
-        backgroundColor: Colors.secondary[300],
-        paddingBottom: 10,
-        marginTop: 10
+        backgroundColor: Colors.secondary[200],
+        marginTop: 30,
+    },
+    mainContainerAll: {
+        backgroundColor: Colors.secondary[200],
+        paddingBottom: 5,
+        flex: 1,
+        shadowColor: '#000', // Shadow color
+        shadowOffset: {
+            width: 0, // No horizontal shadow
+            height: 4, // Bottom shadow
+        },
+        shadowOpacity: 0.25, // Adjust opacity
+        shadowRadius: 4, // Adjust the blur radius
+        elevation: 5, // Add elevation for Android (optional, see below)
+
     },
     headerContainer: {
         flexDirection: 'row',
@@ -288,11 +376,12 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         gap: 1,
         width: 91,
-        borderRadius: 12,
+        borderRadius: 6,
         paddingHorizontal: 3,
         paddingVertical: 6,
         backgroundColor: 'green',
-        justifyContent: 'space-around'
+        justifyContent: 'space-around',
+
     },
     infoContainer: {
         flex: 1,
@@ -314,7 +403,7 @@ const styles = StyleSheet.create({
         width: 300,
         backgroundColor: 'blue',
         gap: 10,
-        borderRadius: 12,
+        borderRadius: 6,
         justifyContent: "flex-start",
         padding: 2
     },

@@ -36,6 +36,8 @@ import CardListApp from "../components/HomeScreen/CardListApp";
 
 import DateTimePicker from '@react-native-community/datetimepicker';
 import createAndPrintPDF from "../components/Global/PrintPage";
+import DateTimePickerModal from "react-native-modal-datetime-picker";
+
 
 import * as Haptics from 'expo-haptics';
 
@@ -88,7 +90,8 @@ const HomeScreen = ({ navigation }) => {
 		setOpen(false);
 	}
 
-	const onChange = (event, selectedDate) => {
+	const onChange = (selectedDate) => {
+		console.log('Selec Date', selectedDate)
 		const currentDate = selectedDate;
 		setOpen(false);
 		setDate(currentDate);
@@ -363,7 +366,7 @@ const HomeScreen = ({ navigation }) => {
 						alignItems: 'center'
 					}}
 				>
-					<DateTimePicker
+					{/* <DateTimePicker
 						testID="dateTimePicker"
 						value={date}
 						mode={mode}
@@ -372,6 +375,15 @@ const HomeScreen = ({ navigation }) => {
 						display="calendar"
 						// timeZoneName={'Europe/Prague'}
 						locale="pt-BR"
+					/> */}
+					<DateTimePickerModal
+						isVisible={open}
+						mode="date"
+						onConfirm={onChange}
+						onCancel={handleClearDate}
+						locale="pt-BR"
+						confirmTextIOS="Confirmar"
+						cancelTextIOS="Cancelar"
 					/>
 				</View>
 			)}
