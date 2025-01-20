@@ -384,6 +384,7 @@ const HomeScreen = ({ navigation }) => {
 						locale="pt-BR"
 						confirmTextIOS="Confirmar"
 						cancelTextIOS="Cancelar"
+						display="inline"
 					/>
 				</View>
 			)}

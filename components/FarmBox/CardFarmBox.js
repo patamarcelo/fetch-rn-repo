@@ -15,7 +15,6 @@ import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import { useNavigation } from "@react-navigation/native";
 import { exportPolygonsAsKML } from "../../utils/kml-generator";
 import { selectMapDataPlot } from "../../store/redux/selector";
-import { useSelector } from "react-redux";
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons'
 
@@ -25,27 +24,41 @@ import { HeaderBackButton } from '@react-navigation/elements';
 
 import { useScrollToTop } from "@react-navigation/native";
 
+import { useDispatch, useSelector } from "react-redux";
+import { geralActions } from "../../store/redux/geral";
+import { selectFarmboxSearchBar, selectFarmboxSearchQuery } from "../../store/redux/selector";
+import SearchBar from "../Global/SearchBar";
+import { FAB } from "react-native-paper";
+
+
 
 const CardFarmBox = ({ route, navigation }) => {
     // const { data, indexParent, showMapPlot } = props
-    const { data, indexParent, farm , showSearch} = route.params; // Extract route parameters
-    const stackNavigator = navigation.getParent()
+    const { data, indexParent, farm } = route.params; // Extract route parameters
+    const { setFarmboxSearchBar, setFarmboxSearchQuery } = geralActions;
 
+    const stackNavigator = navigation.getParent()
     const tabBarHeight = useBottomTabBarHeight();
     const ref = useRef(null);
+    const dispatch = useDispatch()
+
 
 
     const mapPlotData = useSelector(selectMapDataPlot)
+    const searchQuery = useSelector(selectFarmboxSearchQuery)
+    const showSearch = useSelector(selectFarmboxSearchBar)
 
     const [showAps, setShowAps] = useState({});
 
     const [selectedParcelas, setSelectedParcelas] = useState([]);
     const [totalSelected, setTotalSelected] = useState(0);
+    
+    const [farmData, setfarmData] = useState([]);
 
     useLayoutEffect(() => {
         const unsubscribeFocus = navigation.addListener("focus", () => {
             const currentStack = navigation.getState();
-            const stackName =  currentStack.routes[0]['name']
+            const stackName = currentStack.routes[0]['name']
 
             console.log("Now on FarmBoxStack", navigation);
             stackNavigator.setOptions({
@@ -148,7 +161,7 @@ const CardFarmBox = ({ route, navigation }) => {
         return iconDict[3].icon;
         // return "";
     };
-    const getCultura = (dataCult) =>  filteredIcon(dataCult.cultura)
+    const getCultura = (dataCult) => filteredIcon(dataCult.cultura)
 
     const handleMapApi = (data) => {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy)
@@ -172,129 +185,181 @@ const CardFarmBox = ({ route, navigation }) => {
         })
     );
 
-    return (
-        <SafeAreaView>
-            <ScrollView 
-            ref={ref}
-            contentContainerStyle={{
-                paddingBottom: tabBarHeight, // Adjust this value based on your bottom tab height
-            }}>
-                {
-                    data && data.map((data, i) => {
-                        return (
-                            <Pressable
-                                key={i}
-                                style={({ pressed }) => [
-                                    styles.mainContainerAll,
-                                    // pressed && styles.pressed, 
-                                    { marginTop: i !== 0 && 10, backgroundColor: !showAps[data.code] ? 'whitesmoke' : Colors.secondary[200], opacity: !showAps[data.code] ? 0.8 : 1 }]}
-                            // onPress={handleOpen}
-                            >
-                                <View style={[styles.infoContainer, { backgroundColor: showAps[data.code] ? Colors.primary500 : Colors.primary800 }]}>
-                                    <Text style={{ color: 'whitesmoke', fontWeight: 'bold' }}>Área: {formatNumber(data.areaSolicitada)}</Text>
-                                    <Text style={{ color: 'whitesmoke', fontWeight: 'bold' }}>Aplicado: {formatNumber(data.areaAplicada)}</Text>
-                                    <Text style={{ color: 'whitesmoke', fontWeight: 'bold' }}>Saldo: {formatNumber(data.saldoAreaAplicar)}</Text>
+    const handleFilterProps = () => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy)
+        dispatch(setFarmboxSearchBar(!showSearch))
+        dispatch(setFarmboxSearchQuery(""))
+    }
 
-                                </View>
-                                <Pressable
-                                    style={({ pressed }) => [
-                                        styles.mainContainer,
-                                        pressed && styles.pressed, { marginTop: indexParent === 0 && 0, backgroundColor: !showAps[data.code] ? 'whitesmoke' : Colors.secondary[200] }]}
-                                    onPress={handleOpen.bind(this, data.code)}>
+    useEffect(() => {
+        function removeAccents(str) {
+            return str?.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        }
 
-                                    <View style={styles.headerContainer}>
-                                        <View>
-                                            <Text style={styles.headerTitle}> {data?.code?.split('AP')}</Text>
-                                            <Text style={[styles.headerTitle, styles.dateTile]}> {data?.dateAp?.split('-').reverse().join('/')}</Text>
-                                        </View>
-                                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
-                                            <Text style={styles.headerTitle}> {data.operation}</Text>
-                                            <Image source={getCultura(data)}
-                                                style={{ width: 20, height: 20 }}
-                                            />
-                                        </View>
-                                        <View style={styles.progressContainer}>
-                                            <Progress.Pie size={30} indeterminate={false} progress={data.percent} color={data.percentColor === "#E4D00A" ? Colors.gold[700] : data.percentColor} />
-                                        </View>
-                                    </View>
-                                </Pressable>
-
-                                {
-                                    showAps[data.code] &&
-
-                                    <View style={styles.bodyContainer}>
-                                        <View style={styles.parcelasContainer}>
-                                            {
-                                                data?.parcelas?.map((parcela) => {
-                                                    const uniKey = data.idAp + parcela.parcela
-                                                    const isSelected = selectedParcelas.find((filt) => filt.parcelaId === parcela.parcelaId)
-                                                    return (
-                                                        <Pressable
-                                                            key={uniKey}
-                                                            style={[styles.parcelasView, isSelected && styles.selectedParcelas, { backgroundColor: parcela.fillColorParce }]}
-                                                            onPress={handleSelected.bind(this, parcela)}
-                                                        >
-                                                            <Text style={{ color: parcela.fillColorParce === '#E4D00A' ? 'black' : 'whitesmoke', fontWeight: 'bold' }}>{parcela.parcela}</Text>
-                                                            <Text style={{ color: parcela.fillColorParce === '#E4D00A' ? 'black' : 'whitesmoke' }}>-</Text>
-                                                            <Text style={{ color: parcela.fillColorParce === '#E4D00A' ? 'black' : 'whitesmoke', fontWeight: 'bold' }}>{formatNumber(parcela.areaSolicitada)}</Text>
-                                                        </Pressable>
-                                                    )
-                                                })
-                                            }
-                                        </View>
-                                        <Divider width={1} color={"rgba(245,245,245,0.3)"} />
-                                        <View style={styles.produtosContainer}>
-                                            {
-                                                data?.prods?.filter((pro) => pro.type !== 'Operação').map((produto) => {
-                                                    const uniKey = data.cultura + data.idAp + produto.product
-                                                    console.log('parcela Color backgrounc: ', produto.colorChip)
-                                                    return (
-                                                        <View
-                                                            key={uniKey}
-                                                            style={[styles.prodsView, { backgroundColor: produto.colorChip === 'rgb(255,255,255,0.1)' ? 'whitesmoke' : produto.colorChip }]}
-                                                        >
-                                                            <Text style={[styles.textProds, { color: produto.colorChip === 'rgb(255,255,255,0.1)' ? '#455d7a' : 'whitesmoke' }]}>{formatNumberProds(produto.doseSolicitada)}</Text>
-                                                            <Text style={[styles.textProdsName, { color: produto.colorChip === 'rgb(255,255,255,0.1)' ? '#455d7a' : 'whitesmoke' }]}>{produto.product}</Text>
-                                                            <Text style={[styles.totalprods, { color: produto.colorChip === 'rgb(255,255,255,0.1)' ? '#455d7a' : 'whitesmoke' }]}>{formatNumber(produto.doseSolicitada * data.areaSolicitada)}</Text>
-                                                        </View>
-                                                    )
-                                                })
-                                            }
-                                        </View>
-                                        <View style={styles.footerContainer}>
-                                            <View style={styles.totalSelected}>
-                                                <Text style={styles.textTotalSelected}>{totalSelected > 0 ? formatNumber(totalSelected) : '-'}</Text>
-                                            </View>
-                                            <View style={styles.buttonContainer}>
-                                                <Pressable
-                                                    style={({ pressed }) => [
-                                                        styles.mapContainer,
-                                                        pressed && styles.pressed]}
-                                                    onPress={handleKmlGenerator.bind(this, data, mapPlotData)}
-                                                >
-                                                    <FontAwesome5 name="plane" size={24} color={Colors.succes[600]} />
-                                                </Pressable>
-                                                <Pressable
-                                                    style={({ pressed }) => [
-                                                        styles.mapContainer,
-                                                        pressed && styles.pressed]}
-                                                    onPress={handleMapApi.bind(this, data)}
-                                                >
-                                                    <FontAwesome5 name="map-marked-alt" size={24} color={Colors.primary[600]} />
-                                                </Pressable>
-                                            </View>
-                                        </View>
-
-
-                                    </View>
-                                }
-
-                            </Pressable >
+        const filterApplications = (applications) => {
+            if (searchQuery?.trim() === "") {
+                // Return the full array if the search query is empty
+                setfarmData(applications);
+            } else {
+                const filteredData = applications
+                    .filter((data) =>
+                        data.prods.some((prod) =>
+                            removeAccents(prod.product)?.toLowerCase().includes(removeAccents(searchQuery)?.toLowerCase())
                         )
-                    })
-                }
-            </ScrollView>
-        </SafeAreaView>
+                    )
+                setfarmData(filteredData);
+            }
+        };
+
+        filterApplications(data);
+    }, [searchQuery]);
+
+    useEffect(() => {
+        if (data) {
+            setfarmData(data)
+        }
+    }, []);
+
+    return (
+        <>
+            <SafeAreaView>
+                {showSearch && (
+                    <SearchBar
+                        placeholder="Selecione um produto ou operação..."
+                        value={searchQuery}
+                        onChangeText={(e) => dispatch(setFarmboxSearchQuery(e))}
+                    />
+                )}
+                <ScrollView
+                    ref={ref}
+                    contentContainerStyle={{
+                        paddingBottom: tabBarHeight, // Adjust this value based on your bottom tab height
+                    }}>
+                    {
+                        farmData && farmData.map((data, i) => {
+                            return (
+                                <Pressable
+                                    key={i}
+                                    style={({ pressed }) => [
+                                        styles.mainContainerAll,
+                                        // pressed && styles.pressed, 
+                                        { marginTop: i !== 0 && 10, backgroundColor: !showAps[data.code] ? 'whitesmoke' : Colors.secondary[200], opacity: !showAps[data.code] ? 0.8 : 1 }]}
+                                // onPress={handleOpen}
+                                >
+                                    <View style={[styles.infoContainer, { backgroundColor: showAps[data.code] ? Colors.primary500 : Colors.primary800 }]}>
+                                        <Text style={{ color: 'whitesmoke', fontWeight: 'bold' }}>Área: {formatNumber(data.areaSolicitada)}</Text>
+                                        <Text style={{ color: 'whitesmoke', fontWeight: 'bold' }}>Aplicado: {formatNumber(data.areaAplicada)}</Text>
+                                        <Text style={{ color: 'whitesmoke', fontWeight: 'bold' }}>Saldo: {formatNumber(data.saldoAreaAplicar)}</Text>
+
+                                    </View>
+                                    <Pressable
+                                        style={({ pressed }) => [
+                                            styles.mainContainer,
+                                            pressed && styles.pressed, { marginTop: indexParent === 0 && 0, backgroundColor: !showAps[data.code] ? 'whitesmoke' : Colors.secondary[200] }]}
+                                        onPress={handleOpen.bind(this, data.code)}>
+
+                                        <View style={styles.headerContainer}>
+                                            <View>
+                                                <Text style={styles.headerTitle}> {data?.code?.split('AP')}</Text>
+                                                <Text style={[styles.headerTitle, styles.dateTile]}> {data?.dateAp?.split('-').reverse().join('/')}</Text>
+                                            </View>
+                                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+                                                <Text style={styles.headerTitle}> {data.operation}</Text>
+                                                <Image source={getCultura(data)}
+                                                    style={{ width: 20, height: 20 }}
+                                                />
+                                            </View>
+                                            <View style={styles.progressContainer}>
+                                                <Progress.Pie size={30} indeterminate={false} progress={data.percent} color={data.percentColor === "#E4D00A" ? Colors.gold[700] : data.percentColor} />
+                                            </View>
+                                        </View>
+                                    </Pressable>
+
+                                    {
+                                        showAps[data.code] &&
+
+                                        <View style={styles.bodyContainer}>
+                                            <View style={styles.parcelasContainer}>
+                                                {
+                                                    data?.parcelas?.map((parcela) => {
+                                                        const uniKey = data.idAp + parcela.parcela
+                                                        const isSelected = selectedParcelas.find((filt) => filt.parcelaId === parcela.parcelaId)
+                                                        return (
+                                                            <Pressable
+                                                                key={uniKey}
+                                                                style={[styles.parcelasView, isSelected && styles.selectedParcelas, { backgroundColor: parcela.fillColorParce }]}
+                                                                onPress={handleSelected.bind(this, parcela)}
+                                                            >
+                                                                <Text style={{ color: parcela.fillColorParce === '#E4D00A' ? 'black' : 'whitesmoke', fontWeight: 'bold' }}>{parcela.parcela}</Text>
+                                                                <Text style={{ color: parcela.fillColorParce === '#E4D00A' ? 'black' : 'whitesmoke' }}>-</Text>
+                                                                <Text style={{ color: parcela.fillColorParce === '#E4D00A' ? 'black' : 'whitesmoke', fontWeight: 'bold' }}>{formatNumber(parcela.areaSolicitada)}</Text>
+                                                            </Pressable>
+                                                        )
+                                                    })
+                                                }
+                                            </View>
+                                            <Divider width={1} color={"rgba(245,245,245,0.3)"} />
+                                            <View style={styles.produtosContainer}>
+                                                {
+                                                    data?.prods?.filter((pro) => pro.type !== 'Operação').map((produto) => {
+                                                        const uniKey = data.cultura + data.idAp + produto.product
+                                                        console.log('parcela Color backgrounc: ', produto.colorChip)
+                                                        return (
+                                                            <View
+                                                                key={uniKey}
+                                                                style={[styles.prodsView, { backgroundColor: produto.colorChip === 'rgb(255,255,255,0.1)' ? 'whitesmoke' : produto.colorChip }]}
+                                                            >
+                                                                <Text style={[styles.textProds, { color: produto.colorChip === 'rgb(255,255,255,0.1)' ? '#455d7a' : 'whitesmoke' }]}>{formatNumberProds(produto.doseSolicitada)}</Text>
+                                                                <Text style={[styles.textProdsName, { color: produto.colorChip === 'rgb(255,255,255,0.1)' ? '#455d7a' : 'whitesmoke' }]}>{produto.product}</Text>
+                                                                <Text style={[styles.totalprods, { color: produto.colorChip === 'rgb(255,255,255,0.1)' ? '#455d7a' : 'whitesmoke' }]}>{formatNumber(produto.doseSolicitada * data.areaSolicitada)}</Text>
+                                                            </View>
+                                                        )
+                                                    })
+                                                }
+                                            </View>
+                                            <View style={styles.footerContainer}>
+                                                <View style={styles.totalSelected}>
+                                                    <Text style={styles.textTotalSelected}>{totalSelected > 0 ? formatNumber(totalSelected) : '-'}</Text>
+                                                </View>
+                                                <View style={styles.buttonContainer}>
+                                                    <Pressable
+                                                        style={({ pressed }) => [
+                                                            styles.mapContainer,
+                                                            pressed && styles.pressed]}
+                                                        onPress={handleKmlGenerator.bind(this, data, mapPlotData)}
+                                                    >
+                                                        <FontAwesome5 name="plane" size={24} color={Colors.succes[600]} />
+                                                    </Pressable>
+                                                    <Pressable
+                                                        style={({ pressed }) => [
+                                                            styles.mapContainer,
+                                                            pressed && styles.pressed]}
+                                                        onPress={handleMapApi.bind(this, data)}
+                                                    >
+                                                        <FontAwesome5 name="map-marked-alt" size={24} color={Colors.primary[600]} />
+                                                    </Pressable>
+                                                </View>
+                                            </View>
+
+
+                                        </View>
+                                    }
+
+                                </Pressable >
+                            )
+                        })
+                    }
+                </ScrollView>
+            </SafeAreaView>
+            <View style={styles.fabContainer}>
+                <FAB
+                    style={styles.fab}
+                    icon={showSearch ? "close" : "magnify"}
+                    color="black" // Icon color
+                    onPress={handleFilterProps}
+                />
+            </View>
+        </>
     )
 }
 
@@ -302,6 +367,23 @@ export default CardFarmBox
 
 
 const styles = StyleSheet.create({
+    fabContainer: {
+        position: "absolute",
+        right: 20,
+        bottom: 20
+    },
+    fab: {
+        position: "absolute",
+        right: 30,
+        bottom: 100,
+        backgroundColor: "rgba(200, 200, 200, 0.3)", // Grey, almost transparent
+        width: 50,
+        height: 50,
+        borderRadius: 25, // Makes it perfectly circular
+        justifyContent: "center",
+        alignItems: "center",
+        elevation: 4
+    },
     textTotalSelected: {
         fontWeight: 'bold'
     },

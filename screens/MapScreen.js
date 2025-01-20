@@ -404,10 +404,14 @@ const MapScreen = ({ navigation, route }) => {
 					}}
 				>
 					<Text style={{ textAlign: 'center', color: 'black', fontWeight: '500' }}>
-						<Text style={{ fontWeight: 'bold' }}>
-							{data.code.replace(/([A-Za-z]+)(\d+)/, '$1 $2')}
-						</Text>
-						{getOperationAp && " " + getOperationAp}
+						<View style={{flexDirection: 'column', alignItems: 'center'}}>
+							<Text style={{ fontWeight: 'bold' }}>
+								{data.code.replace(/([A-Za-z]+)(\d+)/, '$1 $2')}
+							</Text>
+							<Text>
+								{getOperationAp && " " + getOperationAp}
+							</Text>
+						</View>
 					</Text>
 				</View>
 				<BottomSheetApp refRBSheet={refRBSheet} data={propsToBottom} handleCloseSheet={handleCloseSheet} />

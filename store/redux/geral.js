@@ -10,7 +10,9 @@ const initialState = {
 	plantioData: [],
 	farmBoxData: [],
 	areaTotal: [],
-	mapDataPlot: []
+	mapDataPlot: [],
+	farmboxSearchBar: false,
+	farmBoxSearchQuery: '',
 };
 
 const geralSlice = createSlice({
@@ -46,7 +48,13 @@ const geralSlice = createSlice({
 		},
 		setMapPlot: (state, action) => {
 			state.mapDataPlot = action.payload;
-		}
+		},
+		setFarmboxSearchBar: (state, action) => {
+			state.farmboxSearchBar = action.payload
+		},
+		setFarmboxSearchQuery: (state, action) => {
+			state.farmBoxSearchQuery = action.payload
+		},
 	}
 });
 

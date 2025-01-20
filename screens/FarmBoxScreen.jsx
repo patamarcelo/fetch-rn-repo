@@ -19,7 +19,7 @@ import { Colors } from '../constants/styles';
 
 import { useDispatch, useSelector } from "react-redux";
 import { geralActions } from "../store/redux/geral";
-import { selectFarmBoxData, selectMapDataPlot } from "../store/redux/selector";
+import { selectFarmBoxData, selectMapDataPlot, selectFarmboxSearchBar, selectFarmboxSearchQuery } from "../store/redux/selector";
 
 
 import { useScrollToTop } from "@react-navigation/native";
@@ -53,7 +53,7 @@ import SearchBar from '../components/Global/SearchBar';
 
 
 const FarmBoxScreen = (props) => {
-    const { setFarmBoxData, setMapPlot } = geralActions;
+    const { setFarmBoxData, setMapPlot, setFarmboxSearchBar, setFarmboxSearchQuery } = geralActions;
 
     const stackNavigator = props.navigation.getParent()
     // const navigation = useNavigation();
@@ -74,6 +74,8 @@ const FarmBoxScreen = (props) => {
 
     const farmBoxData = useSelector(selectFarmBoxData)
     const mapPlotData = useSelector(selectMapDataPlot)
+    const searchQuery = useSelector(selectFarmboxSearchQuery)
+    const showSearch = useSelector(selectFarmboxSearchBar)
 
     const [showFarm, setShowFarm] = useState(null);
 
@@ -84,8 +86,6 @@ const FarmBoxScreen = (props) => {
 
     const [showPlotMap, setshowPlotMap] = useState(false);
 
-    const [searchQuery, setSearchQuery] = useState(""); // State for search input
-    const [showSearch, setShowSearch] = useState(false); // Toggle for search bar visibility
 
     const [selectedFarm, setSelectedFarm] = useState(null);
 
@@ -317,24 +317,24 @@ const FarmBoxScreen = (props) => {
 
     const handleFilterProps = () => {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy)
-        setShowSearch((prev) => !prev)
-        setSearchQuery("")
+        dispatch(setFarmboxSearchBar(!showSearch))
+        dispatch(setFarmboxSearchQuery(""))
     }
 
     useEffect(() => {
         function removeAccents(str) {
-            return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+            return str?.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
         }
 
         const filterApplications = (applications) => {
-            if (searchQuery.trim() === "") {
+            if (searchQuery?.trim() === "") {
                 // Return the full array if the search query is empty
                 setfarmData(applications);
             } else {
                 const filteredData = applications
                     .filter((data) =>
                         data.prods.some((prod) =>
-                            removeAccents(prod.product).toLowerCase().includes(removeAccents(searchQuery).toLowerCase())
+                            removeAccents(prod.product)?.toLowerCase().includes(removeAccents(searchQuery)?.toLowerCase())
                         )
                     )
                 setfarmData(filteredData);
@@ -359,14 +359,8 @@ const FarmBoxScreen = (props) => {
                 <SearchBar 
                     placeholder="Selecione um produto ou operação..."
                     value={searchQuery}
-                    onChangeText={setSearchQuery}
+                    onChangeText={(e) => dispatch(setFarmboxSearchQuery(e))}
                 />
-                // <TextInput
-                // style={styles.searchBar}
-                // placeholder="Selecione um produto ou operação..."
-                // placeholderTextColor="#888"
-                // autoFocus={true} // Automatically focuses when shown
-                // />
             )}
             <ScrollView 
             ref={ref}

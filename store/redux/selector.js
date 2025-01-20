@@ -17,3 +17,7 @@ export const selectFarmBoxData = (state) => state.geral.farmBoxData
 export const selectAreaTotal = (state) => state.geral.areaTotal
 
 export const selectMapDataPlot = (state) => state.geral.mapDataPlot
+
+export const selectFarmboxSearchBar = (state) => state.geral.farmboxSearchBar
+
+export const selectFarmboxSearchQuery = (state) => state.geral.farmBoxSearchQuery
