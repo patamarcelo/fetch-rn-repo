@@ -83,7 +83,7 @@ const LoginScreen = ({ navigation }) => {
                         <TextInput
                             style={styles.input}
                             placeholder="Email"
-
+                            placeholderTextColor="grey" 
                             value={email}
                             onChangeText={setEmail}
                             keyboardType="email-address"
@@ -93,6 +93,7 @@ const LoginScreen = ({ navigation }) => {
                             <TextInput
                                 style={styles.inputIcon}
                                 placeholder="Senha"
+                                placeholderTextColor="grey" 
                                 value={password}
                                 onChangeText={setPassword}
                                 secureTextEntry={showPassword}
@@ -169,7 +170,7 @@ const styles = StyleSheet.create({
         height: 60
     },
     titleContainer: {
-        marginTop: -80,
+        marginTop: -50,
         marginBottom: 30,
         justifyContent: "center",
         alignItems: "center"
@@ -197,7 +198,7 @@ const styles = StyleSheet.create({
     },
     input: {
         height: 40,
-        borderColor: 'gray',
+        borderColor: "#ccc",
         borderWidth: 1,
         borderRadius: 5,
         marginBottom: 20,
@@ -214,7 +215,7 @@ const styles = StyleSheet.create({
         borderRadius: 6,
         alignItems: 'center',
         justifyContent: 'center',
-        marginTop: 20
+        marginTop: 30
     },
     buttonDisabled: {
         backgroundColor: Colors.secondary[300], // Lighter blue when disabled
