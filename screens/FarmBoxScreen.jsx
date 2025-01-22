@@ -376,7 +376,7 @@ const FarmBoxScreen = (props) => {
                 }
             >
                 {farmData &&
-                    onlyFarms.filter((farmArr) => showFarm !== null ? farmArr === showFarm : farmArr.length > 0).map((farms, i) => {
+                    onlyFarms.map((farms, i) => {
                         const totalByFarm = farmData.filter((farmName) => farmName.farmName === farms).reduce((acc, curr) => acc += curr.saldoAreaAplicar, 0)
                         const getTeste = farmData[0]
                         if (totalByFarm > 0) {
