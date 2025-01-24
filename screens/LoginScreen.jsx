@@ -3,7 +3,7 @@ import { View, Text, TextInput, Button, StyleSheet, Alert, TouchableOpacity, Ima
 import { useDispatch, useSelector } from 'react-redux';
 import { login, recoverPassword, clearError } from '../store/redux/authSlice';
 import { KeyboardAvoidingView, Keyboard } from 'react-native';
-import { TouchableWithoutFeedback, Keyboard } from 'react-native';
+import { TouchableWithoutFeedback } from 'react-native';
 import { ActivityIndicator } from 'react-native-paper';
 
 import Ionicons from "@expo/vector-icons/Ionicons";
