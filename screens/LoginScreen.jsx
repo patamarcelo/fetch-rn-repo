@@ -2,8 +2,8 @@ import React, { useLayoutEffect, useState } from 'react';
 import { View, Text, TextInput, Button, StyleSheet, Alert, TouchableOpacity, Image, Platform } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 import { login, recoverPassword, clearError } from '../store/redux/authSlice';
-import { KeyboardAvoidingView, Keyboard } from 'react-native';
-import { TouchableWithoutFeedback } from 'react-native';
+import { KeyboardAvoidingView } from 'react-native';
+import { TouchableWithoutFeedback, Keyboard } from 'react-native';
 import { ActivityIndicator } from 'react-native-paper';
 
 import Ionicons from "@expo/vector-icons/Ionicons";
@@ -20,8 +20,6 @@ const LoginScreen = ({ navigation }) => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(true);
-    const [isKeyboardVisible, setKeyboardVisible] = useState(false); // Tracks keyboard visibility
-
 
     const isDisabled = loading || !email || !password;
     const isDisabledRecover = loading || !email;
@@ -76,29 +74,10 @@ const LoginScreen = ({ navigation }) => {
         dispatch(clearError()); // Clear the Redux error
     };
 
-    useEffect(() => {
-        // Listen to keyboard events
-        const keyboardDidShowListener = Keyboard.addListener(
-            "keyboardDidShow",
-            () => setKeyboardVisible(true)
-        );
-        const keyboardDidHideListener = Keyboard.addListener(
-            "keyboardDidHide",
-            () => setKeyboardVisible(false)
-        );
-
-        return () => {
-            // Cleanup listeners
-            keyboardDidShowListener.remove();
-            keyboardDidHideListener.remove();
-        };
-    }, []);
-
-
 
     return (
         <TouchableWithoutFeedback>
-            <ScrollView contentContainerStyle={{ flex: 1 }}>
+            <ScrollView contentContainerStyle={{flex: 1}}>
                 <View style={{ flex: 1 }}>
                     <KeyboardAvoidingView
                         behavior={Platform.OS === "ios" ? "padding" : undefined}
@@ -152,23 +131,20 @@ const LoginScreen = ({ navigation }) => {
                             <Text style={styles.forgetPassText}>Esqueci a Senha</Text>
                         </TouchableOpacity>
                     </KeyboardAvoidingView>
-                    {
-                        !isKeyboardVisible &&
-                        <View style={styles.titleContainer}>
-                            <Image
-                                source={require("../assets/diamond.png")}
-                                style={styles.image}
-                            />
-                            <Text
-                                style={{
-                                    color: "grey",
-                                    opacity: 0.5
-                                }}
-                            >
-                                {expo.version}
-                            </Text>
-                        </View>
-                    }
+                    <View style={styles.titleContainer}>
+                        <Image
+                            source={require("../assets/diamond.png")}
+                            style={styles.image}
+                        />
+                        <Text
+                            style={{
+                                color: "grey",
+                                opacity: 0.5
+                            }}
+                        >
+                            {expo.version}
+                        </Text>
+                    </View>
                 </View>
             </ScrollView>
         </TouchableWithoutFeedback>
