@@ -1,7 +1,7 @@
 import React, { useLayoutEffect, useState } from 'react';
-import { View, Text, TextInput, Button, StyleSheet, Alert, TouchableOpacity, Image } from 'react-native';
+import { View, Text, TextInput, Button, StyleSheet, Alert, TouchableOpacity, Image, Platform } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
-import { login, recoverPassword, clearError} from '../store/redux/authSlice';
+import { login, recoverPassword, clearError } from '../store/redux/authSlice';
 import { KeyboardAvoidingView } from 'react-native';
 import { TouchableWithoutFeedback, Keyboard } from 'react-native';
 import { ActivityIndicator } from 'react-native-paper';
@@ -13,6 +13,7 @@ import { Colors } from '../constants/styles';
 import * as Haptics from "expo-haptics";
 
 import { expo } from "../app.json";
+import { ScrollView } from 'react-native-gesture-handler';
 
 
 const LoginScreen = ({ navigation }) => {
@@ -75,15 +76,18 @@ const LoginScreen = ({ navigation }) => {
 
 
     return (
-        <TouchableWithoutFeedback onPress={dismissKeyboard}>
-            <>
-                <View style={styles.container}>
-                    <KeyboardAvoidingView behavior="padding">
+        <TouchableWithoutFeedback>
+            <ScrollView contentContainerStyle={{flex: 1}}>
+                <View style={{ flex: 1 }}>
+                    <KeyboardAvoidingView
+                        behavior={Platform.OS === "ios" ? "padding" : undefined}
+                        style={styles.content}
+                    >
                         <Text style={styles.title}>Applicações</Text>
                         <TextInput
                             style={styles.input}
                             placeholder="Email"
-                            placeholderTextColor="grey" 
+                            placeholderTextColor="grey"
                             value={email}
                             onChangeText={setEmail}
                             keyboardType="email-address"
@@ -93,7 +97,7 @@ const LoginScreen = ({ navigation }) => {
                             <TextInput
                                 style={styles.inputIcon}
                                 placeholder="Senha"
-                                placeholderTextColor="grey" 
+                                placeholderTextColor="grey"
                                 value={password}
                                 onChangeText={setPassword}
                                 secureTextEntry={showPassword}
@@ -107,47 +111,52 @@ const LoginScreen = ({ navigation }) => {
                                 onPress={handleShowPassword}
                             />
                         </View>
+                        <TouchableOpacity
+                            style={[styles.button, isDisabled && styles.buttonDisabled]}
+                            onPress={handleLogin}
+                            disabled={isDisabled}
+                        >
+                            {loading ? (
+                                <ActivityIndicator size="small" color="#FFF" />
+                            ) : (
+                                <Text style={styles.buttonText}>Entrar</Text>
+                            )}
+                        </TouchableOpacity>
+                        {error && <Text style={styles.error}>{error}</Text>}
+                        <TouchableOpacity
+                            style={[styles.forgetPassContainer, isDisabledRecover && styles.buttonDisabledRecover]}
+                            onPress={handleForgotPass}
+                            disabled={isDisabledRecover}
+                        >
+                            <Text style={styles.forgetPassText}>Esqueci a Senha</Text>
+                        </TouchableOpacity>
                     </KeyboardAvoidingView>
-                    <TouchableOpacity
-                        style={[styles.button, isDisabled && styles.buttonDisabled]}
-                        onPress={handleLogin}
-                        disabled={isDisabled}
-                    >
-                        {loading ? (
-                            <ActivityIndicator size="small" color="#FFF" />
-                        ) : (
-                            <Text style={styles.buttonText}>Entrar</Text>
-                        )}
-                    </TouchableOpacity>
-                    {error && <Text style={styles.error}>{error}</Text>}
-                    <TouchableOpacity
-                        style={[styles.forgetPassContainer, isDisabledRecover && styles.buttonDisabledRecover]}
-                        onPress={handleForgotPass}
-                        disabled={isDisabledRecover}
-                    >
-                        <Text style={styles.forgetPassText}>Esqueci a Senha</Text>
-                    </TouchableOpacity>
+                    <View style={styles.titleContainer}>
+                        <Image
+                            source={require("../assets/diamond.png")}
+                            style={styles.image}
+                        />
+                        <Text
+                            style={{
+                                color: "grey",
+                                opacity: 0.5
+                            }}
+                        >
+                            {expo.version}
+                        </Text>
+                    </View>
                 </View>
-                <View style={styles.titleContainer}>
-                    <Image
-                        source={require("../assets/diamond.png")}
-                        style={styles.image}
-                    />
-                    <Text
-                        style={{
-                            color: "grey",
-                            opacity: 0.5
-                        }}
-                    >
-                        {expo.version}
-                    </Text>
-                </View>
-            </>
+            </ScrollView>
         </TouchableWithoutFeedback>
     );
 };
 
 const styles = StyleSheet.create({
+    content: {
+        flex: 1,
+        justifyContent: "center",
+        padding: 20,
+    },
     forgetPassContainer: {
         marginTop: 15
     },
@@ -165,21 +174,19 @@ const styles = StyleSheet.create({
         paddingHorizontal: 10,
         marginBottom: 10,
     },
-    image: {
-        width: 60,
-        height: 60
-    },
     titleContainer: {
-        marginTop: -50,
-        marginBottom: 30,
-        justifyContent: "center",
-        alignItems: "center"
+        position: "absolute",
+        bottom: 20,
+        width: "100%",
+        alignItems: "center",
+    },
+    image: {
+        width: 50,
+        height: 50,
+        marginBottom: 10,
     },
     container: {
         flex: 1,
-        justifyContent: 'center',
-        padding: 20,
-        marginBottom: 120
     },
     title: {
         fontSize: 24,
