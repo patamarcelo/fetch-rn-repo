@@ -65,9 +65,6 @@ const MapScreen = ({ navigation, route }) => {
 	const [mapRegion, setMapRegion] = useState(null);
 
 
-	useEffect(() => {
-		console.log('shhetRef: ', refRBSheet)
-	}, [refRBSheet]);
 
 	// Function to calculate zoom level from map's region
 	const calculateZoomLevel = (region) => {
@@ -92,7 +89,7 @@ const MapScreen = ({ navigation, route }) => {
 			const dataFromMap = newMapArr(mapPlotData)
 			const filteredFarm = dataFromMap.filter((data) => data.farmName == farmName.replace('Fazenda', 'Projeto').replace('Cacique', 'Cacíque'))
 			const onlyCoords = filteredFarm.map((data) => data.coords)
-			console.log('onlyCoords: ', onlyCoords)
+			// console.log('onlyCoords: ', onlyCoords)
 
 			const getRegionForCoordinates = (coordinates) => {
 				let minLat, maxLat, minLng, maxLng;
@@ -139,10 +136,12 @@ const MapScreen = ({ navigation, route }) => {
 			}
 		}
 	}, [data]);
+
 	useEffect(() => {
 		// console.log('params', data)
 		setFarmName(data?.farmName)
 	}, []);
+
 	// useEffect(() => {
 	// 	console.log('zoom', zoomLevel)
 	// 	console.log('zoom', zoomLevel > 12)
@@ -208,7 +207,7 @@ const MapScreen = ({ navigation, route }) => {
 	}
 
 	const handleSetLocation = () => {
-		console.log(location, 'location')
+		// console.log(location, 'location')
 		mapRef.current.animateToRegion({
 			latitude: location.coords.latitude,
 			longitude: location.coords.longitude,
@@ -220,7 +219,7 @@ const MapScreen = ({ navigation, route }) => {
 	};
 
 	const handlerFarms = () => {
-		console.log("logout");
+		// console.log("logout");
 		navigation.navigate("FarmsScren", { fromRoute: "maps" });
 		// setModalVisible(true);
 	};
@@ -278,8 +277,8 @@ const MapScreen = ({ navigation, route }) => {
 													cultura: data.cultura,
 													farmName: data.farmName
 												}
-												console.log('data to bottom', objToAdd)
-												console.log('data to bottom', data)
+												// console.log('data to bottom', objToAdd)
+												// console.log('data to bottom', data)
 												setPropsToBottom(objToAdd)
 												refRBSheet.current.open()
 												Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);

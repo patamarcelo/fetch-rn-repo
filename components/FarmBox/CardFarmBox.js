@@ -165,7 +165,7 @@ const CardFarmBox = ({ route, navigation }) => {
 
     const handleMapApi = (data) => {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy)
-        console.log('handle MAP FArmbox', data)
+        // console.log('handle MAP FArmbox', data)
         navigation.navigate('MapsCreenStack', { data })
 
     }
@@ -233,7 +233,7 @@ const CardFarmBox = ({ route, navigation }) => {
                 <ScrollView
                     ref={ref}
                     contentContainerStyle={{
-                        paddingBottom: tabBarHeight, // Adjust this value based on your bottom tab height
+                        paddingBottom: tabBarHeight + (showSearch ? 40 : -15), // Adjust this value based on your bottom tab height
                     }}>
                     {
                         farmData && farmData.map((data, i) => {
