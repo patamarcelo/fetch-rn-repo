@@ -12,17 +12,13 @@
         {
           "locationAlwaysAndWhenInUsePermission": "Permitir que o $(PRODUCT_NAME) use sua localização."
         }
-      ],
-      [
-        "expo-splash-screen",
-        {
-          "resizeMode": "contain",
-          "backgroundColor": "#031633",
-          "image": "./assets/splash.png"
-        }
       ]
     ],
-
+    "splash": {
+      "resizeMode": "contain",
+      "backgroundColor": "#031633",
+      "image": "./assets/splash.png"
+    },
     "assetBundlePatterns": [
       "**/*"
     ],
