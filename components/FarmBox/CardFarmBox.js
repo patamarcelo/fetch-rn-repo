@@ -1,4 +1,4 @@
-import { Pressable, View, Text, StyleSheet, Image, Animated, Easing, ScrollView, SafeAreaView, TouchableOpacity } from "react-native"
+import { Pressable, View, Text, StyleSheet, Image, Easing, ScrollView, SafeAreaView, TouchableOpacity } from "react-native"
 import { Colors } from "../../constants/styles";
 
 import { useState, useRef, useEffect, useLayoutEffect } from "react";
@@ -32,6 +32,8 @@ import { FAB } from "react-native-paper";
 
 
 
+import Animated, { BounceIn, BounceOut, FadeIn, FadeInRight, FadeInUp, FadeOut, FadeOutUp, FlipInEasyX, FlipOutEasyX, Layout, SlideInLeft, SlideInRight, SlideOutRight, SlideOutUp, StretchInY, StretchOutX, ZoomIn, ZoomOut } from 'react-native-reanimated';
+
 const CardFarmBox = ({ route, navigation }) => {
     // const { data, indexParent, showMapPlot } = props
     const { data, indexParent, farm } = route.params; // Extract route parameters
@@ -52,7 +54,7 @@ const CardFarmBox = ({ route, navigation }) => {
 
     const [selectedParcelas, setSelectedParcelas] = useState([]);
     const [totalSelected, setTotalSelected] = useState(0);
-    
+
     const [farmData, setfarmData] = useState([]);
 
     useLayoutEffect(() => {
@@ -238,114 +240,127 @@ const CardFarmBox = ({ route, navigation }) => {
                     {
                         farmData && farmData.map((data, i) => {
                             return (
-                                <Pressable
+                                <Animated.View
+                                    entering={FadeInRight.duration(300)} // Root-level animation for appearance
+                                    exiting={FadeOut.duration(300)} // Root-level animation for disappearance
+                                    layout={Layout.springify()}    // Layout animation for dynamic resizing
                                     key={i}
-                                    style={({ pressed }) => [
-                                        styles.mainContainerAll,
-                                        // pressed && styles.pressed, 
-                                        { marginTop: i !== 0 && 10, backgroundColor: !showAps[data.code] ? 'whitesmoke' : Colors.secondary[200], opacity: !showAps[data.code] ? 0.8 : 1 }]}
-                                // onPress={handleOpen}
                                 >
-                                    <View style={[styles.infoContainer, { backgroundColor: showAps[data.code] ? Colors.primary500 : Colors.primary800 }]}>
-                                        <Text style={{ color: 'whitesmoke', fontWeight: 'bold' }}>Área: {formatNumber(data.areaSolicitada)}</Text>
-                                        <Text style={{ color: 'whitesmoke', fontWeight: 'bold' }}>Aplicado: {formatNumber(data.areaAplicada)}</Text>
-                                        <Text style={{ color: 'whitesmoke', fontWeight: 'bold' }}>Saldo: {formatNumber(data.saldoAreaAplicar)}</Text>
-
-                                    </View>
                                     <Pressable
                                         style={({ pressed }) => [
-                                            styles.mainContainer,
-                                            pressed && styles.pressed, { marginTop: indexParent === 0 && 0, backgroundColor: !showAps[data.code] ? 'whitesmoke' : Colors.secondary[200] }]}
-                                        onPress={handleOpen.bind(this, data.code)}>
+                                            styles.mainContainerAll,
+                                            // pressed && styles.pressed, 
+                                            { marginTop: i !== 0 && 10, backgroundColor: !showAps[data.code] ? 'whitesmoke' : Colors.secondary[200], opacity: !showAps[data.code] ? 0.8 : 1 }]}
+                                    // onPress={handleOpen}
+                                    >
+                                        <View style={[styles.infoContainer, { backgroundColor: showAps[data.code] ? Colors.primary500 : Colors.primary800 }]}>
+                                            <Text style={{ color: 'whitesmoke', fontWeight: 'bold' }}>Área: {formatNumber(data.areaSolicitada)}</Text>
+                                            <Text style={{ color: 'whitesmoke', fontWeight: 'bold' }}>Aplicado: {formatNumber(data.areaAplicada)}</Text>
+                                            <Text style={{ color: 'whitesmoke', fontWeight: 'bold' }}>Saldo: {formatNumber(data.saldoAreaAplicar)}</Text>
 
-                                        <View style={styles.headerContainer}>
-                                            <View>
-                                                <Text style={styles.headerTitle}> {data?.code?.split('AP')}</Text>
-                                                <Text style={[styles.headerTitle, styles.dateTile]}> {data?.dateAp?.split('-').reverse().join('/')}</Text>
-                                            </View>
-                                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
-                                                <Text style={styles.headerTitle}> {data.operation}</Text>
-                                                <Image source={getCultura(data)}
-                                                    style={{ width: 20, height: 20 }}
-                                                />
-                                            </View>
-                                            <View style={styles.progressContainer}>
-                                                <Progress.Pie size={30} indeterminate={false} progress={data.percent} color={data.percentColor === "#E4D00A" ? Colors.gold[700] : data.percentColor} />
-                                            </View>
                                         </View>
-                                    </Pressable>
+                                        <Pressable
+                                            style={({ pressed }) => [
+                                                styles.mainContainer,
+                                                pressed && styles.pressed, { marginTop: indexParent === 0 && 0, backgroundColor: !showAps[data.code] ? 'whitesmoke' : Colors.secondary[200] }]}
+                                            onPress={handleOpen.bind(this, data.code)}>
 
-                                    {
-                                        showAps[data.code] &&
+                                            <View style={styles.headerContainer}>
+                                                <View>
+                                                    <Text style={styles.headerTitle}> {data?.code?.split('AP')}</Text>
+                                                    <Text style={[styles.headerTitle, styles.dateTile]}> {data?.dateAp?.split('-').reverse().join('/')}</Text>
+                                                </View>
+                                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+                                                    <Text style={styles.headerTitle}> {data.operation}</Text>
+                                                    <Image source={getCultura(data)}
+                                                        style={{ width: 20, height: 20 }}
+                                                    />
+                                                </View>
+                                                <View style={styles.progressContainer}>
+                                                    <Progress.Pie size={30} indeterminate={false} progress={data.percent} color={data.percentColor === "#E4D00A" ? Colors.gold[700] : data.percentColor} />
+                                                </View>
+                                            </View>
+                                        </Pressable>
 
-                                        <View style={styles.bodyContainer}>
-                                            <View style={styles.parcelasContainer}>
-                                                {
-                                                    data?.parcelas?.map((parcela) => {
-                                                        const uniKey = data.idAp + parcela.parcela
-                                                        const isSelected = selectedParcelas.find((filt) => filt.parcelaId === parcela.parcelaId)
-                                                        return (
+                                        {
+                                            showAps[data.code] &&
+                                            <Animated.View
+                                                entering={FadeInUp.duration(50)}   // Child-level animation for appearance
+                                                exiting={FadeOutUp.duration(50)}   // Child-level animation for disappearance
+                                                style={styles.bodyContainer}
+                                            >
+
+
+                                                <View style={styles.bodyContainer}>
+                                                    <View style={styles.parcelasContainer}>
+                                                        {
+                                                            data?.parcelas?.map((parcela) => {
+                                                                const uniKey = data.idAp + parcela.parcela
+                                                                const isSelected = selectedParcelas.find((filt) => filt.parcelaId === parcela.parcelaId)
+                                                                return (
+                                                                    <Pressable
+                                                                        key={uniKey}
+                                                                        style={[styles.parcelasView, isSelected && styles.selectedParcelas, { backgroundColor: parcela.fillColorParce }]}
+                                                                        onPress={handleSelected.bind(this, parcela)}
+                                                                    >
+                                                                        <Text style={{ color: parcela.fillColorParce === '#E4D00A' ? 'black' : 'whitesmoke', fontWeight: 'bold' }}>{parcela.parcela}</Text>
+                                                                        <Text style={{ color: parcela.fillColorParce === '#E4D00A' ? 'black' : 'whitesmoke' }}>-</Text>
+                                                                        <Text style={{ color: parcela.fillColorParce === '#E4D00A' ? 'black' : 'whitesmoke', fontWeight: 'bold' }}>{formatNumber(parcela.areaSolicitada)}</Text>
+                                                                    </Pressable>
+                                                                )
+                                                            })
+                                                        }
+                                                    </View>
+                                                    <Divider width={1} color={"rgba(245,245,245,0.3)"} />
+                                                    <View style={styles.produtosContainer}>
+                                                        {
+                                                            data?.prods?.filter((pro) => pro.type !== 'Operação').map((produto) => {
+                                                                const uniKey = data.cultura + data.idAp + produto.product
+                                                                console.log('parcela Color backgrounc: ', produto.colorChip)
+                                                                return (
+                                                                    <View
+                                                                        key={uniKey}
+                                                                        style={[styles.prodsView, { backgroundColor: produto.colorChip === 'rgb(255,255,255,0.1)' ? 'whitesmoke' : produto.colorChip }]}
+                                                                    >
+                                                                        <Text style={[styles.textProds, { color: produto.colorChip === 'rgb(255,255,255,0.1)' ? '#455d7a' : 'whitesmoke' }]}>{formatNumberProds(produto.doseSolicitada)}</Text>
+                                                                        <Text style={[styles.textProdsName, { color: produto.colorChip === 'rgb(255,255,255,0.1)' ? '#455d7a' : 'whitesmoke' }]}>{produto.product}</Text>
+                                                                        <Text style={[styles.totalprods, { color: produto.colorChip === 'rgb(255,255,255,0.1)' ? '#455d7a' : 'whitesmoke' }]}>{formatNumber(produto.doseSolicitada * data.areaSolicitada)}</Text>
+                                                                    </View>
+                                                                )
+                                                            })
+                                                        }
+                                                    </View>
+                                                    <View style={styles.footerContainer}>
+                                                        <View style={styles.totalSelected}>
+                                                            <Text style={styles.textTotalSelected}>{totalSelected > 0 ? formatNumber(totalSelected) : '-'}</Text>
+                                                        </View>
+                                                        <View style={styles.buttonContainer}>
                                                             <Pressable
-                                                                key={uniKey}
-                                                                style={[styles.parcelasView, isSelected && styles.selectedParcelas, { backgroundColor: parcela.fillColorParce }]}
-                                                                onPress={handleSelected.bind(this, parcela)}
+                                                                style={({ pressed }) => [
+                                                                    styles.mapContainer,
+                                                                    pressed && styles.pressed]}
+                                                                onPress={handleKmlGenerator.bind(this, data, mapPlotData)}
                                                             >
-                                                                <Text style={{ color: parcela.fillColorParce === '#E4D00A' ? 'black' : 'whitesmoke', fontWeight: 'bold' }}>{parcela.parcela}</Text>
-                                                                <Text style={{ color: parcela.fillColorParce === '#E4D00A' ? 'black' : 'whitesmoke' }}>-</Text>
-                                                                <Text style={{ color: parcela.fillColorParce === '#E4D00A' ? 'black' : 'whitesmoke', fontWeight: 'bold' }}>{formatNumber(parcela.areaSolicitada)}</Text>
+                                                                <FontAwesome5 name="plane" size={24} color={Colors.succes[600]} />
                                                             </Pressable>
-                                                        )
-                                                    })
-                                                }
-                                            </View>
-                                            <Divider width={1} color={"rgba(245,245,245,0.3)"} />
-                                            <View style={styles.produtosContainer}>
-                                                {
-                                                    data?.prods?.filter((pro) => pro.type !== 'Operação').map((produto) => {
-                                                        const uniKey = data.cultura + data.idAp + produto.product
-                                                        console.log('parcela Color backgrounc: ', produto.colorChip)
-                                                        return (
-                                                            <View
-                                                                key={uniKey}
-                                                                style={[styles.prodsView, { backgroundColor: produto.colorChip === 'rgb(255,255,255,0.1)' ? 'whitesmoke' : produto.colorChip }]}
+                                                            <Pressable
+                                                                style={({ pressed }) => [
+                                                                    styles.mapContainer,
+                                                                    pressed && styles.pressed]}
+                                                                onPress={handleMapApi.bind(this, data)}
                                                             >
-                                                                <Text style={[styles.textProds, { color: produto.colorChip === 'rgb(255,255,255,0.1)' ? '#455d7a' : 'whitesmoke' }]}>{formatNumberProds(produto.doseSolicitada)}</Text>
-                                                                <Text style={[styles.textProdsName, { color: produto.colorChip === 'rgb(255,255,255,0.1)' ? '#455d7a' : 'whitesmoke' }]}>{produto.product}</Text>
-                                                                <Text style={[styles.totalprods, { color: produto.colorChip === 'rgb(255,255,255,0.1)' ? '#455d7a' : 'whitesmoke' }]}>{formatNumber(produto.doseSolicitada * data.areaSolicitada)}</Text>
-                                                            </View>
-                                                        )
-                                                    })
-                                                }
-                                            </View>
-                                            <View style={styles.footerContainer}>
-                                                <View style={styles.totalSelected}>
-                                                    <Text style={styles.textTotalSelected}>{totalSelected > 0 ? formatNumber(totalSelected) : '-'}</Text>
+                                                                <FontAwesome5 name="map-marked-alt" size={24} color={Colors.primary[600]} />
+                                                            </Pressable>
+                                                        </View>
+                                                    </View>
+
+
                                                 </View>
-                                                <View style={styles.buttonContainer}>
-                                                    <Pressable
-                                                        style={({ pressed }) => [
-                                                            styles.mapContainer,
-                                                            pressed && styles.pressed]}
-                                                        onPress={handleKmlGenerator.bind(this, data, mapPlotData)}
-                                                    >
-                                                        <FontAwesome5 name="plane" size={24} color={Colors.succes[600]} />
-                                                    </Pressable>
-                                                    <Pressable
-                                                        style={({ pressed }) => [
-                                                            styles.mapContainer,
-                                                            pressed && styles.pressed]}
-                                                        onPress={handleMapApi.bind(this, data)}
-                                                    >
-                                                        <FontAwesome5 name="map-marked-alt" size={24} color={Colors.primary[600]} />
-                                                    </Pressable>
-                                                </View>
-                                            </View>
+                                            </Animated.View>
+                                        }
 
-
-                                        </View>
-                                    }
-
-                                </Pressable >
+                                    </Pressable >
+                                </Animated.View>
                             )
                         })
                     }
