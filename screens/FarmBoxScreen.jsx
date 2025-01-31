@@ -58,7 +58,6 @@ const FarmBoxScreen = (props) => {
     const stackNavigator = props.navigation.getParent()
     // const navigation = useNavigation();
     const { navigation } = props
-    console.log('navigatesss', navigation)
     const route = useRoute();
     
 
@@ -100,7 +99,6 @@ const FarmBoxScreen = (props) => {
         if (mapPlotData?.length > 0 && showFarm) {
             const dataFromMap = newMapArr(mapPlotData)
             const filteredFarm = dataFromMap.filter((data) => data.farmName == showFarm.replace('Fazenda', 'Projeto').replace('Cacique', 'Cacíque'))
-            console.log('filteredFarm', showFarm)
             if (filteredFarm.length > 0) {
                 setshowPlotMap(true)
             } else {
@@ -130,7 +128,6 @@ const FarmBoxScreen = (props) => {
         } finally {
             setIsloadingDbFarm(false)
         }
-        console.log('update farmOperations...')
     }
 
     const handleClearFarm = () => {
@@ -143,7 +140,6 @@ const FarmBoxScreen = (props) => {
             const currentStack = navigation.getState();
             const stackName =  currentStack.routes[0]['name']
 
-            console.log("Now on FarmBoxStack", navigation);
             stackNavigator.setOptions({
                 title: stackName === 'FarmBoxStack' ? 'FarmBox' : selectedFarm?.replace('Fazenda ', ''),
                 headerShadowVisible: false,
@@ -227,7 +223,6 @@ const FarmBoxScreen = (props) => {
             if (response.status === 200) {
                 console.log('atualização OK')
                 const data = await response.json();
-                console.log('data from Farmbox', data)
                 dispatch(setFarmBoxData(data))
             }
         } catch (error) {
@@ -257,7 +252,6 @@ const FarmBoxScreen = (props) => {
                 if (response.status === 200) {
                     console.log('atualização OK here')
                     const data = await response.json();
-                    console.log(data)
                     dispatch(setFarmBoxData(data))
                 }
             } catch (error) {
@@ -299,7 +293,6 @@ const FarmBoxScreen = (props) => {
 
     const handleShowFarm = (farms) => {
         const data = farmData.filter((farmName) => farmName.farmName === farms)
-        console.log('farmshere:::', farms)
         setSelectedFarm(farms)
         navigation.navigate('FarmBoxFarms', { data, farm: farms, showSearch });
         if (showFarm === farms) {

@@ -80,20 +80,15 @@ const ProgramScreen = ({ navigation }) => {
 		})
 	);
 
-	console.log('EXPO_PUBLIC_REACT_APP_DJANGO_TOKEN', EXPO_PUBLIC_REACT_APP_DJANGO_TOKEN)
 
 	const handlerPrintData = () => {
 		console.log("print Program")
-		console.log('current Program: ', programSelected)
 		const filteredProds = dataProgram.filter((data) => data.operacao__programa__nome === programSelected.nome).sort((a, b) => a.defensivo__tipo.localeCompare(b.defensivo__tipo))
 		const onlyEstagios = filteredProds.sort((a, b) => a.operacao__prazo_dap - b.operacao__prazo_dap).map((data) => {
 			const newName = `${data.operacao__estagio} | ${data.operacao__prazo_dap}`
 			return newName
 		})
 		const filteredEstagios = [...new Set(onlyEstagios)]
-		console.log('estagios: ', filteredEstagios)
-		console.log('produtos: ', filteredProds)
-		console.log("area total: ", areaTotalPrograms)
 		const areaTotalProgram = areaTotalPrograms.find((program) => program.programa__nome === programSelected.nome)
 		PrintProgramPage(programSelected, filteredProds, filteredEstagios, areaTotalProgram)
 	}

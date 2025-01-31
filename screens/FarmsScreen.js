@@ -36,7 +36,6 @@ const FarmsScreen = ({ setModalVisible, modalVisible, route }) => {
 	const navigation = useNavigation();
 
 	const handleFilter = () => {
-		console.log("FilterFarm", selectedFarmHook);
 		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy)
 		dispatch(selectedFarm(selectedFarmHook));
 		if (params === undefined) {
@@ -65,7 +64,6 @@ const FarmsScreen = ({ setModalVisible, modalVisible, route }) => {
 		}
 	};
 
-	console.log(farmsList);
 	return (
 		<View style={styles.mainContainer}>
 			<View style={{ width: "100%", alignItems: "center" }}>

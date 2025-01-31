@@ -1,5 +1,4 @@
 export const newMapArr = (mapPlot) => {
-    console.log(mapPlot)
     const newArrMap = mapPlot?.map((data) => {
         const newArr = data?.map_geo_points?.map((lonLat) => {
             return {
