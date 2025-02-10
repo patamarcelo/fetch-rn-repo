@@ -10,9 +10,13 @@ import ProgramScreen from "../screens/ProgramScreen";
 import IconButton from "../components/ui/IconButton";
 import Ionicons from "@expo/vector-icons/Ionicons";
 
+import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons";
+
+
 import { useNavigation } from "@react-navigation/native";
 import MapStack from "./MapStack";
 import FarmBoxStack from "./FarmBoxStack";
+import PlantioStack from "./PlantioStack";
 
 const Stack = createNativeStackNavigator();
 
@@ -93,6 +97,15 @@ const HomeStack = () => {
 				options={{
 					tabBarIcon: ({ color, size }) => (
 						<Ionicons name="timer" color={color} size={size} />
+					)
+				}}
+			/>
+			<Tab.Screen
+				name="Plantio"
+				component={PlantioStack}
+				options={{
+					tabBarIcon: ({ color, size }) => (
+						<MaterialCommunityIcons name="sprout" color={color} size={size} />
 					)
 				}}
 			/>
