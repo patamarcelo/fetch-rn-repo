@@ -12,6 +12,8 @@ import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 
 import { Colors } from '../constants/styles';
 
+import { useDispatch } from "react-redux";
+import { geralActions } from '../store/redux/geral';
 
 const FarmsScreenCard = (itemData) => {
     return (
@@ -21,6 +23,8 @@ const FarmsScreenCard = (itemData) => {
     );
 };
 const PlantioScreen = () => {
+    const dispatch = useDispatch()
+    const { setColheitaData } = geralActions
     const [dataPlantioScreen, setDataPlantioScreen] = useState([]);
     const [isLoadingData, setIsLoadingData] = useState(false);
     const [isRefreshing, setIsRefreshing] = useState(false);  // For pull-to-refresh
@@ -28,6 +32,7 @@ const PlantioScreen = () => {
     
     const [groupedFarmsData, setGroupedFarmsData] = useState([]);
     const tabBarHeight = useBottomTabBarHeight(); 
+
 
     useEffect(() => {
         const handleUpdateApiData = async () => {
@@ -50,6 +55,7 @@ const PlantioScreen = () => {
                     const data = await response.json();
                     console.log('resposta here:::', data)
                     setGroupedFarmsData(data?.grouped_data)
+                    dispatch(setColheitaData(data))
                     return data
                 }
 
@@ -87,6 +93,7 @@ const PlantioScreen = () => {
                 const data = await response.json();
                 console.log('resposta here:::', data)
                 setGroupedFarmsData(data?.grouped_data)
+                dispatch(setColheitaData(data))
                 return data
             }
 

@@ -13,6 +13,7 @@ const initialState = {
 	mapDataPlot: [],
 	farmboxSearchBar: false,
 	farmBoxSearchQuery: '',
+	colheitaData: null,
 };
 
 const geralSlice = createSlice({
@@ -54,6 +55,9 @@ const geralSlice = createSlice({
 		},
 		setFarmboxSearchQuery: (state, action) => {
 			state.farmBoxSearchQuery = action.payload
+		},
+		setColheitaData: (state, action) => {
+			state.colheitaData = action.payload
 		},
 	}
 });

@@ -21,3 +21,5 @@ export const selectMapDataPlot = (state) => state.geral.mapDataPlot
 export const selectFarmboxSearchBar = (state) => state.geral.farmboxSearchBar
 
 export const selectFarmboxSearchQuery = (state) => state.geral.farmBoxSearchQuery
+
+export const selectColheitaData = (state) => state.geral.colheitaData
