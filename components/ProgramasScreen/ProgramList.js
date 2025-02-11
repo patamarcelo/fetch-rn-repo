@@ -105,7 +105,7 @@ const ProgramList = ({ refresh, isLoading, innerRef, setPrintableData }) => {
 			{/* Main ScrollView */}
 			<ScrollView
 				ref={innerRef}
-				style={[styles.mainContainer, { marginBottom: tabBarHeight }]}
+				style={[styles.mainContainer, { marginBottom: 0 }]}
 				refreshControl={
 					<RefreshControl
 						refreshing={isLoading}

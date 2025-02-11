@@ -10,7 +10,8 @@ import {
 	StyleSheet,
 	Pressable,
 	ScrollView,
-	Alert
+	Alert,
+	SafeAreaView
 } from "react-native";
 import Button from "../components/ui/Button";
 
@@ -34,12 +35,17 @@ import * as Haptics from 'expo-haptics';
 
 import { logout } from "../store/redux/authSlice";
 
+import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
+
+
 
 
 const ProgramScreen = ({ navigation }) => {
 	const sheetRef = useRef(null);
 	const [isLoading, setIsLoading] = useState();
 	const ref = useRef(null);
+	const tabBarHeight = useBottomTabBarHeight(); 
+
 
 	const dispatch = useDispatch();
 	const {
@@ -225,12 +231,14 @@ const ProgramScreen = ({ navigation }) => {
 				</View>
 			)}
 			{programSelected !== null && (
-				<ProgramList
-					innerRef={ref}
-					refresh={handlerRefresh}
-					isLoading={isLoading}
-					setPrintableData={setPrintableData}
-				/>
+				<SafeAreaView style={{flex: 1, marginBottom: tabBarHeight}}>
+					<ProgramList
+						innerRef={ref}
+						refresh={handlerRefresh}
+						isLoading={isLoading}
+						setPrintableData={setPrintableData}
+					/>
+				</SafeAreaView>
 			)}
 			<BottomSheet ref={sheetRef} style={styles.bottomSheetStl}>
 				<ScrollView>

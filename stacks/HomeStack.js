@@ -101,12 +101,14 @@ const HomeStack = () => {
 				}}
 			/>
 			<Tab.Screen
-				name="Plantio"
+				name="Plantio / Colheita"
 				component={PlantioStack}
 				options={{
 					tabBarIcon: ({ color, size }) => (
 						<MaterialCommunityIcons name="sprout" color={color} size={size} />
-					)
+					),
+					headerTitle: 'Colheita',
+					title: 'Colheita'
 				}}
 			/>
 		</Tab.Navigator>
