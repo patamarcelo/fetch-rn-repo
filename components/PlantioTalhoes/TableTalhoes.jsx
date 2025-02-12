@@ -18,7 +18,7 @@ const TabelaTalhoesScreen = ({ data }) => {
     return (
         <View style={{ marginTop: 20 }}>
             <View style={{justifyContent: 'center', flex: 1, alignItems:  'flex-start', paddingBottom: 5}}>
-                <Text style={{fontSize: 14, fontWeight: 'bold'}}>Cargas</Text>
+                <Text style={{fontSize: 12, fontWeight: 'bold'}}>Cargas: {data?.length}</Text>
             </View>
             <View style={stylesTable.titleWrapper}>
                 <DataTable>
@@ -44,12 +44,12 @@ const TabelaTalhoesScreen = ({ data }) => {
                     </View>
 
                     {data.map((item, index) => (
-                        <View key={index} style={stylesTable.row}>
+                        <View key={index} style={[stylesTable.row, {backgroundColor: index % 2 === 0 && 'whitesmoke' }]}>
                             <View style={stylesTable.cell}>
                                 <Text style={stylesTable.cellText}>{formatDate(item.data_colheita)}</Text>
                             </View>
                             <View style={stylesTable.cell}>
-                                <Text style={stylesTable.cellText}>{item.romaneio}</Text>
+                                <Text style={stylesTable.cellText}>{item?.romaneio || " - "}</Text>
                             </View>
                             <View style={stylesTable.cell}>
                                 <Text style={stylesTable.cellText}>{formatNumber(((item.peso_bruto - item.peso_tara) / 60) || 0)}</Text>
@@ -106,7 +106,7 @@ const stylesTable = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'space-between',
         paddingVertical: 8,
-        paddingHorizontal: 10
+        paddingHorizontal: 5
     },
     cell: {
         paddingVertical: 2,

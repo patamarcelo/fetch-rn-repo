@@ -3,10 +3,11 @@ import React from 'react'
 import { Colors } from '../../constants/styles';
 import Icon from 'react-native-vector-icons/MaterialIcons'; // You can also use FontAwesome, Ionicons, etc.
 
-import Animated, { FadeInRight, FadeOut, Layout } from 'react-native-reanimated';
+import Animated, { FadeInRight, FadeOut, Layout, BounceIn, BounceOut } from 'react-native-reanimated';
 
 import { useNavigation } from '@react-navigation/native';
 
+import * as Haptics from 'expo-haptics';
 const iconDict = [
     { cultura: "Feijão", icon: require('../../utils/assets/icons/beans2.png'), alt: "feijao" },
     { cultura: "Arroz", icon: require('../../utils/assets/icons/rice.png'), alt: "arroz" },
@@ -36,14 +37,15 @@ const formatNumber = number => {
 const FarmsPlantioScreen = (props) => {
     const { data } = props;
     const navigation = useNavigation()
-    
+
     const handlePress = () => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy)
         navigation.push('PlantioTalhoesScreen', { farm: data.farm });
     }
 
 
     const totalPercent = parseInt((data.parcial / data.colheita) * 100) <= 100 ? parseInt((data.parcial / data.colheita) * 100) : 100
-    
+
     return (
         <Pressable
             style={({ pressed }) => [
@@ -105,14 +107,20 @@ const FarmsPlantioScreen = (props) => {
                             }
                         </View>
                     </View>
-                    <View style={styles.rowContainer}>
+                    <Animated.View
+                        entering={BounceIn.duration(300)} // Root-level animation for appearance
+                        exiting={BounceOut.duration(300)} // Root-level animation for disappearance
+                        layout={Layout.springify()}    // Layout animation for dynamic resizing
+                        style={styles.rowContainer}
+                    >
                         <View style={styles.containerPercent}>
                             <View style={[styles.circle, { backgroundColor: totalPercent === 0 ? 'rgba(52,152,219,0.2)' : 'rgba(52,152,219,1.0)' }]}>
                                 <Text style={[styles.percentText, { color: totalPercent === 0 ? 'black' : 'white' }]}>{totalPercent}%</Text>
                             </View>
                         </View>
                         <Icon name="arrow-forward" size={24} color="#000" />
-                    </View>
+
+                    </Animated.View>
                 </View>
 
 

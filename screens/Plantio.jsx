@@ -51,7 +51,7 @@ const PlantioScreen = () => {
                 });
                 // console.log('response : ', response)
                 if (response.status === 200) {
-                    Alert.alert('Tudo Certo', 'Dados Atualizados com sucesso!!')
+                    // Alert.alert('Tudo Certo', 'Dados Atualizados com sucesso!!')
                     const data = await response.json();
                     // console.log('resposta here:::', data)
                     setGroupedFarmsData(data?.grouped_data)

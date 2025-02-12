@@ -16,6 +16,8 @@ import { Skeleton } from '@rneui/themed';
 // import * as ScreenOrientation from 'expo-screen-orientation';
 import dayjs from 'dayjs';
 
+import * as Haptics from 'expo-haptics';
+
 
 const iconDict = [
     { cultura: "Feijão", icon: require('../../utils/assets/icons/beans2.png'), alt: "feijao" },
@@ -74,12 +76,14 @@ const PlantioTalhoesCard = (props) => {
 
 
     const handleClose = () => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy)
         setShowTruckData([])
     }
 
 
 
     const handleUpdateApiData = async (idText) => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy)
         setIsLoadingData(true)
         try {
             const response = await fetch(LINK + `/colheita/${idText}/get_colheita_detail_react_native/`, {
@@ -136,6 +140,9 @@ const PlantioTalhoesCard = (props) => {
         return dayjs().diff(dayjs(dateString), 'day') + 1;
     }
 
+    const getTotalW = data?.cargas?.find(Boolean) ? data?.cargas?.find(Boolean).total_peso_liquido / 60 : null
+    const totalProd = getTotalW ? getTotalW / parcialArea : 0
+
 
     return (
         <Pressable
@@ -149,28 +156,49 @@ const PlantioTalhoesCard = (props) => {
         >
             <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
 
-                <View>
-                    <Text>Parcela: {data.talhao__id_talhao}</Text>
-                    <Text>Area: {formatNumber(data.area_colheita)}</Text>
+                <View style={{ justifyContent: 'space-between' }}>
+                    <View style={{marginBottom: 15}}>
+
+                        <Text style={{ fontSize: 20, fontWeight: 'bold' }}>{data.talhao__id_talhao}</Text>
+                        <Text style={{ fontSize: 9 }}>{formatDate(data.data_plantio)} - {data.data_plantio ? dapCalc(data.data_plantio) + ' dias' : ''}</Text>
+                    </View>
+                    {/* <Text>Area: {formatNumber(data.area_colheita)}</Text>
                     <Text>Colhido: {formatNumber(parcialArea)}</Text>
-                    <Text>Saldo: {formatNumber(missingArea)}</Text>
-                    <Text>Plantio: {formatDate(data.data_plantio)}</Text>
+                    <Text>Saldo: {formatNumber(missingArea)}</Text> */}
+                    <View style={{ flexDirection: 'column' }}>
+                        {
+                            totalProd > 0 &&
+                            <Text style={{ fontSize: 14, fontWeight: 'bold', color: 'green' }}>{formatNumber(totalProd)}<Text style={{ fontSize: 8, fontWeight: '400', color: 'black' }}> Scs/ ha</Text></Text>
+                        }
+                    </View>
                 </View>
-                <View>
+                <View style={{alignItems: 'flex-end'}}>
 
-
-                    <Text>DAP: {data.data_plantio ? dapCalc(data.data_plantio) : '-'}</Text>
-                    <Text>{data.finalizado_colheita ? 'Colheita Finalizada' : 'Colhendo'}</Text>
+                    {/* <Text>DAP: {data.data_plantio ? dapCalc(data.data_plantio) : '-'}</Text> */}
                     <Image source={getCultura(data.variedade__cultura__cultura)}
                         style={{ width: 30, height: 30 }}
                     />
-                    <Text>{data.variedade__nome_fantasia}</Text>
+                    <Text style={{fontSize: 10}}>{data.variedade__nome_fantasia.replace('Arroz', '')}</Text>
+                    {
+                        data?.cargas && showTruckData?.length === 0 && !isLoadingData && (
+                            // <View style={{ justifyContent: 'flex-end', flex: 1, alignItems: 'flex-end', marginTop: 10 }}>
+                            <Icon name={'truck-check'} size={24} color={!data.finalizado_colheita ? Colors.gold[600] : Colors.succes[700]} />
+                            // </View>
+                        )
+                    }
+                    {
+                        data?.cargas && showTruckData?.length > 0 && !isLoadingData && (
+
+                            <CloseButton onPress={handleClose} name={"close-circle"} color={Colors.error[500]} />
+                        )
+                    }
+
                 </View>
             </View>
-            {
+            {/* {
                 showTruckData?.length > 0 &&
                 <Divider />
-            }
+            } */}
             <View>
 
 
@@ -178,15 +206,7 @@ const PlantioTalhoesCard = (props) => {
                 {
                     showTruckData?.length > 0 && (
                         <>
-                            <CloseButton onPress={handleClose} name={"close-circle"} color={Colors.error500} />
                             <TabelaTalhoesScreen data={showTruckData} />
-                        </>
-                    )
-                }
-                {
-                    data?.cargas && showTruckData?.length === 0 && !isLoadingData && (
-                        <>
-                            <Icon name={'truck-check'} size={24} color={Colors.succes[700]} />
                         </>
                     )
                 }
