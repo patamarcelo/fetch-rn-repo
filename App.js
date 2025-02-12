@@ -63,7 +63,7 @@ export default function App() {
 
 	return (
 		<>
-			<StatusBar style="light" />
+			{/* <StatusBar style="auto" /> */}
 
 			<Provider store={store}>
 				<PersistGate

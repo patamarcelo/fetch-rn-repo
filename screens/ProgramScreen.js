@@ -165,7 +165,7 @@ const ProgramScreen = ({ navigation }) => {
 	useLayoutEffect(() => {
 		navigation.setOptions({
 			title: "",
-			tabBarLabel: "Programas"
+			tabBarLabel: "Programas",
 		});
 	}, []);
 

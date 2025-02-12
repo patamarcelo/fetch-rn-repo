@@ -29,20 +29,18 @@ const PlantioTalhoesDescription = () => {
     const { data } = colheitaData
 
     const [filteredPlants, setFilteredPlants] = useState([]);
-    console.log('data da colheira aqui:::::', data)
 
 
 
     useEffect(() => {
         if (colheitaData) {
             const filterArray = data.filter((plantio) => plantio.talhao__fazenda__nome === farm)
-            console.log('filtered Here;::', filterArray)
             setFilteredPlants(filterArray)
         }
     }, []);
 
     return (
-        <View style={{ flex: 1 }}>
+        <View style={{ flex: 1, backgroundColor: 'white' }}>
             {
                 filteredPlants?.length > 0 &&
                 <FlatList

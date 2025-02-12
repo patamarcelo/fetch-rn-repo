@@ -29,7 +29,8 @@ const HomeStack = () => {
 		<Tab.Navigator
 			screenOptions={{
 				headerStyle: { backgroundColor: Colors.primary[901] },
-				headerTintColor: "white",
+				// headerStyle: { backgroundColor: 'whitesmoke' },
+				headerTintColor: "whitesmoke",
 				contentStyle: { backgroundColor: Colors.primary100 },
 				tabBarStyle: {
 					backgroundColor: "transparent",
