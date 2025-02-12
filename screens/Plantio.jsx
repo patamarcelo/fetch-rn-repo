@@ -49,11 +49,11 @@ const PlantioScreen = () => {
                         Authorization: `Token ${EXPO_PUBLIC_REACT_APP_DJANGO_TOKEN}`,
                     },
                 });
-                console.log('response : ', response)
+                // console.log('response : ', response)
                 if (response.status === 200) {
                     Alert.alert('Tudo Certo', 'Dados Atualizados com sucesso!!')
                     const data = await response.json();
-                    console.log('resposta here:::', data)
+                    // console.log('resposta here:::', data)
                     setGroupedFarmsData(data?.grouped_data)
                     dispatch(setColheitaData(data))
                     return data
@@ -69,7 +69,7 @@ const PlantioScreen = () => {
         }
         if (dataPlantioScreen?.length === 0) {
             const newData = handleUpdateApiData()
-            console.log("new data Here: ", newData)
+            // console.log("new data Here: ", newData)
         }
     }, []);
 
@@ -87,11 +87,11 @@ const PlantioScreen = () => {
                     Authorization: `Token ${EXPO_PUBLIC_REACT_APP_DJANGO_TOKEN}`,
                 },
             });
-            console.log('response : ', response)
+            // console.log('response : ', response)
             if (response.status === 200) {
                 Alert.alert('Tudo Certo', 'Dados Atualizados com sucesso!!')
                 const data = await response.json();
-                console.log('resposta here:::', data)
+                // console.log('resposta here:::', data)
                 setGroupedFarmsData(data?.grouped_data)
                 dispatch(setColheitaData(data))
                 return data
@@ -116,14 +116,15 @@ const PlantioScreen = () => {
     }
     return (
         <GestureHandlerRootView style={styles.containerGesture}>
-            <SafeAreaView style={{ flex: 1, marginBottom: tabBarHeight }}>
-
-                <View style={styles.container}>
+            <View style={{ flex: 1}}>
                     {
                         groupedFarmsData && (
 
                             <FlatList
+                                contentInsetAdjustmentBehavior='automatic'
+                                keyboardDismissMode='on-drag'
                                 scrollEnabled={true}
+                                contentContainerStyle={{paddingBottom: tabBarHeight, paddingTop: 10}}
                                 data={groupedFarmsData}
                                 keyExtractor={(item, i) => item.farm + i}
                                 renderItem={FarmsScreenCard}
@@ -142,8 +143,7 @@ const PlantioScreen = () => {
                             />
                         )
                     }
-                </View>
-            </SafeAreaView>
+            </View>
         </GestureHandlerRootView>
     )
 }

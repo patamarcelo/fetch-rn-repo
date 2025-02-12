@@ -108,7 +108,8 @@ const HomeStack = () => {
 						<MaterialCommunityIcons name="sprout" color={color} size={size} />
 					),
 					headerTitle: 'Colheita',
-					title: 'Colheita'
+					title: 'Colheita',
+					headerShown: false
 				}}
 			/>
 		</Tab.Navigator>

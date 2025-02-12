@@ -38,7 +38,6 @@ const FarmsPlantioScreen = (props) => {
     const navigation = useNavigation()
     
     const handlePress = () => {
-        console.log('data: ', data)
         navigation.push('PlantioTalhoesScreen', { farm: data.farm });
     }
 
@@ -64,7 +63,6 @@ const FarmsPlantioScreen = (props) => {
                         styles.percentBackground,
                         { backgroundColor: totalPercent > 75 ? 'rgba(51,153,51,0.4)' : 'rgba(255, 223, 0, 0.4)' },
                         { width: `${totalPercent}%`, borderTopRightRadius: totalPercent < 100 ? 0 : 10, borderBottomRightRadius: totalPercent < 100 ? 0 : 10 }, // Dynamic width based on percent
-                        // {width: '100%'}
                     ]}
                 />
 

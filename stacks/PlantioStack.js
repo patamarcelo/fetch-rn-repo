@@ -11,19 +11,40 @@ import PlantioScreen from "../screens/Plantio";
 import PlantioTalhoesDescription from "../screens/PlantioTalhoes";
 
 
+import { StatusBar } from "react-native";
+import { useFocusEffect } from "@react-navigation/native";
+import { useCallback } from "react";
+
+const PlantioTalhoesScreenWrapper = (props) => {
+    // useFocusEffect(
+    //     useCallback(() => {
+    //         StatusBar.setBarStyle("dark-content");
+    //         StatusBar.setBackgroundColor("#689F38");
+
+    //         return () => {
+    //             StatusBar.setBarStyle("dark-content");
+    //             StatusBar.setBackgroundColor("#FFFFFF");
+    //         };
+    //     }, [])
+    // );
+
+    return <PlantioScreen {...props} />;
+};
 const PlantioStack = () => {
     // const route = useRoute();
     // const newData =  route.params.data
     return (
         <Stack.Navigator
             screenOptions={{
-                headerShown: false, // Make sure the header is visible
-                headerTintColor: "white", // Header text color
+                headerShown: true, // Make sure the header is visible
+                headerTintColor: "whitesmoke", // Header text color
                 headerStyle: {
-                    backgroundColor: '#1E90FF', // Background color for header (example)
+                    headerBlurEffect: 'regular',
+                    headerTransparent: true,
+                    backgroundColor: Colors.primary800
                 },
                 headerTitleStyle: {
-                    fontSize: 36, // Large title font size
+                    // fontSize: 36, // Large title font size
                     fontWeight: 'bold', // You can change this as needed
                 },
                 headerLargeTitle: true, // Enable large title for iOS
@@ -32,17 +53,26 @@ const PlantioStack = () => {
         >
             <Stack.Screen
                 name="PlantioScreen"
-                component={PlantioScreen}
+                component={PlantioTalhoesScreenWrapper}
                 options={{
-                    title: 'Colheita', // Title to show in the header
+                    title: 'Colheitas', // Title to show in the header
                 }}
             />
             <Stack.Screen
                 name="PlantioTalhoesScreen"
                 component={PlantioTalhoesDescription}
-                options={{
-                    title: 'PlantioDescription', // Title to show in the header
-                }}
+                options={({ route }) => ({
+                    title: route.params?.farm ? route.params.farm.replace('Projeto ', '') : 'PlantioDescription',
+                    headerBlurEffect: 'regular',
+                    headerTransparent: true,
+                    // headerSearchBarOptions: {
+                    //     placeholder: 'Buscar',
+                    //     hideWhenScrolling: true,
+                    //     onChangeText: (event) => {
+                    //         console.log("Search text:", event.nativeEvent.text);
+                    //     },
+                    // }
+                })}
             />
 
         </Stack.Navigator>
