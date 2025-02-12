@@ -1,4 +1,4 @@
-import { StyleSheet, Text, View, Alert, ActivityIndicator, SafeAreaView, RefreshControl } from 'react-native'
+import { StyleSheet, Text, View, Alert, ActivityIndicator, SafeAreaView, RefreshControl, ScrollView } from 'react-native'
 import { useEffect, useState } from 'react'
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
@@ -14,11 +14,23 @@ import { Colors } from '../constants/styles';
 
 import { useDispatch } from "react-redux";
 import { geralActions } from '../store/redux/geral';
+import ProgressCircleCard from '../components/Plantio/Geral';
 
 const FarmsScreenCard = (itemData) => {
     return (
         <FarmsPlantioScreen
-        data={itemData.item}
+            data={itemData.item}
+        />
+    );
+};
+const TotalFarmData = (itemData) => {
+    return (
+        <ProgressCircleCard
+            sownArea={itemData.item.area}
+            plannedArea={itemData.item.plannedArea}
+            title="Total Semeado"
+            plannedTitle="Total Planejado"
+            abovePlannedTitle="Acima do Planejado"
         />
     );
 };
@@ -29,9 +41,22 @@ const PlantioScreen = () => {
     const [isLoadingData, setIsLoadingData] = useState(false);
     const [isRefreshing, setIsRefreshing] = useState(false);  // For pull-to-refresh
 
-    
+
     const [groupedFarmsData, setGroupedFarmsData] = useState([]);
-    const tabBarHeight = useBottomTabBarHeight(); 
+    const tabBarHeight = useBottomTabBarHeight();
+
+    const [totalArea, setTotalArea] = useState(0);
+    const [totalAreaColhida, setTotalAreaColhida] = useState(0);
+
+    useEffect(() => {
+        if(groupedFarmsData){
+            const totalArea = groupedFarmsData.reduce((acc, curr) => acc += curr.colheita, 0)
+            setTotalArea(totalArea)
+            
+            const totalAreaColhida = groupedFarmsData.reduce((acc, curr) => acc += curr.parcial, 0)
+            setTotalAreaColhida(totalAreaColhida)
+        }
+    }, [groupedFarmsData]);
 
 
     useEffect(() => {
@@ -116,15 +141,50 @@ const PlantioScreen = () => {
     }
     return (
         <GestureHandlerRootView style={styles.containerGesture}>
-            <View style={{ flex: 1}}>
-                    {
-                        groupedFarmsData && (
-
-                            <FlatList
+        {/* <GestureHandlerRootView style={[styles.containerGesture, { paddingBottom: tabBarHeight, paddingTop: 10, flex: 1 }]}> */}
+            <ScrollView
+                style={{
+                    paddingBottom: tabBarHeight, paddingTop: 10, flex: 1
+                }}
+                contentContainerStyle={{
+                    paddingBottom: tabBarHeight,
+                    paddingTop: 10,
+                    flexGrow: 1,  // Ensures ScrollView content takes all available space
+                }}
+                refreshControl={(
+                    <RefreshControl
+                        refreshing={isRefreshing}
+                        onRefresh={() => {
+                            console.log('Pull-to-refresh triggered'); // Debugging
+                            handleUpdateApiData()
+                        }}  // Pull-to-refresh logic
+                        colors={["#9Bd35A", "#689F38"]}
+                        tintColor={Colors.primary500}
+                    />
+                )}
+            >
+                {
+                    groupedFarmsData?.length > 0  && (
+                        <>
+                            <ProgressCircleCard
+                                sownArea={totalAreaColhida}
+                                plannedArea={totalArea}
+                                title={"Total Colhido"}
+                                plannedTitle={"Total Plantado"}
+                                abovePlannedTitle={"Saldo a Colher"}
+                            />
+                            {
+                                groupedFarmsData.map((data, i) => {
+                                    return (
+                                        <FarmsPlantioScreen data={data} key={i} />
+                                    )
+                                })
+                            }
+                            {/* <FlatList
                                 contentInsetAdjustmentBehavior='automatic'
                                 keyboardDismissMode='on-drag'
                                 scrollEnabled={true}
-                                contentContainerStyle={{paddingBottom: tabBarHeight, paddingTop: 10}}
+                                contentContainerStyle={{ paddingBottom: tabBarHeight, paddingTop: 10 }}
                                 data={groupedFarmsData}
                                 keyExtractor={(item, i) => item.farm + i}
                                 renderItem={FarmsScreenCard}
@@ -140,10 +200,11 @@ const PlantioScreen = () => {
                                         tintColor={Colors.primary500}
                                     />
                                 )}
-                            />
-                        )
-                    }
-            </View>
+                            /> */}
+                        </>
+                    )
+                }
+            </ScrollView>
         </GestureHandlerRootView>
     )
 }
