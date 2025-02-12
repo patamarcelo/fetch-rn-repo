@@ -1,5 +1,5 @@
 import { StyleSheet, Text, View, ScrollView } from 'react-native'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Colors } from '../../constants/styles'
 import { Pressable } from 'react-native'
 
@@ -9,6 +9,8 @@ import { EXPO_PUBLIC_REACT_APP_DJANGO_TOKEN } from "@env";
 import { Card, Title, Paragraph, DataTable } from 'react-native-paper';
 import TabelaTalhoesScreen from './TableTalhoes'
 
+import * as ScreenOrientation from 'expo-screen-orientation';
+
 
 
 
@@ -16,6 +18,9 @@ const PlantioTalhoesCard = (props) => {
     const { data } = props
     const [isLoadingData, setIsLoadingData] = useState(false);
     const [showTruckData, setShowTruckData] = useState([]);
+    const [canRotate, setCanRotate] = useState(false);
+
+
 
     const handleUpdateApiData = async (idText) => {
         setIsLoadingData(true)
@@ -41,8 +46,26 @@ const PlantioTalhoesCard = (props) => {
         } finally {
             console.log('Finally block reached');  //
             setIsLoadingData(false)
-        }
+            // Lock to landscape mode on press
+            // setCanRotate(true);
+            // await ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.LANDSCAPE);
+        };
     }
+
+    // useEffect(() => {
+    //     // Lock the orientation to portrait by default when the component mounts
+    //     if (!canRotate) {
+    //         ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP);
+    //     }
+
+    //     return () => {
+    //         // Lock orientation back to portrait when the component is unmounted or leaves the screen
+    //         if (!canRotate) {
+    //             ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP);
+    //         }
+    //     };
+    // }, [canRotate]);  // Re-run effect when canRotate state changes
+
 
     const handlePress = async (dataPressed) => {
         const idToFind = Number(dataPressed.id)
@@ -55,7 +78,7 @@ const PlantioTalhoesCard = (props) => {
             style={({ pressed }) => [
                 styles.mainContainer,
                 pressed && styles.pressed,
-                {backgroundColor: data?.cargas ? 'green' : Colors.secondary[100] }
+                { backgroundColor: data?.cargas ? 'green' : Colors.secondary[100] }
             ]}
             disabled={showTruckData?.length > 0}
             onPress={handlePress.bind(this, data)}

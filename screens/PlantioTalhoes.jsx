@@ -12,6 +12,7 @@ import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 
 
 
+
 const PlantioTalhoesCardScreen = (itemData) => {
     return (
         <PlantioTalhoesCard
@@ -20,7 +21,7 @@ const PlantioTalhoesCardScreen = (itemData) => {
     );
 };
 const PlantioTalhoesDescription = () => {
-    const tabBarHeight = useBottomTabBarHeight(); 
+    const tabBarHeight = useBottomTabBarHeight();
     // Get route object
     const route = useRoute();
     const { farm } = route.params;
@@ -29,6 +30,8 @@ const PlantioTalhoesDescription = () => {
 
     const [filteredPlants, setFilteredPlants] = useState([]);
     console.log('data da colheira aqui:::::', data)
+
+
 
     useEffect(() => {
         if (colheitaData) {
@@ -39,14 +42,14 @@ const PlantioTalhoesDescription = () => {
     }, []);
 
     return (
-        <View style={{ flex: 1}}>
+        <View style={{ flex: 1 }}>
             {
                 filteredPlants?.length > 0 &&
                 <FlatList
                     contentInsetAdjustmentBehavior='automatic'
                     keyboardDismissMode='on-drag'
                     scrollEnabled={true}
-                    contentContainerStyle={{paddingBottom: tabBarHeight, paddingTop: 10}}
+                    contentContainerStyle={{ paddingBottom: tabBarHeight, paddingTop: 10 }}
                     data={filteredPlants}
                     keyExtractor={(item, i) => item.talhao__id_talhao}
                     renderItem={PlantioTalhoesCardScreen}
