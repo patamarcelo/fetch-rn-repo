@@ -15,21 +15,6 @@ import { StatusBar } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
 import { useCallback } from "react";
 
-const PlantioTalhoesScreenWrapper = (props) => {
-    // useFocusEffect(
-    //     useCallback(() => {
-    //         StatusBar.setBarStyle("dark-content");
-    //         StatusBar.setBackgroundColor("#689F38");
-
-    //         return () => {
-    //             StatusBar.setBarStyle("dark-content");
-    //             StatusBar.setBackgroundColor("#FFFFFF");
-    //         };
-    //     }, [])
-    // );
-
-    return <PlantioScreen {...props} />;
-};
 const PlantioStack = () => {
     // const route = useRoute();
     // const newData =  route.params.data
@@ -53,7 +38,7 @@ const PlantioStack = () => {
         >
             <Stack.Screen
                 name="PlantioScreen"
-                component={PlantioTalhoesScreenWrapper}
+                component={PlantioScreen}
                 options={{
                     title: 'Colheitas', // Title to show in the header
                 }}
@@ -65,12 +50,9 @@ const PlantioStack = () => {
                     title: route.params?.farm ? route.params.farm.replace('Projeto ', '') : 'PlantioDescription',
                     headerBlurEffect: 'regular',
                     headerTransparent: true,
-                    // headerSearchBarOptions: {
-                    //     placeholder: 'Buscar',
-                    //     hideWhenScrolling: true,
-                    //     onChangeText: (event) => {
-                    //         console.log("Search text:", event.nativeEvent.text);
-                    //     },
+                    // headerSearchBarOptions:{
+                    //     placeholder: 'teste buscar',
+                    //     // hideWhenScrolling: false
                     // }
                 })}
             />

@@ -128,7 +128,7 @@ const PlantioScreen = () => {
                                 data={groupedFarmsData}
                                 keyExtractor={(item, i) => item.farm + i}
                                 renderItem={FarmsScreenCard}
-                                ItemSeparatorComponent={() => <View style={{ height: 13 }} />}
+                                ItemSeparatorComponent={() => <View style={{ height: 5 }} />}
                                 refreshControl={(
                                     <RefreshControl
                                         refreshing={isRefreshing}

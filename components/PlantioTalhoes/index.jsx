@@ -144,7 +144,7 @@ const PlantioTalhoesCard = (props) => {
                 pressed && styles.pressed,
                 { borderColor: data?.cargas ? Colors.succes[400] : 'whitesmoke', borderWidth: data?.cargas ? 1 : 0.5 }
             ]}
-            disabled={showTruckData?.length > 0}
+            disabled={showTruckData?.length > 0 || !data?.cargas}
             onPress={handlePress.bind(this, data)}
         >
             <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>

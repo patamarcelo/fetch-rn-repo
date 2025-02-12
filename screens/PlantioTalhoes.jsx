@@ -34,34 +34,24 @@ const PlantioTalhoesDescription = () => {
 
     useEffect(() => {
         if (colheitaData) {
-            const filterArray = data.filter((plantio) => plantio.talhao__fazenda__nome === farm)
-            setFilteredPlants(filterArray)
+            const filterArray = data.filter((plantio) => plantio.talhao__fazenda__nome === farm);
+            setFilteredPlants(filterArray);
         }
-    }, []);
+    }, [colheitaData, farm, data]); // Add dependencies here to re-run when needed
 
     return (
-        <View style={{ flex: 1, backgroundColor: 'white' }}>
-            {
-                filteredPlants?.length > 0 &&
-                <FlatList
-                    contentInsetAdjustmentBehavior='automatic'
-                    keyboardDismissMode='on-drag'
-                    scrollEnabled={true}
-                    contentContainerStyle={{ paddingBottom: tabBarHeight, paddingTop: 10 }}
-                    data={filteredPlants}
-                    keyExtractor={(item, i) => item.talhao__id_talhao}
-                    renderItem={PlantioTalhoesCardScreen}
-                    ItemSeparatorComponent={() => <View style={{ height: 13 }} />}
-                />
-            }
-        </View>
+        <FlatList
+            contentInsetAdjustmentBehavior='automatic'
+            keyboardDismissMode='on-drag'
+            scrollEnabled={true}
+            contentContainerStyle={{ paddingBottom: tabBarHeight, paddingTop: 10 }}
+            data={filteredPlants}
+            keyExtractor={(item, i) => item.talhao__id_talhao}
+            renderItem={PlantioTalhoesCardScreen}
+            ItemSeparatorComponent={() => <View style={{ height: 13 }} />}
+        />
+
     )
 }
 
 export default PlantioTalhoesDescription
-
-const styles = StyleSheet.create({
-    listContent: {
-        paddingBottom: 100, // Adjust the value based on the height of the bottom tab
-    }
-})
