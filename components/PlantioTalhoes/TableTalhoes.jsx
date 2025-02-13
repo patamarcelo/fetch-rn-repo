@@ -1,5 +1,5 @@
 import { View, StyleSheet, Text } from "react-native";
-import { Card, Title, Paragraph, DataTable } from 'react-native-paper';
+import { Card, Title, Paragraph, DataTable, Divider } from 'react-native-paper';
 import dayjs from 'dayjs';
 
 import Animated, { BounceIn, BounceOut, FadeIn, FadeInRight, FadeInUp, FadeOut, FadeOutUp, FlipInEasyX, FlipOutEasyX, Layout, SlideInLeft, SlideInRight, SlideOutRight, SlideOutUp, StretchInY, StretchOutX, ZoomIn, ZoomOut } from 'react-native-reanimated';
@@ -22,7 +22,8 @@ const formatString = (str) => {
 }
 const TabelaTalhoesScreen = ({ data }) => {
     return (
-        <View style={{ marginTop: 20 }}>
+        <View style={{ marginTop: 10 }}>
+            <Divider style={{marginBottom: 10}}/>
             <View style={{ justifyContent: 'center', flex: 1, alignItems: 'flex-start', paddingBottom: 5 }}>
                 <Text style={{ fontSize: 12, fontWeight: 'bold' }}>Cargas: {data?.length}</Text>
             </View>

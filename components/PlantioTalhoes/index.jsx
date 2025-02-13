@@ -159,6 +159,52 @@ const PlantioTalhoesCard = (props) => {
         return dayjs().diff(dayjs(dateString), 'day') + 1;
     }
 
+    const daysUntilFutureDate = (dateStr, daysToAdd) => {
+        // Parse the given date
+        const futureDate = dayjs(dateStr).add(daysToAdd, "day");
+    
+        // Get today's date
+        const today = dayjs().startOf("day");
+    
+        // Calculate the difference in days
+        return futureDate.diff(today, "day");
+    };
+
+    const diasToThere = daysUntilFutureDate(data.data_plantio, data.variedade__dias_ciclo)
+
+    const getPosition = () => {
+        if(data.finalizado_colheita){
+            return 'Finalizado'
+        }
+        if(data?.cargas){
+            return 'Colhendo'
+        }
+        if(diasToThere >= 0 ){
+            return `${diasToThere} dias`
+        }
+        if(diasToThere < 0){
+            return `${diasToThere} dias`
+        }
+        return 'teste'
+    }
+
+    const getColorDays = () => {
+        if(data.finalizado_colheita){
+            return Colors.succes[700]
+        }
+        if(data?.cargas){
+            return Colors.gold[800]
+        }
+        if(diasToThere < 0 ){
+            return Colors.error[600]
+        }
+        if(diasToThere >= 0 ){
+            return Colors.primary500
+        }
+        return Colors.secondary[500]
+    }
+    
+
     const getTotalW = data?.cargas?.find(Boolean) ? data?.cargas?.find(Boolean).total_peso_liquido / 60 : null
     const totalProd = getTotalW ? getTotalW / parcialArea : 0
 
@@ -189,20 +235,29 @@ const PlantioTalhoesCard = (props) => {
                         <View style={styles.shadowContainer}>
 
                             <Image source={getCultura(data.variedade__cultura__cultura)}
-                                style={{ width: 20, height: 20,  resizeMode: 'contain' }}
+                                style={{ width: 20, height: 20, resizeMode: 'contain' }}
                             />
                         </View>
                         <Text style={{ fontSize: 10, color: Colors.secondary[500], fontWeight: 'bold' }}>{data.variedade__nome_fantasia.replace('Arroz', '')}</Text>
 
                     </View>
-                    <View style={{ flexDirection: 'column', alignItems: 'flex-end', justifyContent: 'flex-end' }}>
+                    <Animated.View
+                        entering={FadeInRight.duration(300)} // Root-level animation for appearance
+                        exiting={FadeOut.duration(300)} // Root-level animation for disappearance
+                        layout={Layout.springify()}    // Layout animation for dynamic resizing
+
+                        style={{ flexDirection: 'column', alignItems: 'flex-end', justifyContent: 'flex-end', alignSelf: (showTruckData?.length > 0 || isLoadingData) ? 'flex-end' : 'center' }}>
                         <Text style={{ fontSize: 12, fontWeight: 'bold', color: Colors.secondary[600] }}> Média</Text>
                         <Text style={{ fontSize: 10, fontWeight: 'bold', color: 'green' }}>{formatNumber(totalProd)}</Text>
-                    </View>
-                    <View style={{ flexDirection: 'column', alignItems: 'flex-end', justifyContent: 'flex-end' }}>
+                    </Animated.View>
+                    <Animated.View
+                        entering={FadeInRight.duration(300)} // Root-level animation for appearance
+                        exiting={FadeOut.duration(300)} // Root-level animation for disappearance
+                        layout={Layout.springify()}    // Layout animation for dynamic resizing
+                        style={{ flexDirection: 'column', alignItems: 'flex-end', justifyContent: 'flex-end', alignSelf: (showTruckData?.length > 0 || isLoadingData) ? 'flex-end' : 'center' }}>
                         <Text style={{ fontSize: 12, fontWeight: 'bold', color: Colors.secondary[600] }}> Colheita</Text>
                         <Text style={{ fontSize: 10, fontWeight: 'bold', color: 'green' }}>{getTotalW > 0 ? formatNumber(getTotalW) : '-'}</Text>
-                    </View>
+                    </Animated.View>
                     <View style={{ flexDirection: 'column', alignItems: 'flex-start' }}>
                         <View style={styles.circularProgressContainer}>
                             <AnimatedCircularProgress
@@ -217,12 +272,16 @@ const PlantioTalhoesCard = (props) => {
                         </View>
 
                     </View>
-                    <View style={{ alignItems: 'flex-end' }}>
+                    <Animated.View
+                        entering={FadeInRight.duration(300)} // Root-level animation for appearance
+                        exiting={FadeOut.duration(300)} // Root-level animation for disappearance
+                        layout={Layout.springify()}    // Layout animation for dynamic resizing
+                        style={{ alignItems: 'flex-end' ,alignSelf: (showTruckData?.length > 0 || isLoadingData) ? 'flex-end' : 'center' }}>
                         <View style={{ marginBottom: 3 }}>
-                            <Text style={{ fontSize: 8, fontWeight: 'bold', color: Colors.secondary[500] }}>{data.data_plantio ? dapCalc(data.data_plantio) + ' dias' : '-'}</Text>
+                            <Text style={{ fontSize: 8, fontWeight: 'bold', color: getColorDays() }}>{getPosition()}</Text>
                         </View>
                         <View style={{ marginBottom: 5 }}>
-                            <Text style={{ fontSize: 8, fontWeight: 'bold', color: Colors.secondary[500] }}>{formatNumber(data.area_colheita)} há</Text>
+                            <Text style={{ fontSize: 8, fontWeight: 'bold', color: Colors.secondary[800] }}>{formatNumber(data.area_colheita)} há</Text>
                         </View>
 
                         {
@@ -237,7 +296,7 @@ const PlantioTalhoesCard = (props) => {
                         }
 
 
-                    </View>
+                    </Animated.View>
                 </View>
 
                 <View>
