@@ -18,6 +18,7 @@ import dayjs from 'dayjs';
 
 import * as Haptics from 'expo-haptics';
 
+import { AnimatedCircularProgress } from 'react-native-circular-progress';
 
 const iconDict = [
     { cultura: "Feijão", icon: require('../../utils/assets/icons/beans2.png'), alt: "feijao" },
@@ -143,7 +144,7 @@ const PlantioTalhoesCard = (props) => {
     const getTotalW = data?.cargas?.find(Boolean) ? data?.cargas?.find(Boolean).total_peso_liquido / 60 : null
     const totalProd = getTotalW ? getTotalW / parcialArea : 0
 
-
+    const percentage = (parcialArea / data.area_colheita) * 100
     return (
         <Pressable
             style={({ pressed }) => [
@@ -154,51 +155,65 @@ const PlantioTalhoesCard = (props) => {
             disabled={showTruckData?.length > 0 || !data?.cargas}
             onPress={handlePress.bind(this, data)}
         >
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                {/* <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}> */}
 
-                <View style={{ justifyContent: 'space-between' }}>
-                    <View style={{marginBottom: 15}}>
+                <View style={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <View style={{ marginBottom: 5 }}>
 
                         <Text style={{ fontSize: 20, fontWeight: 'bold' }}>{data.talhao__id_talhao}</Text>
-                        <Text style={{ fontSize: 9 }}>{formatDate(data.data_plantio)} - {data.data_plantio ? dapCalc(data.data_plantio) + ' dias' : ''}</Text>
                     </View>
-                    {/* <Text>Area: {formatNumber(data.area_colheita)}</Text>
-                    <Text>Colhido: {formatNumber(parcialArea)}</Text>
-                    <Text>Saldo: {formatNumber(missingArea)}</Text> */}
-                    <View style={{ flexDirection: 'column' }}>
-                        {
-                            totalProd > 0 &&
-                            <Text style={{ fontSize: 14, fontWeight: 'bold', color: 'green' }}>{formatNumber(totalProd)}<Text style={{ fontSize: 8, fontWeight: '400', color: 'black' }}> Scs/ ha</Text></Text>
-                        }
-                    </View>
-                </View>
-                <View style={{alignItems: 'flex-end'}}>
-
-                    {/* <Text>DAP: {data.data_plantio ? dapCalc(data.data_plantio) : '-'}</Text> */}
                     <Image source={getCultura(data.variedade__cultura__cultura)}
-                        style={{ width: 30, height: 30 }}
+                        style={{ width: 20, height: 20 }}
                     />
-                    <Text style={{fontSize: 10}}>{data.variedade__nome_fantasia.replace('Arroz', '')}</Text>
+                    <Text style={{ fontSize: 10, color: Colors.secondary[500], fontWeight: 'bold' }}>{data.variedade__nome_fantasia.replace('Arroz', '')}</Text>
+
+                </View>
+                <View style={{ flexDirection: 'column', alignItems: 'flex-end', justifyContent: 'flex-end' }}>
+                    <Text style={{ fontSize: 12, fontWeight: 'bold', color: Colors.secondary[600] }}> Média</Text>
+                    <Text style={{ fontSize: 10, fontWeight: 'bold', color: 'green' }}>{formatNumber(totalProd)}</Text>
+                </View>
+                <View style={{ flexDirection: 'column', alignItems: 'flex-end', justifyContent: 'flex-end' }}>
+                    <Text style={{ fontSize: 12, fontWeight: 'bold', color: Colors.secondary[600] }}> Colheita</Text>
+                    <Text style={{ fontSize: 10, fontWeight: 'bold', color: 'green' }}>{getTotalW > 0 ? formatNumber(getTotalW) : '-'}</Text>
+                </View>
+                <View style={{ flexDirection: 'column', alignItems: 'flex-start' }}>
+                <View style={styles.circularProgressContainer}>
+                        <AnimatedCircularProgress
+                            size={40}
+                            width={5}
+                            fill={percentage}
+                            tintColor={percentage < 99 ? "#00e0ff" : Colors.succes[300]}
+                            onAnimationComplete={() => console.log('onAnimationComplete')}
+                            backgroundColor={"#3d5875"}
+                        /> 
+                        <Text style={styles.text}>{`${percentage.toFixed(0)}%`}</Text>
+                    </View>
+                    
+                </View>
+                <View style={{ alignItems: 'flex-end' }}>
+                    <View style={{marginBottom: 3}}>
+                    <Text style={{fontSize: 8, fontWeight: 'bold', color: Colors.secondary[500]}}>{data.data_plantio ? dapCalc(data.data_plantio) + ' dias' : '-'}</Text>
+                    </View>
+                    <View style={{marginBottom: 5}}>
+                    <Text style={{fontSize: 8, fontWeight: 'bold', color: Colors.secondary[500]}}>{formatNumber(data.area_colheita)} há</Text>
+                    </View>
+
                     {
                         data?.cargas && showTruckData?.length === 0 && !isLoadingData && (
-                            // <View style={{ justifyContent: 'flex-end', flex: 1, alignItems: 'flex-end', marginTop: 10 }}>
                             <Icon name={'truck-check'} size={24} color={!data.finalizado_colheita ? Colors.gold[600] : Colors.succes[700]} />
-                            // </View>
                         )
                     }
                     {
-                        data?.cargas && showTruckData?.length > 0 && !isLoadingData && (
-
-                            <CloseButton onPress={handleClose} name={"close-circle"} color={Colors.error[500]} />
+                        !data?.cargas && showTruckData?.length === 0 && !isLoadingData && (
+                            <Icon name={'timer'} size={24} color={Colors.secondary[400]} />
                         )
                     }
+
 
                 </View>
             </View>
-            {/* {
-                showTruckData?.length > 0 &&
-                <Divider />
-            } */}
+            
             <View>
 
 
@@ -238,6 +253,14 @@ const PlantioTalhoesCard = (props) => {
                         ))}
                     </View>
                 }
+                {
+                    data?.cargas && showTruckData?.length > 0 && !isLoadingData && (
+
+                        <View style={{ alignItems: 'flex-end', marginVertical: 10 }}>
+                            <CloseButton onPress={handleClose} name={"arrow-up-thick"} color={Colors.error[300]} />
+                        </View>
+                    )
+                }
             </View>
         </Pressable>
     )
@@ -246,6 +269,17 @@ const PlantioTalhoesCard = (props) => {
 export default PlantioTalhoesCard
 
 const styles = StyleSheet.create({
+    text: {
+        position: 'absolute',
+        fontSize: 9,
+        fontWeight: 'bold',
+        color: 'black',
+    },
+    circularProgressContainer: {
+        position: 'relative',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
     mainSkelContainer: {
         padding: 16,
         justifyContent: 'center',

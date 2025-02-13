@@ -12,9 +12,10 @@ import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 
 import { Colors } from '../constants/styles';
 
-import { useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { geralActions } from '../store/redux/geral';
 import ProgressCircleCard from '../components/Plantio/Geral';
+import { selectColheitaData } from '../store/redux/selector';
 
 const FarmsScreenCard = (itemData) => {
     return (
@@ -37,6 +38,7 @@ const TotalFarmData = (itemData) => {
 const PlantioScreen = () => {
     const dispatch = useDispatch()
     const { setColheitaData } = geralActions
+    const colheitaData = useSelector(selectColheitaData)
     const [dataPlantioScreen, setDataPlantioScreen] = useState([]);
     const [isLoadingData, setIsLoadingData] = useState(false);
     const [isRefreshing, setIsRefreshing] = useState(false);  // For pull-to-refresh
@@ -47,16 +49,30 @@ const PlantioScreen = () => {
 
     const [totalArea, setTotalArea] = useState(0);
     const [totalAreaColhida, setTotalAreaColhida] = useState(0);
+    const [totalScsColhidos, setTotalScsColhidos] = useState(0);
+    const [mediaGeral, setMediaGeral] = useState(0);
 
     useEffect(() => {
-        if(groupedFarmsData){
-            const totalArea = groupedFarmsData.reduce((acc, curr) => acc += curr.colheita, 0)
+        if(colheitaData){
+            const totalArea = colheitaData.grouped_data.reduce((acc, curr) => acc += curr.colheita, 0)
             setTotalArea(totalArea)
             
-            const totalAreaColhida = groupedFarmsData.reduce((acc, curr) => acc += curr.parcial, 0)
+            const totalAreaColhida = colheitaData.grouped_data.reduce((acc, curr) => acc += curr.parcial, 0)
             setTotalAreaColhida(totalAreaColhida)
+            
+            let totalGeral = 0
+            const totalScsColhidos = colheitaData.data.map((data) => {
+                if(data?.cargas){
+                    const newTotal = data?.cargas?.reduce((acc,curr) => acc += curr.total_peso_liquido, 0)
+                    totalGeral += newTotal
+                }
+            })
+            const totalScs = totalGeral > 0 ? (totalGeral / 60) : 0
+            setTotalScsColhidos(totalScs)
+            const media = totalScs / totalAreaColhida
+            setMediaGeral(media)
         }
-    }, [groupedFarmsData]);
+    }, []);
 
 
     useEffect(() => {
@@ -92,7 +108,7 @@ const PlantioScreen = () => {
                 setIsLoadingData(false)
             }
         }
-        if (dataPlantioScreen?.length === 0) {
+        if (colheitaData?.length === 0) {
             const newData = handleUpdateApiData()
             // console.log("new data Here: ", newData)
         }
@@ -164,17 +180,19 @@ const PlantioScreen = () => {
                 )}
             >
                 {
-                    groupedFarmsData?.length > 0  && (
+                    colheitaData?.grouped_data?.length > 0  && (
                         <>
                             <ProgressCircleCard
                                 sownArea={totalAreaColhida}
                                 plannedArea={totalArea}
-                                title={"Total Colhido"}
-                                plannedTitle={"Total Plantado"}
-                                abovePlannedTitle={"Saldo a Colher"}
+                                mediaGeral={mediaGeral}
+                                scsTotal={totalScsColhidos}
+                                title={"Colhido"}
+                                plannedTitle={"Plantado"}
+                                abovePlannedTitle={"A Colher"}
                             />
                             {
-                                groupedFarmsData.map((data, i) => {
+                                colheitaData?.grouped_data?.map((data, i) => {
                                     return (
                                         <FarmsPlantioScreen data={data} key={i} />
                                     )

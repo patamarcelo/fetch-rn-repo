@@ -34,6 +34,12 @@ const formatNumber = number => {
         maximumFractionDigits: 2
     })
 }
+const formatNumberScs = number => {
+    return number?.toLocaleString("pt-br", {
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0
+    })
+}
 const FarmsPlantioScreen = (props) => {
     const { data } = props;
     const navigation = useNavigation()
@@ -45,6 +51,8 @@ const FarmsPlantioScreen = (props) => {
 
 
     const totalPercent = parseInt((data.parcial / data.colheita) * 100) <= 100 ? parseInt((data.parcial / data.colheita) * 100) : 100
+    const totalScs = data?.peso_liquido > 0 ? data?.peso_liquido / 60 : 0
+    const totalAv = (data.parcial > 0 && data?.peso_liquido > 0) ? totalScs / data?.parcial : 0
 
     return (
         <Pressable
@@ -85,26 +93,36 @@ const FarmsPlantioScreen = (props) => {
                                                     style={{ width: 30, height: 30 }}
                                                 />
                                             </View>
-                                            <View style={{ flexDirection: 'row', gap: 20, justifyContent: 'center', alignItems: 'center' }}>
+                                            <View style={{ flexDirection: 'column', gap: 2, justifyContent: 'center', alignItems: 'center' }}>
                                                 <View style={styles.headerContainer}>
-                                                    <Text style={styles.titleCulture}>Área</Text>
+                                                    <Text style={styles.titleCultureArea}>Plantado</Text>
                                                     <Text style={styles.labelNumber}>{formatNumber(data.colheita)}</Text>
                                                 </View>
 
                                                 <View style={styles.headerContainer}>
-                                                    <Text style={styles.titleCulture}>Colheita</Text>
-                                                    <Text style={styles.labelNumber}>{formatNumber(data.parcial)}</Text>
+                                                    <Text style={styles.titleCultureColheita}>Colheita</Text>
+                                                    <Text style={styles.labelNumber}>{data.parcial > 0 ? formatNumber(data.parcial) : '-'}</Text>
                                                 </View>
 
                                                 <View style={styles.headerContainer}>
-                                                    <Text style={styles.titleCulture}>Saldo</Text>
-                                                    <Text style={styles.labelNumber}>{formatNumber(saldo)}</Text>
+                                                    <Text style={styles.titleCultureSaldo}>Saldo</Text>
+                                                    <Text style={styles.labelNumber}>{saldo > 0 ? formatNumber(saldo) : '-'}</Text>
                                                 </View>
                                             </View>
                                         </View>
                                     )
                                 })
                             }
+                        </View>
+                    </View>
+                    <View style={styles.infoContainer}>
+                        <View>
+                            <Text style={styles.infoContainerScsTitle}>Scs</Text>
+                            <Text style={styles.infoContainerScsNumber}>{totalScs > 0 ? formatNumberScs(totalScs) : ' - '}</Text>
+                        </View>
+                        <View>
+                            <Text style={styles.infoContainerTitle}>Média</Text>
+                            <Text style={styles.infoContainerNumber}>{totalAv > 0 ? formatNumber(totalAv) : ' - '}</Text>
                         </View>
                     </View>
                     <Animated.View
@@ -132,18 +150,63 @@ const FarmsPlantioScreen = (props) => {
 export default FarmsPlantioScreen;
 
 const styles = StyleSheet.create({
-    headerContainer: {
-        justifyContent: 'center',
-        alignItems: 'center',
-        width: 55
+    infoContainerNumber: {
+        fontWeight: 'bold',
+        fontSize: 11,
+        color: Colors.secondary[500]
     },
-    titleCulture: {
-        textDecorationLine: 'underline',
+    infoContainerTitle: {
+        fontWeight: 'bold',
         fontSize: 12,
-        // fontWeight: 'bold'
+        color: Colors.succes[500]
+    },
+    infoContainerScsTitle: {
+        fontWeight: 'bold',
+        fontSize: 12,
+        color: Colors.secondary[400]
+    },
+    infoContainerScsNumber: {
+        fontWeight: 'bold',
+        fontSize: 11,
+        color: Colors.secondary[500]
+    },
+    infoContainer: {
+        flexDirection: 'column',
+        justifyContent: 'center',
+        alignItems: 'flex-start',
+        // backgroundColor: 'red',
+        alignSelf: 'flex-end',
+        gap: 5
+        // flex: 1,
+        // height: '100%'
+    },
+    headerContainer: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        width: 120,
+        // gap: 10
+    },
+    titleCultureArea: {
+        // textDecorationLine: 'underline',
+        fontSize: 12,
+        fontWeight: 'bold'
+    },
+    titleCultureColheita: {
+        // textDecorationLine: 'underline',
+        fontSize: 12,
+        fontWeight: 'bold'
+    },
+    titleCultureSaldo: {
+        // textDecorationLine: 'underline',
+        fontSize: 12,
+        fontWeight: 'bold',
+        color: Colors.succes[600]
     },
     labelNumber: {
-        fontSize: 10
+        fontSize: 10,
+        color: Colors.secondary[600],
+        fontWeight: 'bold'
     },
     titleContainer: {
         flexDirection: 'column',
@@ -181,7 +244,7 @@ const styles = StyleSheet.create({
     farmName: {
         fontSize: 18,
         fontWeight: 'bold',
-        color: '#333',
+        color: Colors.secondary[700]
     },
     rowContainer: {
         flexDirection: 'row',
@@ -235,6 +298,7 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         alignItems: 'center',
         padding: 15,
+        paddingRight:5
     },
     pressed: {
         opacity: 0.5,
