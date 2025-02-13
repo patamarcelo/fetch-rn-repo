@@ -186,9 +186,12 @@ const PlantioTalhoesCard = (props) => {
 
                             <Text style={{ fontSize: 20, fontWeight: 'bold' }}>{data.talhao__id_talhao}</Text>
                         </View>
-                        <Image source={getCultura(data.variedade__cultura__cultura)}
-                            style={{ width: 20, height: 20 }}
-                        />
+                        <View style={styles.shadowContainer}>
+
+                            <Image source={getCultura(data.variedade__cultura__cultura)}
+                                style={{ width: 20, height: 20,  resizeMode: 'contain' }}
+                            />
+                        </View>
                         <Text style={{ fontSize: 10, color: Colors.secondary[500], fontWeight: 'bold' }}>{data.variedade__nome_fantasia.replace('Arroz', '')}</Text>
 
                     </View>
@@ -293,6 +296,13 @@ const PlantioTalhoesCard = (props) => {
 export default PlantioTalhoesCard
 
 const styles = StyleSheet.create({
+    shadowContainer: {
+        shadowColor: "#000",  // Shadow color
+        shadowOffset: { width: 3, height: 5 },  // Offset for drop shadow effect
+        shadowOpacity: 0.4,  // Opacity of shadow
+        shadowRadius: 4,  // Spread of shadow
+        elevation: 6,  // Required for Android
+    },
     text: {
         position: 'absolute',
         fontSize: 9,

@@ -10,6 +10,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { Colors } from "../constants/styles";
 
 import * as Haptics from 'expo-haptics';
+import { SafeAreaView } from "react-native-safe-area-context";
 
 const FarmsScreen = ({ setModalVisible, modalVisible, route }) => {
 	const farmsList = useSelector(farmsSelector);
@@ -65,28 +66,27 @@ const FarmsScreen = ({ setModalVisible, modalVisible, route }) => {
 	};
 
 	return (
-		<View style={styles.mainContainer}>
+		<SafeAreaView style={styles.mainContainer}>
 			<View style={{ width: "100%", alignItems: "center" }}>
-				<View style={{height: 50}}>
-				<Text
-					style={{
-						color: "whitesmoke",
-						fontSize: 20,
-						paddingTop: 20
-					}}
+				<View style={{ height: 50 }}>
+					<Text
+						style={{
+							color: "whitesmoke",
+							fontSize: 20,
+							paddingTop: 20
+						}}
 					>
-					Selecione o Projeto
-				</Text>
-					</View>
+						Selecione o Projeto
+					</Text>
+				</View>
 				{farmsList.length > 0 && (
-					
-					<ScrollView style={{marginHorizontal: 40}}>
-						
+						<ScrollView style={{ marginHorizontal: 40, width: '100%' }} 
+							contentContainerStyle={{ justifyContent: 'center', alignItems: 'center'}}>
 							{farmsList.map((data, i) => {
 								return (
 									<Pressable
 										key={i}
-										style={styles.titleContainer}
+										style={[styles.titleContainer,{backgroundColor: i % 2 == 0 && Colors.primary[900]}]}
 										onPress={handleCheck.bind(
 											this,
 											data,
@@ -107,7 +107,7 @@ const FarmsScreen = ({ setModalVisible, modalVisible, route }) => {
 											style={[
 												styles.FarmsTitle,
 												checkedIndex === i &&
-													styles.checked
+												styles.checked
 											]}
 										>
 											{data.replace('Projeto ', '')}
@@ -124,7 +124,7 @@ const FarmsScreen = ({ setModalVisible, modalVisible, route }) => {
 						{
 							width: "90%",
 							marginTop: 20,
-							marginBottom: 20
+							marginBottom: 20,
 						},
 						checkedIndex === null && styles.cancelType
 					]}
@@ -134,7 +134,7 @@ const FarmsScreen = ({ setModalVisible, modalVisible, route }) => {
 					{checkedIndex === null ? "Cancelar" : "Filtrar"}
 				</Button>
 			</View>
-		</View>
+		</SafeAreaView>
 	);
 };
 
@@ -161,14 +161,15 @@ const styles = StyleSheet.create({
 		color: "whitesmoke"
 	},
 	FarmsTitle: {
-		color: "grey",
+		color: Colors.secondary[500],
 		fontSize: 20,
-		marginLeft: -5
+		marginLeft: -5,
+		fontWeight: 'bold'
 	},
 	mainContainer: {
 		flex: 1,
 		justifyContent: "space-between",
-		marginBottom: 20,
+		marginBottom: 180,
 		marginTop: 20,
 		alignItems: "center",
 		height: "100%"

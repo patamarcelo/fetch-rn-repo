@@ -272,9 +272,12 @@ const CardFarmBox = ({ route, navigation }) => {
                                                 </View>
                                                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
                                                     <Text style={styles.headerTitle}> {data.operation}</Text>
-                                                    <Image source={getCultura(data)}
-                                                        style={{ width: 20, height: 20 }}
-                                                    />
+                                                    <View style={styles.shadowContainer}>
+
+                                                        <Image source={getCultura(data)}
+                                                            style={{ width: 20, height: 20, resizeMode: 'contain' }}
+                                                        />
+                                                    </View>
                                                 </View>
                                                 <View style={styles.progressContainer}>
                                                     <Progress.Pie size={30} indeterminate={false} progress={data.percent} color={data.percentColor === "#E4D00A" ? Colors.gold[700] : data.percentColor} />
@@ -286,7 +289,7 @@ const CardFarmBox = ({ route, navigation }) => {
                                             showAps[data.code] &&
                                             <Animated.View
                                                 entering={FadeInUp.duration(50)}   // Child-level animation for appearance
-                                                exiting={FadeOutUp.duration(50)}   // Child-level animation for disappearance
+                                                // exiting={FadeOutUp.duration(50)}   // Child-level animation for disappearance
                                                 style={styles.bodyContainer}
                                             >
 
@@ -314,18 +317,21 @@ const CardFarmBox = ({ route, navigation }) => {
                                                     <Divider width={1} color={"rgba(245,245,245,0.3)"} />
                                                     <View style={styles.produtosContainer}>
                                                         {
-                                                            data?.prods?.filter((pro) => pro.type !== 'Operação').map((produto) => {
+                                                            data?.prods?.filter((pro) => pro.type !== 'Operação').map((produto, index) => {
                                                                 const uniKey = data.cultura + data.idAp + produto.product
                                                                 console.log('parcela Color backgrounc: ', produto.colorChip)
                                                                 return (
-                                                                    <View
+                                                                    <Animated.View
+                                                                        entering={FadeInRight.duration(200 + (index * 50))} // Root-level animation for appearance
+                                                                        exiting={FadeOutUp.duration(20)} // Root-level animation for disappearance
+                                                                        layout={Layout.springify()}    // Layout animation for dynamic resizing
                                                                         key={uniKey}
                                                                         style={[styles.prodsView, { backgroundColor: produto.colorChip === 'rgb(255,255,255,0.1)' ? 'whitesmoke' : produto.colorChip }]}
                                                                     >
                                                                         <Text style={[styles.textProds, { color: produto.colorChip === 'rgb(255,255,255,0.1)' ? '#455d7a' : 'whitesmoke' }]}>{formatNumberProds(produto.doseSolicitada)}</Text>
                                                                         <Text style={[styles.textProdsName, { color: produto.colorChip === 'rgb(255,255,255,0.1)' ? '#455d7a' : 'whitesmoke' }]}>{produto.product}</Text>
                                                                         <Text style={[styles.totalprods, { color: produto.colorChip === 'rgb(255,255,255,0.1)' ? '#455d7a' : 'whitesmoke' }]}>{formatNumber(produto.doseSolicitada * data.areaSolicitada)}</Text>
-                                                                    </View>
+                                                                    </Animated.View>
                                                                 )
                                                             })
                                                         }
@@ -382,6 +388,13 @@ export default CardFarmBox
 
 
 const styles = StyleSheet.create({
+    shadowContainer: {
+        shadowColor: "#000",  // Shadow color
+        shadowOffset: { width: 3, height: 5 },  // Offset for drop shadow effect
+        shadowOpacity: 0.4,  // Opacity of shadow
+        shadowRadius: 4,  // Spread of shadow
+        elevation: 6,  // Required for Android
+    },
     fabContainer: {
         position: "absolute",
         right: 20,

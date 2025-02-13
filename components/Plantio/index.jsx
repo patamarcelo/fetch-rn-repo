@@ -8,6 +8,7 @@ import Animated, { FadeInRight, FadeOut, Layout, BounceIn, BounceOut } from 'rea
 import { useNavigation } from '@react-navigation/native';
 
 import * as Haptics from 'expo-haptics';
+
 const iconDict = [
     { cultura: "Feijão", icon: require('../../utils/assets/icons/beans2.png'), alt: "feijao" },
     { cultura: "Arroz", icon: require('../../utils/assets/icons/rice.png'), alt: "arroz" },
@@ -89,9 +90,11 @@ const FarmsPlantioScreen = (props) => {
                                     return (
                                         <View style={styles.containerCulture} key={data.cultura}>
                                             <View>
-                                                <Image source={getCultura(data.cultura)}
-                                                    style={{ width: 30, height: 30 }}
-                                                />
+                                            <View style={styles.shadowContainer}>
+                                                    <Image source={getCultura(data.cultura)}
+                                                        style={{ width: 30, height: 30,  resizeMode: 'contain' }}
+                                                    />
+                                                </View>
                                             </View>
                                             <View style={{ flexDirection: 'column', gap: 2, justifyContent: 'center', alignItems: 'center' }}>
                                                 <View style={styles.headerContainer}>
@@ -150,6 +153,13 @@ const FarmsPlantioScreen = (props) => {
 export default FarmsPlantioScreen;
 
 const styles = StyleSheet.create({
+    shadowContainer: {
+        shadowColor: "#000",  // Shadow color
+        shadowOffset: { width: 3, height: 5 },  // Offset for drop shadow effect
+        shadowOpacity: 0.4,  // Opacity of shadow
+        shadowRadius: 4,  // Spread of shadow
+        elevation: 6,  // Required for Android
+    },
     infoContainerNumber: {
         fontWeight: 'bold',
         fontSize: 11,
@@ -298,7 +308,7 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         alignItems: 'center',
         padding: 15,
-        paddingRight:5
+        paddingRight: 5
     },
     pressed: {
         opacity: 0.5,

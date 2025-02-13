@@ -254,9 +254,11 @@ const CardListApp = (props) => {
 					</View>
 					<View style={[{ width: "100%", alignItems: "center", flexDirection: 'row', justifyContent: 'center', gap: 10 }, styles.programHeader]}>
 						<Text style={styles.textApp}>{aplicacao}</Text>
-						<Image source={getCultura(culturaIcon)}
-							style={{ width: 20, height: 20 }}
-						/>
+						<View style={styles.shadowContainer}>
+							<Image source={getCultura(culturaIcon)}
+								style={{ width: 20, height: 20,  resizeMode: 'contain' }}
+							/>
+						</View>
 					</View>
 				</View>
 				<View style={styles.dataContainer}>
@@ -357,9 +359,11 @@ const CardListApp = (props) => {
 						gap: 10
 					}]}>
 						<Text style={styles.textApp}>{aplicacao}</Text>
-						<Image source={getCultura(culturaIcon)}
-							style={{ width: 20, height: 20 }}
-						/>
+						<View style={styles.shadowContainer}>
+							<Image source={getCultura(culturaIcon)}
+								style={{ width: 20, height: 20,  resizeMode: 'contain' }}
+							/>
+							</View>
 					</View>
 				</SafeAreaView>
 				<ImageViewer
@@ -380,6 +384,13 @@ const CardListApp = (props) => {
 	);
 };
 const styles = StyleSheet.create({
+	shadowContainer: {
+        shadowColor: "#000",  // Shadow color
+        shadowOffset: { width: 3, height: 5 },  // Offset for drop shadow effect
+        shadowOpacity: 0.4,  // Opacity of shadow
+        shadowRadius: 4,  // Spread of shadow
+        elevation: 6,  // Required for Android
+    },
 	buttonContainer: {
 		position: 'absolute',
 		bottom: 30,
