@@ -61,7 +61,7 @@ const PlantioScreen = () => {
             setTotalAreaColhida(totalAreaColhida)
             
             let totalGeral = 0
-            const totalScsColhidos = colheitaData.data.map((data) => {
+            const totalScsColhidosArray = colheitaData.data.map((data) => {
                 if(data?.cargas){
                     const newTotal = data?.cargas?.reduce((acc,curr) => acc += curr.total_peso_liquido, 0)
                     totalGeral += newTotal
@@ -72,7 +72,7 @@ const PlantioScreen = () => {
             const media = totalScs / totalAreaColhida
             setMediaGeral(media)
         }
-    }, []);
+    }, [colheitaData]);
 
 
     useEffect(() => {
