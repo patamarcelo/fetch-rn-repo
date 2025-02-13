@@ -2,6 +2,8 @@ import { View, StyleSheet, Text } from "react-native";
 import { Card, Title, Paragraph, DataTable } from 'react-native-paper';
 import dayjs from 'dayjs';
 
+import Animated, { BounceIn, BounceOut, FadeIn, FadeInRight, FadeInUp, FadeOut, FadeOutUp, FlipInEasyX, FlipOutEasyX, Layout, SlideInLeft, SlideInRight, SlideOutRight, SlideOutUp, StretchInY, StretchOutX, ZoomIn, ZoomOut } from 'react-native-reanimated';
+
 
 const formatNumber = number => {
     return number?.toLocaleString("pt-br", {
@@ -14,20 +16,24 @@ const formatDate = (dateString) => {
     const [year, month, day] = dateString.split('-');
     return `${day}/${month}/${year.replace('20', '')}`;
 }
+
+const formatString = (str) => {
+    return str.replace(/(\D+)(\d+)/, '$1-$2');
+}
 const TabelaTalhoesScreen = ({ data }) => {
     return (
         <View style={{ marginTop: 20 }}>
-            <View style={{justifyContent: 'center', flex: 1, alignItems:  'flex-start', paddingBottom: 5}}>
-                <Text style={{fontSize: 12, fontWeight: 'bold'}}>Cargas: {data?.length}</Text>
+            <View style={{ justifyContent: 'center', flex: 1, alignItems: 'flex-start', paddingBottom: 5 }}>
+                <Text style={{ fontSize: 12, fontWeight: 'bold' }}>Cargas: {data?.length}</Text>
             </View>
             <View style={stylesTable.titleWrapper}>
                 <DataTable>
                     <View style={stylesTable.header}>
-                        <View style={[stylesTable.title,{width: 35}]}>
+                        <View style={[stylesTable.title, { width: 50 }]}>
                             <Text style={stylesTable.titleText}>Data</Text>
                         </View>
-                        <View style={stylesTable.title}>
-                            <Text style={stylesTable.titleText}>Romaneio</Text>
+                        <View style={[stylesTable.title, { width: 60 }]}>
+                            <Text style={stylesTable.titleText}>Placa</Text>
                         </View>
                         <View style={stylesTable.title}>
                             <Text style={stylesTable.titleText}>Scs</Text>
@@ -44,12 +50,16 @@ const TabelaTalhoesScreen = ({ data }) => {
                     </View>
 
                     {data.map((item, index) => (
-                        <View key={index} style={[stylesTable.row, {backgroundColor: index % 2 === 0 && 'whitesmoke' }]}>
+                        <Animated.View
+                            entering={FadeInRight.duration(300 + (index * 50))} // Root-level animation for appearance
+                            exiting={FadeOutUp.duration(20)} // Root-level animation for disappearance
+                            layout={Layout.springify()}    // Layout animation for dynamic resizing
+                            key={index} style={[stylesTable.row, { backgroundColor: index % 2 === 0 && 'whitesmoke' }]}>
                             <View style={stylesTable.cell}>
                                 <Text style={stylesTable.cellText}>{formatDate(item.data_colheita)}</Text>
                             </View>
                             <View style={stylesTable.cell}>
-                                <Text style={stylesTable.cellText}>{item?.romaneio || " - "}</Text>
+                                <Text style={stylesTable.cellText}>{item?.placa ? formatString(item?.placa) : " - "}</Text>
                             </View>
                             <View style={stylesTable.cell}>
                                 <Text style={stylesTable.cellText}>{formatNumber(((item.peso_bruto - item.peso_tara) / 60) || 0)}</Text>
@@ -63,7 +73,7 @@ const TabelaTalhoesScreen = ({ data }) => {
                             <View style={stylesTable.cell}>
                                 <Text style={stylesTable.cellText}>{formatNumber(item.peso_scs_liquido || 0)}</Text>
                             </View>
-                        </View>
+                        </Animated.View>
                     ))}
                 </DataTable>
             </View>
@@ -77,8 +87,8 @@ const stylesTable = StyleSheet.create({
     titleWrapper: {  // NEW: Wrapper to apply space-between
         flex: 1,
         flexDirection: 'row',
-        justifyContent: 'space-between',  
-        alignItems: 'center', 
+        justifyContent: 'space-between',
+        alignItems: 'center',
     },
     header: {
         flexDirection: 'row',
