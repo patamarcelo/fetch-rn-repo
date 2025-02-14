@@ -1,4 +1,8 @@
-import { View, FlatList, Text } from 'react-native'
+import { View, FlatList, Text, Platform, StatusBar } from 'react-native'
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+
 
 import { useRoute } from '@react-navigation/native';
 import { useSelector, shallowEqual } from 'react-redux';
@@ -29,6 +33,7 @@ const PlantioTalhoesCardScreen = (itemData) => {
 const PlantioTalhoesDescription = ({ navigation }) => {
     const tabBarHeight = useBottomTabBarHeight();
     const isFocused = useIsFocused(); // Track screen focus
+    const insets = useSafeAreaInsets(); // Get dynamic insets for Android & iOS
     // Get route object
     const route = useRoute();
     const { farm } = route.params;
@@ -63,7 +68,12 @@ const PlantioTalhoesDescription = ({ navigation }) => {
                 )
                     :
 
-                    <>
+                    <SafeAreaView
+                    style={{
+                        flex: 1,
+                        paddingTop: Platform.OS === 'android' ? insets.top + 22 : insets.top, // Ensures correct padding on all devices
+                    }}
+                    >
                         <FlatList
                             key={farm}
                             contentInsetAdjustmentBehavior='automatic'
@@ -76,7 +86,7 @@ const PlantioTalhoesDescription = ({ navigation }) => {
                             ItemSeparatorComponent={() => <View style={{ height: 13 }} />}
                         />
                         <FilterPlantioComponent />
-                    </>
+                    </SafeAreaView>
             }
         </>
 

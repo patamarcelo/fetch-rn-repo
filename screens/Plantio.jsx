@@ -1,4 +1,4 @@
-import { StyleSheet, Text, View, Alert, ActivityIndicator, SafeAreaView, RefreshControl, ScrollView } from 'react-native'
+import { StyleSheet, Platform, View, Alert, ActivityIndicator, SafeAreaView, RefreshControl, ScrollView } from 'react-native'
 import { useEffect, useState } from 'react'
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
@@ -201,6 +201,7 @@ const PlantioScreen = () => {
                 contentContainerStyle={{
                     paddingBottom: tabBarHeight,
                     paddingTop: 10,
+                    marginTop: Platform.OS === 'android' ? -100 : 0,
                     flexGrow: 1,  // Ensures ScrollView content takes all available space
                 }}
                 refreshControl={(

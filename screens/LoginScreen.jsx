@@ -77,13 +77,15 @@ const LoginScreen = ({ navigation }) => {
 
     return (
         <TouchableWithoutFeedback>
-            <ScrollView contentContainerStyle={{flex: 1}}>
+            <ScrollView contentContainerStyle={{ flex: 1 }}>
                 <View style={{ flex: 1 }}>
                     <KeyboardAvoidingView
                         behavior={Platform.OS === "ios" ? "padding" : undefined}
                         style={styles.content}
                     >
-                        <Text style={styles.title}>Applicações</Text>
+                        <View style={styles.shadowContainer}>
+                            <Text style={styles.title}>Applicações</Text>
+                        </View>
                         <TextInput
                             style={styles.input}
                             placeholder="Email"
@@ -132,14 +134,17 @@ const LoginScreen = ({ navigation }) => {
                         </TouchableOpacity>
                     </KeyboardAvoidingView>
                     <View style={styles.titleContainer}>
-                        <Image
-                            source={require("../assets/diamond.png")}
-                            style={styles.image}
-                        />
+                        <View style={styles.shadowContainer}>
+                            <Image
+                                source={require("../assets/diamond.png")}
+                                style={styles.image}
+                            />
+                        </View>
                         <Text
                             style={{
                                 color: "grey",
-                                opacity: 0.5
+                                opacity: 0.5,
+                                fontWeight: 'bold'
                             }}
                         >
                             {expo.version}
@@ -152,6 +157,13 @@ const LoginScreen = ({ navigation }) => {
 };
 
 const styles = StyleSheet.create({
+    shadowContainer: {
+        shadowColor: "#000",  // Shadow color
+        shadowOffset: { width: 3, height: 5 },  // Offset for drop shadow effect
+        shadowOpacity: 0.4,  // Opacity of shadow
+        shadowRadius: 4,  // Spread of shadow
+        elevation: 8,  // Required for Android
+    },
     content: {
         flex: 1,
         justifyContent: "center",
