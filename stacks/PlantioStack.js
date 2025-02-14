@@ -14,6 +14,7 @@ import PlantioTalhoesDescription from "../screens/PlantioTalhoes";
 import { StatusBar } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
 import { useCallback } from "react";
+import FilterPlantioScreen from "../screens/FilterPlantio";
 
 const PlantioStack = () => {
     // const route = useRoute();
@@ -55,6 +56,13 @@ const PlantioStack = () => {
                     //     // hideWhenScrolling: false
                     // }
                 })}
+            />
+            <Stack.Screen
+                name="FilterPlantioScreen"
+                component={FilterPlantioScreen}
+                options={{
+                    title: 'Filtros', // Title to show in the header
+                }}
             />
 
         </Stack.Navigator>

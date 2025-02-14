@@ -14,6 +14,7 @@ const initialState = {
 	farmboxSearchBar: false,
 	farmBoxSearchQuery: '',
 	colheitaData: null,
+	colheitaDataFilterSelected: null
 };
 
 const geralSlice = createSlice({
@@ -59,6 +60,32 @@ const geralSlice = createSlice({
 		setColheitaData: (state, action) => {
 			state.colheitaData = action.payload
 		},
+		clearColheitaFilter: (state, action) => {
+			state.colheitaDataFilterSelected = null
+		},
+		setColheitaFilter: (state, action) => {
+			const { key, value } = action.payload; // key = "farm" | "proj" | "variety", value = item to toggle
+		
+			// Initialize colheitaDataFilterSelected if null
+			if (!state.colheitaDataFilterSelected) {
+				state.colheitaDataFilterSelected = { farm: [], proj: [], variety: [] };
+			}
+		
+			// Initialize specific key if it does not exist
+			if (!state.colheitaDataFilterSelected[key]) {
+				state.colheitaDataFilterSelected[key] = [];
+			}
+		
+			// Toggle value inside the array
+			const index = state.colheitaDataFilterSelected[key].indexOf(value);
+			if (index === -1) {
+				// If value doesn't exist, add it
+				state.colheitaDataFilterSelected[key].push(value);
+			} else {
+				// If value exists, remove it
+				state.colheitaDataFilterSelected[key].splice(index, 1);
+			}
+		}
 	}
 });
 

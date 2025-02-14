@@ -23,3 +23,7 @@ export const selectFarmboxSearchBar = (state) => state.geral.farmboxSearchBar
 export const selectFarmboxSearchQuery = (state) => state.geral.farmBoxSearchQuery
 
 export const selectColheitaData = (state) => state.geral.colheitaData
+
+export const selectColheitaDataFilter = (state) => state.geral.colheitaData.filter_data
+
+export const selectColheitaDataToggle = (state) => state.geral.colheitaDataFilterSelected

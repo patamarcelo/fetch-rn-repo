@@ -17,6 +17,9 @@ import { geralActions } from '../store/redux/geral';
 import ProgressCircleCard from '../components/Plantio/Geral';
 import { selectColheitaData } from '../store/redux/selector';
 
+
+import FilterPlantioScreen from '../components/Global/FilterPlantioComponent';
+
 const FarmsScreenCard = (itemData) => {
     return (
         <FarmsPlantioScreen
@@ -223,6 +226,7 @@ const PlantioScreen = () => {
                     )
                 }
             </ScrollView>
+            <FilterPlantioScreen />
         </GestureHandlerRootView>
     )
 }

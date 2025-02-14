@@ -7,6 +7,7 @@ import { selectColheitaData } from '../store/redux/selector';
 import PlantioTalhoesCard from '../components/PlantioTalhoes';
 
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
+import FilterPlantioComponent from '../components/Global/FilterPlantioComponent';
 
 
 
@@ -40,16 +41,19 @@ const PlantioTalhoesDescription = () => {
     }, [colheitaData, farm, data]); // Add dependencies here to re-run when needed
 
     return (
-        <FlatList
-            contentInsetAdjustmentBehavior='automatic'
-            keyboardDismissMode='on-drag'
-            scrollEnabled={true}
-            contentContainerStyle={{ paddingBottom: tabBarHeight, paddingTop: 10 }}
-            data={filteredPlants}
-            keyExtractor={(item, i) => item.talhao__id_talhao}
-            renderItem={PlantioTalhoesCardScreen}
-            ItemSeparatorComponent={() => <View style={{ height: 13 }} />}
-        />
+        <>
+            <FlatList
+                contentInsetAdjustmentBehavior='automatic'
+                keyboardDismissMode='on-drag'
+                scrollEnabled={true}
+                contentContainerStyle={{ paddingBottom: tabBarHeight, paddingTop: 10 }}
+                data={filteredPlants}
+                keyExtractor={(item, i) => item.talhao__id_talhao}
+                renderItem={PlantioTalhoesCardScreen}
+                ItemSeparatorComponent={() => <View style={{ height: 13 }} />}
+            />
+            <FilterPlantioComponent />
+        </>
 
     )
 }
