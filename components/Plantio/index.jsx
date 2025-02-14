@@ -51,9 +51,16 @@ const FarmsPlantioScreen = (props) => {
     }
 
 
-    const totalPercent = parseInt((data.parcial / data.colheita) * 100) <= 100 ? parseInt((data.parcial / data.colheita) * 100) : 100
+    let totalAreaHere = 0
+    let totalParcialHere = 0
+    data.variedades.forEach((item) => {
+        totalAreaHere += item.colheita;
+        totalParcialHere += item.parcial
+    })
+
+    const totalPercent = parseInt((totalParcialHere / totalAreaHere) * 100) <= 100 ? parseInt((totalParcialHere / totalAreaHere) * 100) : 100
     const totalScs = data?.peso_liquido > 0 ? data?.peso_liquido / 60 : 0
-    const totalAv = (data.parcial > 0 && data?.peso_liquido > 0) ? totalScs / data?.parcial : 0
+    const totalAv = (totalParcialHere > 0 && data?.peso_liquido > 0) ? totalScs / totalParcialHere : 0
 
     return (
         <Pressable
@@ -85,13 +92,21 @@ const FarmsPlantioScreen = (props) => {
                         </View>
                         <View>
                             {
-                                data.culturas.map((data, i) => {
-                                    const saldo = data.colheita - data.parcial
+                                data.culturas.map((cultura, i) => {
+                                    let plantado = 0
+                                    let colhido = 0
+                                    
+                                    data?.variedades?.filter((data) => data.cultura === cultura.cultura).forEach(element => {
+                                        plantado += element.colheita;
+                                        colhido += element.parcial
+                                    });
+                                    
+                                    const saldo = plantado - colhido
                                     return (
-                                        <View style={styles.containerCulture} key={data.cultura}>
+                                        <View style={styles.containerCulture} key={i}>
                                             <View>
                                             <View style={styles.shadowContainer}>
-                                                    <Image source={getCultura(data.cultura)}
+                                                    <Image source={getCultura(cultura.cultura)}
                                                         style={{ width: 30, height: 30,  resizeMode: 'contain' }}
                                                     />
                                                 </View>
@@ -99,12 +114,12 @@ const FarmsPlantioScreen = (props) => {
                                             <View style={{ flexDirection: 'column', gap: 2, justifyContent: 'center', alignItems: 'center' }}>
                                                 <View style={styles.headerContainer}>
                                                     <Text style={styles.titleCultureArea}>Plantado</Text>
-                                                    <Text style={styles.labelNumber}>{formatNumber(data.colheita)}</Text>
+                                                    <Text style={styles.labelNumber}>{formatNumber(plantado)}</Text>
                                                 </View>
 
                                                 <View style={styles.headerContainer}>
                                                     <Text style={styles.titleCultureColheita}>Colheita</Text>
-                                                    <Text style={styles.labelNumber}>{data.parcial > 0 ? formatNumber(data.parcial) : '-'}</Text>
+                                                    <Text style={styles.labelNumber}>{cultura.parcial > 0 ? formatNumber(colhido) : '-'}</Text>
                                                 </View>
 
                                                 <View style={styles.headerContainer}>

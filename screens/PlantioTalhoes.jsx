@@ -2,7 +2,7 @@ import { ScrollView, StyleSheet, Text, View, FlatList, SafeAreaView } from 'reac
 import { useState, useEffect } from 'react';
 
 import { useRoute } from '@react-navigation/native';
-import { useSelector } from 'react-redux';
+import { useSelector, shallowEqual } from 'react-redux';
 import { selectColheitaData } from '../store/redux/selector';
 import PlantioTalhoesCard from '../components/PlantioTalhoes';
 
@@ -26,29 +26,19 @@ const PlantioTalhoesDescription = () => {
     // Get route object
     const route = useRoute();
     const { farm } = route.params;
-    const colheitaData = useSelector(selectColheitaData)
+    const colheitaData = useSelector(selectColheitaData, shallowEqual);
     const { data } = colheitaData
-
-    const [filteredPlants, setFilteredPlants] = useState([]);
-
-
-
-    useEffect(() => {
-        if (colheitaData) {
-            const filterArray = data.filter((plantio) => plantio.talhao__fazenda__nome === farm);
-            setFilteredPlants(filterArray);
-        }
-    }, [colheitaData, farm, data]); // Add dependencies here to re-run when needed
-
+    
     return (
         <>
             <FlatList
+                key={farm}  
                 contentInsetAdjustmentBehavior='automatic'
-                keyboardDismissMode='on-drag'
+                // keyboardDismissMode='on-drag'
                 scrollEnabled={true}
                 contentContainerStyle={{ paddingBottom: tabBarHeight, paddingTop: 10 }}
-                data={filteredPlants}
-                keyExtractor={(item, i) => item.talhao__id_talhao}
+                data={data.filter((plantio) => plantio.talhao__fazenda__nome === farm)}
+                keyExtractor={(item, i) => item.id.toString()}
                 renderItem={PlantioTalhoesCardScreen}
                 ItemSeparatorComponent={() => <View style={{ height: 13 }} />}
             />

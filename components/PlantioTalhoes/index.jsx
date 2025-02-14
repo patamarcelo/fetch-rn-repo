@@ -210,11 +210,12 @@ const PlantioTalhoesCard = (props) => {
 
     const percentage = (parcialArea / data.area_colheita) * 100
     return (
-        <Animated.View
-            entering={FadeInRight.duration(300)} // Root-level animation for appearance
-            exiting={FadeOut.duration(300)} // Root-level animation for disappearance
-            layout={Layout.springify()}    // Layout animation for dynamic resizing
-        >
+        // <Animated.View
+        //     entering={FadeInRight.duration(300)} // Root-level animation for appearance
+        //     exiting={FadeOut.duration(300)} // Root-level animation for disappearance
+        //     layout={Layout.springify()}    // Layout animation for dynamic resizing
+        // >
+        <View>
             <Pressable
                 style={({ pressed }) => [
                     styles.mainContainer,
@@ -348,7 +349,7 @@ const PlantioTalhoesCard = (props) => {
                     }
                 </View>
             </Pressable>
-        </Animated.View>
+        </View>
     )
 }
 

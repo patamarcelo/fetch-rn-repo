@@ -14,7 +14,8 @@ const initialState = {
 	farmboxSearchBar: false,
 	farmBoxSearchQuery: '',
 	colheitaData: null,
-	colheitaDataFilterSelected: null
+	colheitaDataFilterSelected: null,
+	currentFilterSelected: null
 };
 
 const geralSlice = createSlice({
@@ -85,7 +86,10 @@ const geralSlice = createSlice({
 				// If value exists, remove it
 				state.colheitaDataFilterSelected[key].splice(index, 1);
 			}
-		}
+		},
+		setCurrentFilterSelected: (state, action) => {
+			state.currentFilterSelected = action.payload
+		},
 	}
 });
 

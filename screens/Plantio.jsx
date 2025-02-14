@@ -57,25 +57,58 @@ const PlantioScreen = () => {
 
     useEffect(() => {
         if(colheitaData){
-            const totalArea = colheitaData.grouped_data.reduce((acc, curr) => acc += curr.colheita, 0)
-            setTotalArea(totalArea)
-            
-            const totalAreaColhida = colheitaData.grouped_data.reduce((acc, curr) => acc += curr.parcial, 0)
-            setTotalAreaColhida(totalAreaColhida)
-            
+            let totalAreaHere = 0
+            let totalParcialHere = 0
+            colheitaData?.grouped_data?.forEach(element => {
+                element.variedades?.forEach(element => {
+                    totalAreaHere += element.colheita
+                    totalParcialHere += element.parcial
+                });
+            });
+            setTotalArea(totalAreaHere)
+            setTotalAreaColhida(totalParcialHere)
+
             let totalGeral = 0
-            const totalScsColhidosArray = colheitaData.data.map((data) => {
-                if(data?.cargas){
-                    const newTotal = data?.cargas?.reduce((acc,curr) => acc += curr.total_peso_liquido, 0)
+            colheitaData.data.forEach((data) => {
+                if(data?.cargas?.length > 0){
+                    const newTotal = data?.cargas[0].total_peso_liquido
                     totalGeral += newTotal
                 }
             })
             const totalScs = totalGeral > 0 ? (totalGeral / 60) : 0
             setTotalScsColhidos(totalScs)
-            const media = totalScs / totalAreaColhida
+            const media = totalScs / totalParcialHere
+            setMediaGeral(media)
+        }
+    }, []);
+    
+    useEffect(() => {
+        if(colheitaData){
+            let totalAreaHere = 0
+            let totalParcialHere = 0
+            colheitaData?.grouped_data?.forEach(element => {
+                element.variedades?.forEach(element => {
+                    totalAreaHere += element.colheita
+                    totalParcialHere += element.parcial
+                });
+            });
+            setTotalArea(totalAreaHere)
+            setTotalAreaColhida(totalParcialHere)
+
+            let totalGeral = 0
+            colheitaData.data.forEach((data) => {
+                if(data?.cargas?.length > 0){
+                    const newTotal = data?.cargas[0].total_peso_liquido
+                    totalGeral += newTotal
+                }
+            })
+            const totalScs = totalGeral > 0 ? (totalGeral / 60) : 0
+            setTotalScsColhidos(totalScs)
+            const media = totalScs / totalParcialHere
             setMediaGeral(media)
         }
     }, [colheitaData]);
+
 
 
     useEffect(() => {
@@ -188,7 +221,7 @@ const PlantioScreen = () => {
                             <ProgressCircleCard
                                 sownArea={totalAreaColhida}
                                 plannedArea={totalArea}
-                                mediaGeral={mediaGeral}
+                                mediaGeral={mediaGeral > 0 ? mediaGeral : 0}
                                 scsTotal={totalScsColhidos}
                                 title={"Colhido"}
                                 plannedTitle={"Plantado"}
