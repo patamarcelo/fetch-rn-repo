@@ -80,13 +80,13 @@ const FarmsScreen = ({ setModalVisible, modalVisible, route }) => {
 					</Text>
 				</View>
 				{farmsList.length > 0 && (
-						<ScrollView style={{ marginHorizontal: 40, width: '100%' }} 
+						<ScrollView style={{ paddingHorizontal: 0, width: '100%' }} 
 							contentContainerStyle={{ justifyContent: 'center', alignItems: 'center'}}>
 							{farmsList.map((data, i) => {
 								return (
 									<Pressable
 										key={i}
-										style={[styles.titleContainer,{backgroundColor: i % 2 == 0 && Colors.primary[900]}]}
+										style={[styles.titleContainer,{backgroundColor: i % 2 == 0 ? Colors.primary[900] : Colors.primary[902] }]}
 										onPress={handleCheck.bind(
 											this,
 											data,
@@ -118,13 +118,13 @@ const FarmsScreen = ({ setModalVisible, modalVisible, route }) => {
 						</ScrollView>
 				)}
 			</View>
-			<View style={{ width: "90%", alignItems: "center" }}>
+			<View style={{ width: "100%", alignItems: "center", backgroundColor: Colors.primary[900], borderTopLeftRadius: 25, borderTopRightRadius: 25, borderColor: "rgba(230,230,230,0.2)", borderWidth: 0.2 }}>
 				<Button
 					btnStyles={[
 						{
 							width: "90%",
 							marginTop: 20,
-							marginBottom: 20,
+							marginBottom: 100,
 						},
 						checkedIndex === null && styles.cancelType
 					]}
@@ -172,7 +172,7 @@ const styles = StyleSheet.create({
 		marginBottom: 180,
 		marginTop: 20,
 		alignItems: "center",
-		height: "100%"
+		height: "100%",
 		// backgroundColor: Colors.primary[901]
 		// backgroundColor: "red"
 	}
