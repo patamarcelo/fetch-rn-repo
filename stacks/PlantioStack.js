@@ -11,10 +11,11 @@ import PlantioScreen from "../screens/Plantio";
 import PlantioTalhoesDescription from "../screens/PlantioTalhoes";
 
 
-import { StatusBar } from "react-native";
+import { StatusBar, Platform } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
 import { useCallback } from "react";
 import FilterPlantioScreen from "../screens/FilterPlantio";
+
 
 const PlantioStack = () => {
     // const route = useRoute();
@@ -25,9 +26,8 @@ const PlantioStack = () => {
                 headerShown: true, // Make sure the header is visible
                 headerTintColor: "whitesmoke", // Header text color
                 headerStyle: {
-                    headerBlurEffect: 'regular',
-                    headerTransparent: true,
-                    backgroundColor: Colors.primary800
+                    backgroundColor: Colors.primary800,
+                    ...(Platform.OS === 'ios' && { headerBlurEffect: 'regular' }), // Avoids crash on Android
                 },
                 headerTitleStyle: {
                     // fontSize: 36, // Large title font size
@@ -47,22 +47,34 @@ const PlantioStack = () => {
             <Stack.Screen
                 name="PlantioTalhoesScreen"
                 component={PlantioTalhoesDescription}
-                options={({ route }) => ({
-                    title: route.params?.farm ? route.params.farm.replace('Projeto ', '') : 'PlantioDescription',
-                    headerBlurEffect: 'regular',
+                options={({ route, navigation }) => ({
+                    title: route.params?.farm ? route.params.farm.replace('Projeto ', '') : 'Plantio Description',
+                    ...(Platform.OS === 'ios' && { headerBlurEffect: 'regular' }),
                     headerTransparent: true,
-                    // headerSearchBarOptions:{
-                    //     placeholder: 'teste buscar',
-                    //     // hideWhenScrolling: false
-                    // }
+                    headerLeft: () => (
+                        <IconButton
+                            icon="arrow-back"
+                            color="whitesmoke"
+                            size={24}
+                            onPress={() => navigation.goBack()}
+                        />
+                    ),
                 })}
             />
             <Stack.Screen
                 name="FilterPlantioScreen"
                 component={FilterPlantioScreen}
-                options={{
-                    title: 'Filtros', // Title to show in the header
-                }}
+                options={({ navigation }) => ({
+                    title: 'Filtros',
+                    headerLeft: () => (
+                        <IconButton
+                            icon="close"
+                            color="whitesmoke"
+                            size={24}
+                            onPress={() => navigation.goBack()}
+                        />
+                    ),
+                })}
             />
 
         </Stack.Navigator>
