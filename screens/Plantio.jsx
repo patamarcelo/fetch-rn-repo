@@ -56,7 +56,7 @@ const PlantioScreen = () => {
     const [mediaGeral, setMediaGeral] = useState(0);
 
     useEffect(() => {
-        if(colheitaData){
+        if (colheitaData) {
             let totalAreaHere = 0
             let totalParcialHere = 0
             colheitaData?.grouped_data?.forEach(element => {
@@ -70,7 +70,7 @@ const PlantioScreen = () => {
 
             let totalGeral = 0
             colheitaData.data.forEach((data) => {
-                if(data?.cargas?.length > 0){
+                if (data?.cargas?.length > 0) {
                     const newTotal = data?.cargas[0].total_peso_liquido
                     totalGeral += newTotal
                 }
@@ -81,9 +81,9 @@ const PlantioScreen = () => {
             setMediaGeral(media)
         }
     }, []);
-    
+
     useEffect(() => {
-        if(colheitaData){
+        if (colheitaData) {
             let totalAreaHere = 0
             let totalParcialHere = 0
             colheitaData?.grouped_data?.forEach(element => {
@@ -97,7 +97,7 @@ const PlantioScreen = () => {
 
             let totalGeral = 0
             colheitaData.data.forEach((data) => {
-                if(data?.cargas?.length > 0){
+                if (data?.cargas?.length > 0) {
                     const newTotal = data?.cargas[0].total_peso_liquido
                     totalGeral += newTotal
                 }
@@ -193,31 +193,30 @@ const PlantioScreen = () => {
     }
     return (
         <GestureHandlerRootView style={styles.containerGesture}>
-        {/* <GestureHandlerRootView style={[styles.containerGesture, { paddingBottom: tabBarHeight, paddingTop: 10, flex: 1 }]}> */}
+            {/* <GestureHandlerRootView style={[styles.containerGesture, { paddingBottom: tabBarHeight, paddingTop: 10, flex: 1 }]}> */}
             <ScrollView
                 style={{
-                    paddingBottom: tabBarHeight, paddingTop: 10, flex: 1
+                    paddingBottom: tabBarHeight, flex: 1
                 }}
                 contentContainerStyle={{
                     paddingBottom: tabBarHeight,
-                    paddingTop: 10,
-                    marginTop: Platform.OS === 'android' ? -100 : 0,
                     flexGrow: 1,  // Ensures ScrollView content takes all available space
                 }}
-                refreshControl={(
+                contentInsetAdjustmentBehavior='automatic'
+                refreshControl={
                     <RefreshControl
-                        refreshing={isRefreshing}
+                        refreshing={isRefreshing} // Make sure this comes from state
                         onRefresh={() => {
-                            console.log('Pull-to-refresh triggered'); // Debugging
-                            handleUpdateApiData()
-                        }}  // Pull-to-refresh logic
-                        colors={["#9Bd35A", "#689F38"]}
+                            console.log('Pull-to-refresh triggered');
+                            handleUpdateApiData();
+                        }}
+                        colors={[Colors.primary[200], Colors.primary[400], Colors.primary[600]]}
                         tintColor={Colors.primary500}
                     />
-                )}
+                }
             >
                 {
-                    colheitaData?.grouped_data?.length > 0  && (
+                    colheitaData?.grouped_data?.length > 0 && (
                         <>
                             <ProgressCircleCard
                                 sownArea={totalAreaColhida}

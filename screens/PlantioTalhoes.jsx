@@ -69,9 +69,10 @@ const PlantioTalhoesDescription = ({ navigation }) => {
                     :
 
                     <SafeAreaView
+                    contentInsetAdjustmentBehavior='automatic'
                     style={{
                         flex: 1,
-                        paddingTop: Platform.OS === 'android' ? insets.top + 22 : insets.top, // Ensures correct padding on all devices
+                        paddingTop: Platform.OS === 'android' && insets.top + 22
                     }}
                     >
                         <FlatList

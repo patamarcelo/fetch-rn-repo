@@ -90,7 +90,6 @@ const styles = StyleSheet.create({
         alignItems: 'flex-end'
     },
     card: {
-        marginTop: 140,
         backgroundColor: 'white', // Or use theme.colors.surface
         borderRadius: 8,
         padding: 16,
