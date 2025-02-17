@@ -1,4 +1,4 @@
-import { StyleSheet, Text, View, Pressable, ScrollView, SafeAreaView, Animated, TouchableOpacity } from 'react-native'
+import { StyleSheet, Text, View, Pressable, ScrollView, SafeAreaView, Animated as RealAnimated, TouchableOpacity } from 'react-native'
 import { useDispatch, useSelector } from 'react-redux'
 import { selectColheitaDataFilter, selectColheitaDataToggle, selectCurrentFilterSelected } from '../store/redux/selector'
 import { Colors } from '../constants/styles'
@@ -10,9 +10,13 @@ import { geralActions } from '../store/redux/geral'
 
 import Button from '../components/ui/Button'
 
+import { FadeInRight, FadeOut, Layout, BounceIn, BounceOut } from 'react-native-reanimated';
+import Animated from 'react-native-reanimated';
 
 
-const FilterPlantioScreen = ({navigation}) => {
+
+
+const FilterPlantioScreen = ({ navigation }) => {
     const filterData = useSelector(selectColheitaDataFilter)
     const filters = useSelector(selectColheitaDataToggle)
     const dispatch = useDispatch()
@@ -22,11 +26,12 @@ const FilterPlantioScreen = ({navigation}) => {
     const tabBarHeight = useBottomTabBarHeight();
     const filterSelected = useSelector(selectCurrentFilterSelected)
 
+
     useEffect(() => {
-        if(!filterSelected){
+        if (!filterSelected) {
             dispatch(setCurrentFilterSelected('fazenda'))
             const getIndex = handleFilterButons.findIndex(item => item.title === 'fazenda');
-            Animated.timing(selectedIndex, {
+            RealAnimated.timing(selectedIndex, {
                 toValue: getIndex,
                 duration: 300, // Adjust for smoother transition
                 useNativeDriver: false,
@@ -35,7 +40,7 @@ const FilterPlantioScreen = ({navigation}) => {
     }, []);
 
     const handleSelect = (data, index) => {
-        Animated.timing(selectedIndex, {
+        RealAnimated.timing(selectedIndex, {
             toValue: index,
             duration: 300, // Adjust for smoother transition
             useNativeDriver: false,
@@ -51,7 +56,7 @@ const FilterPlantioScreen = ({navigation}) => {
         dispatch(setColheitaFilter({ key: type, value: data }));
     }
 
-    const selectedIndex = useRef(new Animated.Value(0)).current;
+    const selectedIndex = useRef(new RealAnimated.Value(0)).current;
 
 
     const backgroundColor1 = selectedIndex.interpolate({
@@ -75,9 +80,9 @@ const FilterPlantioScreen = ({navigation}) => {
     ]
 
     useEffect(() => {
-        if(filterSelected){
+        if (filterSelected) {
             const getIndex = handleFilterButons.findIndex(item => item.title === filterSelected);
-            Animated.timing(selectedIndex, {
+            RealAnimated.timing(selectedIndex, {
                 toValue: getIndex,
                 duration: 300, // Adjust for smoother transition
                 useNativeDriver: false,
@@ -88,7 +93,7 @@ const FilterPlantioScreen = ({navigation}) => {
     const handleClearFilters = () => {
         dispatch(clearColheitaFilter());
     }
-    
+
     const handleGoBack = () => {
         navigation.goBack()
     }
@@ -98,9 +103,20 @@ const FilterPlantioScreen = ({navigation}) => {
     }, [filters]);
 
     const hasFilters = filters?.farm?.length > 0 || filters?.proj?.length > 0 || filters?.variety?.length > 0
+    const getIndexOf = {'fazenda': '0%', 'projeto': '33%', 'variedade': '66%'}
     return (
         <SafeAreaView style={styles.mainContaier}>
             <View style={styles.headerContainer}>
+                <Animated.View
+                    entering={FadeInRight.duration(300)} // Root-level animation for appearance
+                    exiting={FadeOut.duration(300)} // Root-level animation for disappearance
+                    layout={Layout.springify()}    // 
+                    style={[
+                        styles.percentBackground,
+                        { backgroundColor: Colors.secondary[200] },
+                        { width: '33%', height: '90%', marginLeft: getIndexOf[filterSelected], padding: 2 }, // Dynamic width based on percent
+                    ]}
+                />
                 {
                     handleFilterButons.map((data, i) => {
                         return (
@@ -109,12 +125,12 @@ const FilterPlantioScreen = ({navigation}) => {
                                 style={[styles.filterPressbale]}
                                 key={i}
                             >
-                                <Animated.View
+                                <RealAnimated.View
                                     key={i}
-                                    style={[{ borderColor: data.backcolor ,borderBottomWidth: filterSelected === data.title ? 1 : 0,  padding: 10,justifyContent: 'center', alignItems: 'center' }]}
+                                    style={[{ borderColor: data.backcolor, borderBottomWidth: filterSelected === data.title ? 1 : 0, padding: 10, justifyContent: 'center', alignItems: 'center' }]}
                                 >
-                                    <Text style={[{fontWeight: 'bold', fontSize: 18, color: filters && filters[data.filter].length > 0 && 'green' }]}>{data.label}</Text>
-                                </Animated.View>
+                                    <Text style={[{ fontWeight: 'bold', fontSize: 18, color: filters && filters[data.filter].length > 0 && 'green' }]}>{data.label}</Text>
+                                </RealAnimated.View>
                             </TouchableOpacity>
                         )
                     })
@@ -206,6 +222,16 @@ const FilterPlantioScreen = ({navigation}) => {
 export default FilterPlantioScreen
 
 const styles = StyleSheet.create({
+    percentBackground: {
+        position: 'absolute',
+        borderRadius: 6, // Match border radius with the parent wrapper
+        zIndex: -1, // Ensure it stays behind the content
+        shadowColor: '#000', // iOS shadow color
+        shadowOffset: { width: 0, height: 5 },
+        shadowOpacity: 0.1,
+        shadowRadius: 5,
+        elevation: 2, // Android shadow for the background
+    },
     fabContainer: {
         position: "absolute",
         right: 20,
@@ -237,7 +263,9 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         flexDirection: 'row',
         backgroundColor: 'whitesmoke',
-        marginBottom: 0
+        marginBottom: 0,
+        position: 'relative',
+        zIndex: 1, // Ensure it stays behind the content
     },
     mainContaier: {
         flex: 1,

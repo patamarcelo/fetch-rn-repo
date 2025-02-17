@@ -68,6 +68,13 @@ const PlantioTalhoesCard = (props) => {
             maximumFractionDigits: 2
         })
     }
+    
+    const formatNumberZero = number => {
+        return number?.toLocaleString("pt-br", {
+            minimumFractionDigits: 0,
+            maximumFractionDigits: 0
+        })
+    }
 
     const formatDate = (dateString) => {
         const [year, month, day] = dateString.split('-');
@@ -174,7 +181,7 @@ const PlantioTalhoesCard = (props) => {
 
     const getPosition = () => {
         if(data.finalizado_colheita){
-            return 'Finalizado'
+            return <Icon name={'check-all'} size={14} color={!data.finalizado_colheita ? Colors.gold[600] : Colors.succes[700]} />
         }
         if(data?.cargas){
             return 'Colhendo'
@@ -256,8 +263,16 @@ const PlantioTalhoesCard = (props) => {
                         exiting={FadeOut.duration(300)} // Root-level animation for disappearance
                         layout={Layout.springify()}    // Layout animation for dynamic resizing
                         style={{ flexDirection: 'column', alignItems: 'flex-end', justifyContent: 'flex-end', alignSelf: (showTruckData?.length > 0 || isLoadingData) ? 'flex-end' : 'center' }}>
-                        <Text style={{ fontSize: 12, fontWeight: 'bold', color: Colors.secondary[600] }}> Colheita</Text>
-                        <Text style={{ fontSize: 10, fontWeight: 'bold', color: 'green' }}>{getTotalW > 0 ? formatNumber(getTotalW) : '-'}</Text>
+                        <Text style={{ fontSize: 12, fontWeight: 'bold', color: Colors.secondary[600] }}> Scs</Text>
+                        <Text style={{ fontSize: 10, fontWeight: 'bold', color: Colors.primary[700] }}>{getTotalW > 0 ? formatNumberZero(getTotalW) : '-'}</Text>
+                    </Animated.View>
+                    <Animated.View
+                        entering={FadeInRight.duration(300)} // Root-level animation for appearance
+                        exiting={FadeOut.duration(300)} // Root-level animation for disappearance
+                        layout={Layout.springify()}    // Layout animation for dynamic resizing
+                        style={{ flexDirection: 'column', alignItems: 'flex-end', justifyContent: 'flex-end', alignSelf: (showTruckData?.length > 0 || isLoadingData) ? 'flex-end' : 'center' }}>
+                        <Text style={{ fontSize: 12, fontWeight: 'bold', color: Colors.secondary[600] }}> Parcial</Text>
+                        <Text style={{ fontSize: 10, fontWeight: 'bold', color: Colors.secondary[600] }}>{data.area_parcial > 0 ? formatNumber(data.area_parcial) : '-'}<Text style={{ fontSize: 8, fontWeight: 'bold', color: Colors.secondary[600] }}>{data.area_parcial > 0 ? ' há' : ''}</Text></Text>
                     </Animated.View>
                     <View style={{ flexDirection: 'column', alignItems: 'flex-start' }}>
                         <View style={styles.circularProgressContainer}>
