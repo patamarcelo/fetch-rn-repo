@@ -19,11 +19,17 @@
       "backgroundColor": "#031633",
       "image": "./assets/splash.png"
     },
-    "assetBundlePatterns": ["assets/*", "assets/**/*"],
+    "assetBundlePatterns": [
+      "assets/*",
+      "assets/**/*"
+    ],
     "ios": {
       "buildNumber": "1.0.28",
       "supportsTablet": true,
-      "bundleIdentifier": "com.patamarcelo.fetchapp"
+      "bundleIdentifier": "com.patamarcelo.fetchapp",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "versionCode": 28,
@@ -36,9 +42,12 @@
         "googleMaps": {
           "apiKey": "AIzaSyC74WnhqSXYu2RFGeIxKUC46yWAoSFRx9U"
         }
-      }
+      },
+      "permissions": [
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION"
+      ]
     },
-
     "web": {
       "favicon": "./assets/favicon.png"
     },
