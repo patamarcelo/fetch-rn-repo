@@ -1,4 +1,4 @@
-import { StyleSheet, Text, View } from 'react-native'
+import { SafeAreaView, StyleSheet, Text, View } from 'react-native'
 import * as Haptics from 'expo-haptics';
 import { FAB } from "react-native-paper"; // Floating Action Button
 
@@ -12,11 +12,13 @@ import { geralActions } from '../../store/redux/geral';
 
 import Button from '../ui/Button';
 import Icon from "react-native-vector-icons/MaterialCommunityIcons"; // Uses MaterialCommunityIcons
+import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 
 const FilterPlantioComponent = () => {
     const navigation = useNavigation()
     const filters = useSelector(selectColheitaDataToggle)
     const dispatch = useDispatch()
+    const tabBarHeight = useBottomTabBarHeight();
     const { clearColheitaFilter } = geralActions
 
     const handleFilterProps = () => {
@@ -29,23 +31,23 @@ const FilterPlantioComponent = () => {
         dispatch(clearColheitaFilter());
     }
     return (
-        <View style={styles.fabContainer}>
+        <SafeAreaView style={styles.fabContainer}>
             {
                 hasFilters &&
                 <Button
-                    btnStyles={[styles.fab2, { width: 50, height: 50, borderRadius: '50%', backgroundColor: Colors.error[300] }]}
+                    btnStyles={[styles.fab2, { width: 50, height: 50, borderRadius: '50%', backgroundColor: Colors.error[300], marginBottom: tabBarHeight  }]}
                     onPress={handleClearFilters}
                 >
                     <Icon name="trash-can-outline" size={24} color="white" />
                 </Button>
             }
             <FAB
-                style={[styles.fab, { backgroundColor: hasFilters ? 'rgba(153,204,153,0.4)' : "rgba(200, 200, 200, 0.3)" }]}
+                style={[styles.fab, { backgroundColor: hasFilters ? 'rgba(153,204,153,0.4)' : "rgba(200, 200, 200, 0.3)", marginBottom: tabBarHeight }]}
                 icon={"magnify"}
                 color="black" // Icon color
                 onPress={handleFilterProps}
             />
-        </View>
+        </SafeAreaView>
     )
 }
 
@@ -59,20 +61,22 @@ const styles = StyleSheet.create({
     },
     fab: {
         position: "absolute",
-        right: 30,
-        bottom: 100,
+        right: 0,
+        bottom: 0,
         backgroundColor: "rgba(200, 200, 200, 0.3)", // Grey, almost transparent
         width: 50,
         height: 50,
         borderRadius: 25, // Makes it perfectly circular
         justifyContent: "center",
         alignItems: "center",
-        elevation: 4
+        elevation: 4,
+        borderColor: Colors.primary[300],
+        borderWidth: 1
     },
     fab2: {
         position: "absolute",
-        right: 30,
-        bottom: 160,
+        right: 0,
+        bottom: 65,
         backgroundColor: "rgba(200, 200, 200, 0.3)", // Grey, almost transparent
         width: 50,
         height: 50,

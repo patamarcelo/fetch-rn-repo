@@ -1,5 +1,5 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut,sendPasswordResetEmail } from 'firebase/auth';
+import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut, sendPasswordResetEmail } from 'firebase/auth';
 import { auth } from '../firebase';
 
 // Thunks
@@ -43,7 +43,7 @@ const authSlice = createSlice({
         isAuthenticated: false,
         loading: false,
         error: null,
-        passwordRecoveryMessage: null, 
+        passwordRecoveryMessage: null,
         success: null,
     },
     reducers: {
@@ -76,6 +76,10 @@ const authSlice = createSlice({
             .addCase(logout.fulfilled, (state) => {
                 state.user = null;
                 state.isAuthenticated = false;
+                state.loading = false,
+                state.error = null,
+                state.passwordRecoveryMessage = null,
+                state.success = null
             })
             .addCase(recoverPassword.pending, (state) => {
                 state.loading = true;

@@ -1,4 +1,5 @@
 import { createSlice } from "@reduxjs/toolkit";
+import { logout } from "./authSlice";
 
 const initialState = {
 	fazendas: [],
@@ -22,6 +23,7 @@ const geralSlice = createSlice({
 	name: "geral",
 	initialState,
 	reducers: {
+		resetData: () => initialState,
 		setFarmBoxData: (state, action) => {
 			state.farmBoxData = action.payload
 		},
@@ -66,17 +68,17 @@ const geralSlice = createSlice({
 		},
 		setColheitaFilter: (state, action) => {
 			const { key, value } = action.payload; // key = "farm" | "proj" | "variety", value = item to toggle
-		
+
 			// Initialize colheitaDataFilterSelected if null
 			if (!state.colheitaDataFilterSelected) {
 				state.colheitaDataFilterSelected = { farm: [], proj: [], variety: [] };
 			}
-		
+
 			// Initialize specific key if it does not exist
 			if (!state.colheitaDataFilterSelected[key]) {
 				state.colheitaDataFilterSelected[key] = [];
 			}
-		
+
 			// Toggle value inside the array
 			const index = state.colheitaDataFilterSelected[key].indexOf(value);
 			if (index === -1) {
@@ -90,6 +92,9 @@ const geralSlice = createSlice({
 		setCurrentFilterSelected: (state, action) => {
 			state.currentFilterSelected = action.payload
 		},
+	},
+	extraReducers: (builder) => {
+		builder.addCase(logout.fulfilled, () => initialState);
 	}
 });
 

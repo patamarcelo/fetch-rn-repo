@@ -8,6 +8,7 @@ import Animated, { FadeInRight, FadeOut, Layout, BounceIn, BounceOut } from 'rea
 import { useNavigation } from '@react-navigation/native';
 
 import * as Haptics from 'expo-haptics';
+import { Divider } from 'react-native-paper';
 
 const iconDict = [
     { cultura: "Feijão", icon: require('../../utils/assets/icons/beans2.png'), alt: "feijao" },
@@ -95,38 +96,43 @@ const FarmsPlantioScreen = (props) => {
                                 data.culturas.map((cultura, i) => {
                                     let plantado = 0
                                     let colhido = 0
-                                    
+
                                     data?.variedades?.filter((data) => data.cultura === cultura.cultura).forEach(element => {
                                         plantado += element.colheita;
                                         colhido += element.parcial
                                     });
-                                    
+
                                     const saldo = plantado - colhido
                                     return (
-                                        <View style={styles.containerCulture} key={i}>
-                                            <View>
-                                            <View style={styles.shadowContainer}>
-                                                    <Image source={getCultura(cultura.cultura)}
-                                                        style={{ width: 30, height: 30,  resizeMode: 'contain' }}
-                                                    />
+                                        <View key={i}>
+                                        {i > 0 && (
+                                                <Divider style={{ backgroundColor: 'gray', height: 1, marginVertical: 5, width: '100%' }} />
+                                            )}
+                                            <View style={styles.containerCulture}>
+                                                <View>
+                                                    <View style={styles.shadowContainer}>
+                                                        <Image source={getCultura(cultura.cultura)}
+                                                            style={{ width: 30, height: 30, resizeMode: 'contain' }}
+                                                        />
+                                                    </View>
                                                 </View>
-                                            </View>
-                                            <View style={{ flexDirection: 'column', gap: 2, justifyContent: 'center', alignItems: 'center' }}>
-                                                <View style={styles.headerContainer}>
-                                                    <Text style={styles.titleCultureArea}>Plantado</Text>
-                                                    <Text style={styles.labelNumber}>{formatNumber(plantado)}</Text>
-                                                </View>
+                                                <View style={{ flexDirection: 'column', gap: 2, justifyContent: 'center', alignItems: 'center' }}>
+                                                    <View style={styles.headerContainer}>
+                                                        <Text style={styles.titleCultureArea}>Plantado</Text>
+                                                        <Text style={styles.labelNumber}>{formatNumber(plantado)}</Text>
+                                                    </View>
 
-                                                <View style={styles.headerContainer}>
-                                                    <Text style={styles.titleCultureColheita}>Colheita</Text>
-                                                    <Text style={styles.labelNumber}>{cultura.parcial > 0 ? formatNumber(colhido) : '-'}</Text>
-                                                </View>
+                                                    <View style={styles.headerContainer}>
+                                                        <Text style={styles.titleCultureColheita}>Colheita</Text>
+                                                        <Text style={styles.labelNumber}>{cultura.parcial > 0 ? formatNumber(colhido) : '-'}</Text>
+                                                    </View>
 
-                                                <View style={styles.headerContainer}>
-                                                    <Text style={styles.titleCultureSaldo}>Saldo</Text>
-                                                    <Text style={styles.labelNumber}>{saldo > 0 ? formatNumber(saldo) : '-'}</Text>
+                                                    <View style={styles.headerContainer}>
+                                                        <Text style={styles.titleCultureSaldo}>Saldo</Text>
+                                                        <Text style={styles.labelNumber}>{saldo > 0 ? formatNumber(saldo) : '-'}</Text>
+                                                    </View>
                                                 </View>
-                                            </View>
+                                            </View >
                                         </View>
                                     )
                                 })

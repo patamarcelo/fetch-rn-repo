@@ -144,10 +144,11 @@ const PlantioScreen = () => {
                 setIsLoadingData(false)
             }
         }
-        if (colheitaData?.length === 0) {
+        if (!colheitaData){
             const newData = handleUpdateApiData()
-            // console.log("new data Here: ", newData)
+            console.log("new data Here: ", newData)
         }
+        console.log('colheitaData', colheitaData)
     }, []);
 
     const handleUpdateApiData = async () => {
@@ -259,7 +260,11 @@ const PlantioScreen = () => {
                     )
                 }
             </ScrollView>
-            <FilterPlantioScreen />
+            {
+                colheitaData?.grouped_data?.length > 0 && (
+                    <FilterPlantioScreen />
+                )
+            }
         </GestureHandlerRootView>
     )
 }
