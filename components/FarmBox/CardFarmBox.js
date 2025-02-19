@@ -30,9 +30,12 @@ import { selectFarmboxSearchBar, selectFarmboxSearchQuery } from "../../store/re
 import SearchBar from "../Global/SearchBar";
 import { FAB } from "react-native-paper";
 
+import IconButton from "../ui/IconButton";
+
 
 
 import Animated, { BounceIn, BounceOut, FadeIn, FadeInRight, FadeInUp, FadeOut, FadeOutUp, FlipInEasyX, FlipOutEasyX, Layout, SlideInLeft, SlideInRight, SlideOutRight, SlideOutUp, StretchInY, StretchOutX, ZoomIn, ZoomOut } from 'react-native-reanimated';
+import { createApplicationPdf } from "../Global/PrintCronogramaPage";
 
 const CardFarmBox = ({ route, navigation }) => {
     // const { data, indexParent, showMapPlot } = props
@@ -57,6 +60,11 @@ const CardFarmBox = ({ route, navigation }) => {
 
     const [farmData, setfarmData] = useState([]);
 
+    const handleExprotData = () => {
+        createApplicationPdf(data, farm)
+    }
+
+
     useLayoutEffect(() => {
         const unsubscribeFocus = navigation.addListener("focus", () => {
             const currentStack = navigation.getState();
@@ -68,6 +76,17 @@ const CardFarmBox = ({ route, navigation }) => {
                 headerShadowVisible: false,
                 headerRight: ({ tintColor }) => (
                     <View style={{ flexDirection: "row", alignItems: 'center', paddingRight: 20, flex: 1 }}>
+                        <IconButton
+									type={"awesome"}
+									icon={'print'}
+									color={tintColor}
+									size={22}
+									onPress={() => {
+                                        console.log('trigger here')
+                                        handleExprotData()
+                                    }}
+									btnStyles={{ marginLeft: 5, marginTop: 10 }}
+								/>
                     </View>
                 ),
                 headerLeft: stackName === 'FarmBoxStack'
@@ -87,7 +106,7 @@ const CardFarmBox = ({ route, navigation }) => {
 
         return unsubscribeFocus
 
-    }, [navigation, route]);
+    }, [navigation, route, farmData]);
 
 
     useEffect(() => {
