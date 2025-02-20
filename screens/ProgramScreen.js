@@ -88,6 +88,7 @@ const ProgramScreen = ({ navigation }) => {
 
 
 	const handlerPrintData = () => {
+		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy)
 		console.log("print Program")
 		const filteredProds = dataProgram.filter((data) => data.operacao__programa__nome === programSelected.nome).sort((a, b) => a.defensivo__tipo.localeCompare(b.defensivo__tipo))
 		const onlyEstagios = filteredProds.sort((a, b) => a.operacao__prazo_dap - b.operacao__prazo_dap).map((data) => {

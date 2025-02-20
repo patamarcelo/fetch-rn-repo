@@ -145,7 +145,7 @@ export const createApplicationPdf = async (data, farm) => {
                 }
 
                 .bordered {
-                    border: 1px solid black;
+                    border: 0.5px solid black;
                 }
 
                 .resumo-container {
@@ -154,6 +154,8 @@ export const createApplicationPdf = async (data, farm) => {
                     flex-direction: row;
                     justify-content: space-between;
                     padding: 10px 0px;
+                    background-color: rgba(107,107,107,0.2);
+                    border: 0.5px solid black;
                 }
 
                 .resumo-container-app-area {
@@ -263,8 +265,11 @@ export const createApplicationPdf = async (data, farm) => {
                 }
 
                 .header-produtos {
-                    border-bottom: 1px solid black;
-                    margin-top: 20px
+                    border-bottom: 0.5px dotted black;
+                    margin-top: 20px;
+                    margin-bottom: -5px !important;
+                    padding-bottom: -20px !important;
+                    font-weight: bold;
                 }
 
                 .header-produtos span {

@@ -61,6 +61,7 @@ const CardFarmBox = ({ route, navigation }) => {
     const [farmData, setfarmData] = useState([]);
 
     const handleExprotData = () => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy)
         createApplicationPdf(data, farm)
     }
 
