@@ -40,7 +40,8 @@ export const createApplicationPdf = async (data, farm) => {
     }
 
 
-    const apCotainer = data.map((app) => {
+    const totalAplicar = data.filter((op) => !op.operation.toLowerCase().includes('colheita')).reduce((acc, curr) => acc += curr.saldoAreaAplicar, 0)
+    const apCotainer = data.filter((op) => !op.operation.toLowerCase().includes('colheita')).map((app) => {
 
         const appsCards = app.parcelas.map((parcela) => {
             return `
@@ -179,7 +180,7 @@ export const createApplicationPdf = async (data, farm) => {
                     flex-direction: column;
                     width: 100%;
                     margin-bottom: 15px;
-                    margin-top: 15px;
+                    margin-top: 0px;
                     page-break-inside: avoid !important;
                     box-decoration-break: clone;
                 }
@@ -238,7 +239,7 @@ export const createApplicationPdf = async (data, farm) => {
                 }
 
                 .detail-variedade-dap {
-                    font-size: 0.5em;
+                    font-size: 0.7em;
                     display: flex;
                     justify-content: space-evenly;
                     flex-direction: row;
@@ -247,7 +248,7 @@ export const createApplicationPdf = async (data, farm) => {
                 }
 
                 .detail-variedade-status{
-                    font-size: 0.5em;
+                    font-size: 0.7em;
                     display: flex;
                     justify-content: flex-start;
                     flex-direction: row;
@@ -288,9 +289,22 @@ export const createApplicationPdf = async (data, farm) => {
                     margin-bottom: 3px;
                 }
 
-                header h6 {
+                .header-container {
                     margin-bottom: 0px
-                    text-align: center;
+                    margin-left: 30px;
+                    display: flex;
+                    flex-direction: column;
+                    gap: 10px;
+                    width: 100%;
+                    height: 60px;
+                }
+
+                .header-title {
+                    font-size: 30px;
+                    font-weight: bold;
+                }
+                .header-area {
+                    font-size: 1.2em
                 }
 
                 .first-prod-here {
@@ -304,11 +318,14 @@ export const createApplicationPdf = async (data, farm) => {
             <div class="main-container">
                 <div>
 
-                    <header>
-                    <h6>
-                        ${farm.replace('Fazenda ', '')}
-                    </h6>
-                    </header>
+                    <div class="header-container">
+                        <div class="header-title">
+                            ${farm.replace('Fazenda ', '')}
+                        </div>
+                        <span class="header-area">
+                            <b>Área Total:</b> ${formatNumber(totalAplicar)}
+                        </span>
+                    </div>
                 </div>
                 ${apCotainer}
             </div>
