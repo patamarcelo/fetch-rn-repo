@@ -21,22 +21,44 @@ export const createApplicationPdf = async (data, farm) => {
         console.log('\n')
     });
 
+
+    const getDap = (date) => {
+        const today = new Date();
+        const planted = new Date(date);
+
+        const differenceInTime = today - planted; 
+        const differenceInDays = Math.floor(differenceInTime / (1000 * 60 * 60 * 24));
+        return differenceInDays
+    }
+
+    const formatDate = (dateString) => {
+        if(!dateString){
+            return '-'
+        }
+        const [year, month, day] = dateString.split('-');
+        return `${day}/${month}/${year}`;
+    }
+    
+
     const apCotainer = data.map((app) => {
 
         const appsCards = app.parcelas.map((parcela) => {
             return `
-                <div class="parcela-detail-container bordered">
+                <div class="parcela-detail-container bordered ${parcela.areaSolicitada == parcela.areaAplicada && 'finish-parcela'}">
                     <div class="detail-variedade-area">
                         <b>${parcela.parcela}</b><span>${formatNumber(parcela.areaSolicitada)} há</span>
                     </div>
                     <div class="detail-variedade-dap">
-                        <span>424</span><span>DAP 100</span>
+                        <span>${parcela.variedade || '?'}</span><span>${getDap(parcela.date)} dias</span>
+                    </div>
+                    <div class="detail-variedade-status">
+                        <span>Aplicado: ${formatNumber(parcela.areaAplicada)}</span>
                     </div>
                 </div>
             `
         }).join('');
 
-        const prodsCards = app.prods.map((prod, i) => {
+        const prodsCards = app.prods.filter((prodType) => prodType.type !== 'Operação').map((prod, i) => {
         
             return `
                 <div class="grid-produtos detail-prod-container ${ i === 0 && 'first-prod-here'}">
@@ -53,12 +75,12 @@ export const createApplicationPdf = async (data, farm) => {
         <div class="ap-container bordered">
             <div class="resumo-container bordered">
                 <div class="resumo-container-app-number">
-                    <span><b>${app?.code}</b></span>
+                    <span><b>${app?.code.replace('AP',"AP ")}</b></span>
                     <span><b>${app?.operation}</b></span>
                 </div>
                 <div class="resumo-container-app-area">
-                    <span><b>Início:</b> ${app?.dateAp}</span>
-                    <span><b>Limite:</b> ----- </span>
+                    <span><b>Início:</b> ${formatDate(app?.dateAp)}</span>
+                    <span><b>Limite:</b> ${formatDate(app?.endDateAp)}</span>
                 </div>
                 <div class="resumo-container-app-area">
                     <span><b>Área:</b> ${formatNumber(app?.areaSolicitada)} há</span>
@@ -97,6 +119,8 @@ export const createApplicationPdf = async (data, farm) => {
                 body {
                     font-size: 7px;
                     padding: 20px 10px !important;
+                    -webkit-print-color-adjust: exact;
+                    print-color-adjust: exact;
                 }
                 .main-container {
                     width: 100%;
@@ -191,6 +215,10 @@ export const createApplicationPdf = async (data, farm) => {
                     min-height: 10px;
                 }
 
+                .finish-parcela{
+                    background-color: #DEDFE4;
+                }
+
                 .detail-variedade-area {
                     display: flex;
                     justify-content: space-evenly;
@@ -201,9 +229,18 @@ export const createApplicationPdf = async (data, farm) => {
                 }
 
                 .detail-variedade-dap {
-                    font-size: 0.8em;
+                    font-size: 0.5em;
                     display: flex;
                     justify-content: space-evenly;
+                    flex-direction: row;
+                    gap: 10px;
+                    width: 100%;
+                }
+
+                .detail-variedade-status{
+                    font-size: 0.5em;
+                    display: flex;
+                    justify-content: flex-start;
                     flex-direction: row;
                     gap: 10px;
                     width: 100%;
@@ -236,7 +273,7 @@ export const createApplicationPdf = async (data, farm) => {
                 }
 
                 .detail-prod-container {
-                    margin-bottom: 10px;
+                    margin-bottom: 3px;
                 }
 
                 header h6 {
