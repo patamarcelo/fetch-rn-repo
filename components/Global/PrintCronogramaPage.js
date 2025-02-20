@@ -26,19 +26,19 @@ export const createApplicationPdf = async (data, farm) => {
         const today = new Date();
         const planted = new Date(date);
 
-        const differenceInTime = today - planted; 
+        const differenceInTime = today - planted;
         const differenceInDays = Math.floor(differenceInTime / (1000 * 60 * 60 * 24));
         return differenceInDays
     }
 
     const formatDate = (dateString) => {
-        if(!dateString){
+        if (!dateString) {
             return '-'
         }
         const [year, month, day] = dateString.split('-');
         return `${day}/${month}/${year}`;
     }
-    
+
 
     const apCotainer = data.map((app) => {
 
@@ -59,14 +59,14 @@ export const createApplicationPdf = async (data, farm) => {
         }).join('');
 
         const prodsCards = app.prods.filter((prodType) => prodType.type !== 'Operação').map((prod, i) => {
-        
+
             return `
-                <div class="grid-produtos detail-prod-container ${ i === 0 && 'first-prod-here'}">
+                <div class="grid-produtos detail-prod-container ${i === 0 && 'first-prod-here'}">
                     <span>${formatDoseNumber(prod.doseSolicitada)}</span>
                     <span>${prod.product}</span>
                     <span>${formatNumber(prod.quantidadeSolicitada)}</span>
                 </div>
-            `    
+            `
         }).join('');
 
         const totalRealizado = app?.areaSolicitada - app?.saldoAreaAplicar
@@ -75,7 +75,7 @@ export const createApplicationPdf = async (data, farm) => {
         <div class="ap-container bordered">
             <div class="resumo-container bordered">
                 <div class="resumo-container-app-number">
-                    <span><b>${app?.code.replace('AP',"AP ")}</b></span>
+                    <span><b>${app?.code.replace('AP', "AP ")}</b></span>
                     <span><b>${app?.operation}</b></span>
                 </div>
                 <div class="resumo-container-app-area">
@@ -110,21 +110,24 @@ export const createApplicationPdf = async (data, farm) => {
         <head>
             <meta charset="UTF-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <link rel="stylesheet" href="./farmBoxapp.css">
             <title>Document</title>
             <style>
                 @page {
-                        margin: 10px 10px; /* top/bottom, left/right margins for each page */
-                    }
+                    size: A4;
+                    margin-top: 10px;
+                    margin-bottom: 10px;
+                }
                 body {
                     font-size: 7px;
                     padding: 20px 10px !important;
                     -webkit-print-color-adjust: exact;
                     print-color-adjust: exact;
+                    margin-top: 20px;
+                    margin-bottom: 20px;
                 }
                 .main-container {
                     width: 100%;
-                    display: flex;
+                    display: block;
                     flex-direction: column;
                     justify-content: center;
                     align-items: center;
@@ -167,12 +170,16 @@ export const createApplicationPdf = async (data, farm) => {
                     gap: 30px;
                     margin-left: 20px;
                 }
-
+                
                 .ap-container {
                     display: flex;
                     justify-content: space-between;
                     flex-direction: column;
                     width: 100%;
+                    margin-bottom: 15px;
+                    margin-top: 15px;
+                    page-break-inside: avoid !important;
+                    box-decoration-break: clone;
                 }
 
                 .parcelas-container {
@@ -278,6 +285,7 @@ export const createApplicationPdf = async (data, farm) => {
 
                 header h6 {
                     margin-bottom: 0px
+                    text-align: center;
                 }
 
                 .first-prod-here {
@@ -305,41 +313,36 @@ export const createApplicationPdf = async (data, farm) => {
     `
 
     try {
-        // Create a PDF from HTML content
-        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-        const filename = `${farm}_${timestamp}.pdf`;
+        // Create a timestamp and formatted filename
+        const formattedDate = new Date().toLocaleDateString('en-GB').replace(/\//g, '-'); // Optional: DD-MM-YYYY format
+        const filename = `${farm.replace('Fazenda ', '')} openApss - ${formattedDate}_app.pdf`;
         const newUri = `${FileSystem.documentDirectory}${filename}`;
 
+        // Create a PDF from HTML content
         const { uri } = await Print.printToFileAsync({
             html: htmlContent,
             base64: false,
         });
 
+        // Check if the PDF was created
         const fileInfo = await FileSystem.getInfoAsync(uri);
         if (!fileInfo.exists) {
             throw new Error("PDF file was not created successfully");
         }
 
-
-        // Ensure the target directory exists
-        const directoryInfo = await FileSystem.getInfoAsync(FileSystem.documentDirectory);
-        if (!directoryInfo.exists) {
-            throw new Error("Target directory does not exist");
-        }
-
-
-        // await FileSystem.moveAsync({
-        //   from: uri,
-        //   to: newUri
-        // });
+        // Move the PDF to the desired location with the correct filename
+        await FileSystem.moveAsync({
+            from: uri,
+            to: newUri,
+        });
 
         // Optionally share the PDF
-        await shareAsync(uri, { dialogTitle: "Share your PDF" });
+        await shareAsync(newUri, { dialogTitle: "Enviar PDF" });
 
-        console.log("PDF created at:", uri);
+        console.log("PDF created at:", newUri);
     } catch (error) {
         console.error("Error creating PDF:", error);
-    }
+    };
 }
 
 

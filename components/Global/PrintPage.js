@@ -1,5 +1,6 @@
 import * as Print from "expo-print";
 import { shareAsync } from "expo-sharing";
+import * as FileSystem from 'expo-file-system';
 
 const createAndPrintPDF = async (data, farmName, filterEndDate) => {
 
@@ -100,9 +101,11 @@ const formatDoseNumber = number => number?.toLocaleString("pt-br", {
           <title>PDF Document</title>
           <style>
           @page {
-            margin: 10px 10px; /* top/bottom, left/right margins for each page */
+            size: A4;
+            margin-top: 10px;
+            margin-bottom: 10px;
           }
-            body{
+          body {
             font-size: 7px;
             padding: 20px 10px !important;
           }
@@ -209,23 +212,37 @@ const formatDoseNumber = number => number?.toLocaleString("pt-br", {
       </html>
     `;
 
-  try {
-    // Create a PDF from HTML content
-    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-    const filename = `${farmName}_${timestamp}.pdf`;
-    const { uri } = await Print.printToFileAsync({
-      html: htmlContent,
-      base64: false,
-      filename: filename
-    });
-    
-    // Optionally share the PDF
-    await shareAsync(uri, { dialogTitle: "Share your PDF" });
+    try {
+      // Create a timestamp and formatted filename
+      const formattedDate = new Date().toLocaleDateString('en-GB').replace(/\//g, '-'); // Optional: DD-MM-YYYY format
+      const filename = `${farmName.replace('Projeto ', '')}_cronograma_${formattedDate}_app.pdf`;
+      const newUri = `${FileSystem.documentDirectory}${filename}`;
 
-    console.log("PDF created at:", uri);
+      // Create a PDF from HTML content
+      const { uri } = await Print.printToFileAsync({
+          html: htmlContent,
+          base64: false,
+      });
+
+      // Check if the PDF was created
+      const fileInfo = await FileSystem.getInfoAsync(uri);
+      if (!fileInfo.exists) {
+          throw new Error("PDF file was not created successfully");
+      }
+
+      // Move the PDF to the desired location with the correct filename
+      await FileSystem.moveAsync({
+          from: uri,
+          to: newUri,
+      });
+
+      // Optionally share the PDF
+      await shareAsync(newUri, { dialogTitle: "Enviar PDF" });
+
+      console.log("PDF created at:", newUri);
   } catch (error) {
-    console.error("Error creating PDF:", error);
-  }
+      console.error("Error creating PDF:", error);
+  };
 };
 
 export default createAndPrintPDF;

@@ -84,9 +84,11 @@ const htmlContent = `
           <title>PDF Document</title>
           <style>
           @page {
-            margin: 10px 10px; /* top/bottom, left/right margins for each page */
+            size: A4;
+            margin-top: 10px;
+            margin-bottom: 10px;
           }
-            body{
+          body {
             font-size: 7px;
             padding: 20px 10px !important;
           }
@@ -125,7 +127,7 @@ const htmlContent = `
               margin-top: 5px;
           }
           .program-main-container {
-              display: flex;
+              display: block;
               flex-direction: column;
               gap: 3px;
           }
@@ -137,8 +139,9 @@ const htmlContent = `
               background-color: rgba(245, 245, 245, 0.1);
           }
 
-          .program-main-container div, programa-detail-title{
+          .programa-grid-container {
               page-break-inside: avoid !important;
+              margin-bottom: 5px;
           }
 
           .program-header-container {
@@ -158,6 +161,10 @@ const htmlContent = `
           }
           .program-detail-title-children{
               justify-self: center;
+              flex-direction: column;
+              display: flex;
+              justify-content: center;
+              align-items: center;
           }
     
           .programa-detail-title h4,
@@ -223,41 +230,37 @@ const htmlContent = `
     `;
 
   try {
-    // Create a PDF from HTML content
-    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-    const filename = `${program.nome}_${timestamp}.pdf`;
-    const newUri = `${FileSystem.documentDirectory}${filename}`;
-
-    const { uri } = await Print.printToFileAsync({
-      html: htmlContent,
-      base64: false,
-    });
-
-    const fileInfo = await FileSystem.getInfoAsync(uri);
-    if (!fileInfo.exists) {
-      throw new Error("PDF file was not created successfully");
-    }
-
-
-     // Ensure the target directory exists
-    const directoryInfo = await FileSystem.getInfoAsync(FileSystem.documentDirectory);
-    if (!directoryInfo.exists) {
-      throw new Error("Target directory does not exist");
-    }
-    
-    
-    // await FileSystem.moveAsync({
-    //   from: uri,
-    //   to: newUri
-    // });
-    
-    // Optionally share the PDF
-    await shareAsync(uri, { dialogTitle: "Share your PDF" });
-
-    console.log("PDF created at:", uri);
-  } catch (error) {
-    console.error("Error creating PDF:", error);
-  }
+          // Create a timestamp and formatted filename
+          const formattedDate = new Date().toLocaleDateString('en-GB').replace(/\//g, '-'); // Optional: DD-MM-YYYY format
+          const safeFileName = program.nome.replace(/[^a-zA-Z0-9-_]/g, '_');
+          const filename = `${safeFileName}_${formattedDate}.pdf`;
+          const newUri = `${FileSystem.documentDirectory}${filename}`;
+  
+          // Create a PDF from HTML content
+          const { uri } = await Print.printToFileAsync({
+              html: htmlContent,
+              base64: false,
+          });
+  
+          // Check if the PDF was created
+          const fileInfo = await FileSystem.getInfoAsync(uri);
+          if (!fileInfo.exists) {
+              throw new Error("PDF file was not created successfully");
+          }
+  
+          // Move the PDF to the desired location with the correct filename
+          await FileSystem.moveAsync({
+              from: uri,
+              to: newUri,
+          });
+  
+          // Optionally share the PDF
+          await shareAsync(newUri, { dialogTitle: "Enviar PDF" });
+  
+          console.log("PDF created at:", newUri);
+      } catch (error) {
+          console.error("Error creating PDF:", error);
+      };
 };
 
 export default PrintProgramPage;
