@@ -36,10 +36,10 @@ const FilterModalApps = (props) => {
         setSelectedApps(allApps)
     }, []);
 
-    useEffect(() => {
-        StatusBar.setHidden(modalVisible, 'slide');
-        return () => StatusBar.setHidden(false, 'slide'); // Reset when modal is closed
-    }, [modalVisible]);
+    // useEffect(() => {
+    //     StatusBar.setHidden(modalVisible, 'slide');
+    //     return () => StatusBar.setHidden(false, 'slide'); // Reset when modal is closed
+    // }, [modalVisible]);
 
     const handleCloseModal = () => {
         setModalVisible(false);
@@ -90,14 +90,14 @@ const FilterModalApps = (props) => {
                         setModalVisible(!modalVisible);
                     }}
                 >
-                    <SafeAreaView style={{ flex: 1, backgroundColor: 'whitesmoke', paddingTop: insets.top, paddingBottom: insets.bottom }}>
+                    <SafeAreaView style={{ flex: 1, backgroundColor: 'whitesmoke', paddingTop: insets.top }}>
                         <Pressable
                             style={({ pressed }) => [
                                 pressed && styles.pressed,
                                 styles.headerContainer,
                             ]}
                             onPress={handleClearApps} >
-                            <Text style={{ fontWeight: 'bold', color: Colors.secondary[700] }}>Selecione as Aplicações <Text>{selectedApps?.length}/{data?.length}</Text></Text>
+                            <Text style={{ fontWeight: 'bold', color: Colors.primary500, fontSize: 24 }}>Aplicações <Text style={{fontSize: 10, color: Colors.secondary[500]}}>{selectedApps?.length}/{data?.length}</Text></Text>
                             <View
                             >
                                 <Text style={[styles.allBtn, { color: Colors.primary[500], fontWeight: 'bold' }]}>
@@ -138,7 +138,7 @@ const FilterModalApps = (props) => {
                             </ScrollView>
                         }
                     </SafeAreaView>
-                    <View style={{ marginBottom: 40, marginTop: 20, marginHorizontal: 20 }}>
+                    <View style={{ paddingBottom: 40, paddingTop: 20, paddingHorizontal: 20, backgroundColor: 'whitesmoke'}}>
                         <Button
                             btnStyles={{ height: 50, backgroundColor: selectedApps.length === 0 ? Colors.gold[600] : Colors.succes[400] }}
                             onPress={selectedApps.length === 0 ? handleCloseModal : handleSubmit}>
