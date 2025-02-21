@@ -1,6 +1,8 @@
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { Colors } from "../../constants/styles";
+import * as Haptics from 'expo-haptics';
+
 
 function Button({
 	children,
@@ -17,7 +19,10 @@ function Button({
 				pressed && styles.pressed,
 				disabled && styles.disabled
 			]}
-			onPress={onPress}
+			onPress={() => {
+				onPress()
+				Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy)
+			}}
 			disabled={disabled}
 		>
 			<View>

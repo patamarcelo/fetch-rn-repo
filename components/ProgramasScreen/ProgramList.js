@@ -182,16 +182,18 @@ const styles = StyleSheet.create({
 	fabContainer: {
 		position: "absolute",
 		right: 20,
-		bottom: 20
+		bottom: 20,
 	},
 	fab: {
 		position: "absolute",
 		right: 30,
-		bottom: 100,
+		bottom: 10,
 		backgroundColor: "rgba(200, 200, 200, 0.3)", // Grey, almost transparent
 		width: 50,
 		height: 50,
 		borderRadius: 25, // Makes it perfectly circular
+		borderColor: Colors.primary[300],
+		borderWidth: 1,
 		justifyContent: "center",
 		alignItems: "center",
 		elevation: 4

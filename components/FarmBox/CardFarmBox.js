@@ -35,7 +35,9 @@ import IconButton from "../ui/IconButton";
 
 
 import Animated, { BounceIn, BounceOut, FadeIn, FadeInRight, FadeInUp, FadeOut, FadeOutUp, FlipInEasyX, FlipOutEasyX, Layout, SlideInLeft, SlideInRight, SlideOutRight, SlideOutUp, StretchInY, StretchOutX, ZoomIn, ZoomOut } from 'react-native-reanimated';
-import { createApplicationPdf } from "../Global/PrintCronogramaPage";
+
+
+import FilterModalApps from "./FilterModalApps";
 
 const CardFarmBox = ({ route, navigation }) => {
     // const { data, indexParent, showMapPlot } = props
@@ -60,10 +62,13 @@ const CardFarmBox = ({ route, navigation }) => {
 
     const [farmData, setfarmData] = useState([]);
 
+    const [modalVisible, setModalVisible] = useState(false);
+
     const handleExprotData = () => {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy)
-        createApplicationPdf(data, farm)
+        setModalVisible(true)
     }
+
 
 
     useLayoutEffect(() => {
@@ -78,16 +83,16 @@ const CardFarmBox = ({ route, navigation }) => {
                 headerRight: ({ tintColor }) => (
                     <View style={{ flexDirection: "row", alignItems: 'center', paddingRight: 20, flex: 1 }}>
                         <IconButton
-									type={"awesome"}
-									icon={'print'}
-									color={tintColor}
-									size={22}
-									onPress={() => {
-                                        console.log('trigger here')
-                                        handleExprotData()
-                                    }}
-									btnStyles={{ marginLeft: 5, marginTop: 10 }}
-								/>
+                            type={"awesome"}
+                            icon={'print'}
+                            color={tintColor}
+                            size={22}
+                            onPress={() => {
+                                console.log('trigger here')
+                                handleExprotData()
+                            }}
+                            btnStyles={{ marginLeft: 5, marginTop: 10 }}
+                        />
                     </View>
                 ),
                 headerLeft: stackName === 'FarmBoxStack'
@@ -400,6 +405,15 @@ const CardFarmBox = ({ route, navigation }) => {
                     onPress={handleFilterProps}
                 />
             </View>
+            {
+                modalVisible &&
+                <FilterModalApps
+                    modalVisible={modalVisible}
+                    setModalVisible={setModalVisible}
+                    data={data}
+                    farm={farm}
+                />
+            }
         </>
     )
 }
@@ -423,11 +437,13 @@ const styles = StyleSheet.create({
     fab: {
         position: "absolute",
         right: 30,
-        bottom: 100,
+        bottom: 90,
         backgroundColor: "rgba(200, 200, 200, 0.3)", // Grey, almost transparent
         width: 50,
         height: 50,
         borderRadius: 25, // Makes it perfectly circular
+        borderColor: Colors.primary[300],
+        borderWidth: 1,
         justifyContent: "center",
         alignItems: "center",
         elevation: 4
