@@ -1,18 +1,21 @@
-import { StyleSheet, Text, View, Modal, StatusBar, ScrollView, Pressable, Platform } from 'react-native'
+import { StyleSheet, Text, View, StatusBar, ScrollView, Pressable, Platform } from 'react-native'
 import { useState, useEffect } from 'react';
-
 import Button from '../ui/Button'
-import { SafeAreaView, SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Colors } from '../../constants/styles';
 
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import * as Haptics from 'expo-haptics';
 import { createApplicationPdf } from '../Global/PrintCronogramaPage';
+import Icon from "react-native-vector-icons/MaterialCommunityIcons"; // Choose any icon set
 
 
 const FilterModalApps = (props) => {
-    const { modalVisible, setModalVisible, data, farm } = props
+    // const { modalVisible, setModalVisible, data, farm, route } = props
+    const { modalVisible, setModalVisible, route, navigation } = props
+
+    const { data, farm } = route?.params
 
     const [isModalVisible, setIsModalVisible] = useState(false);
     const [selectedApps, setSelectedApps] = useState([]);
@@ -42,7 +45,7 @@ const FilterModalApps = (props) => {
     // }, [modalVisible]);
 
     const handleCloseModal = () => {
-        setModalVisible(false);
+        navigation.goBack()
     };
 
 
@@ -73,80 +76,83 @@ const FilterModalApps = (props) => {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy)
         const dataFiltered = data.filter((aps) => selectedApps.includes(aps.idAp))
         await createApplicationPdf(dataFiltered, farm)
-        setModalVisible(false)
+        navigation.goBack()
     }
 
 
     return (
         <>
             <StatusBar backgroundColor="transparent" translucent />
-            <SafeAreaProvider style={{ flex: 1 }}>
-                <Modal
-                    animationType="slide"
-                    transparent={false}
-                    visible={isModalVisible}
-                    onRequestClose={() => {
-                        Alert.alert('Modal has been closed.');
-                        setModalVisible(!modalVisible);
-                    }}
-                >
-                    <SafeAreaView style={{ flex: 1, backgroundColor: 'whitesmoke', paddingTop: insets.top }}>
-                        <Pressable
-                            style={({ pressed }) => [
-                                pressed && styles.pressed,
-                                styles.headerContainer,
-                            ]}
-                            onPress={handleClearApps} >
-                            <Text style={{ fontWeight: 'bold', color: Colors.primary500, fontSize: 24 }}>Aplicações <Text style={{fontSize: 10, color: Colors.secondary[500]}}>{selectedApps?.length}/{data?.length}</Text></Text>
-                            <View
-                            >
-                                <Text style={[styles.allBtn, { color: Colors.primary[500], fontWeight: 'bold' }]}>
-                                    {selectedApps.length > 0 ? 'Remover Todas' : 'Selecionar Todas'}
-                                </Text>
-                            </View>
-                        </Pressable>
-                        {
-                            data &&
-                            <ScrollView>
-                                {
-                                    data.map((app, i) => {
-                                        return (
-                                            <Pressable
-                                                style={({ pressed }) => [
-                                                    // styles.button,
-                                                    pressed && styles.pressed,
-                                                ]}
-                                                onPress={handleSelect.bind(this, app)}
-                                                key={i}
-                                            >
-                                                <View style={[styles.selectAppContainer, { backgroundColor: selectedApps.includes(app.idAp) ? Colors.succes[100] : Colors.secondary[100] }]}>
-                                                    <View style={{ flexDirection: 'row', gap: 20 }}>
-                                                        <Text style={styles.apTitle}>{app.code.replace('AP', 'AP ')}</Text>
-                                                        <Text style={styles.opTitle}>{app.operation}</Text>
-                                                    </View>
-                                                    <View>
-                                                        {
-                                                            selectedApps.includes(app.idAp) &&
-                                                            <MaterialCommunityIcons name="check-all" size={24} color="green" style={{ justifyContent: 'flex-end' }} />
-                                                        }
-                                                    </View>
-                                                </View>
-                                            </Pressable>
-                                        )
-                                    })
-                                }
-                            </ScrollView>
-                        }
-                    </SafeAreaView>
-                    <View style={{ paddingBottom: 40, paddingTop: 20, paddingHorizontal: 20, backgroundColor: 'whitesmoke'}}>
-                        <Button
-                            btnStyles={{ height: 50, backgroundColor: selectedApps.length === 0 ? Colors.gold[600] : Colors.succes[400] }}
-                            onPress={selectedApps.length === 0 ? handleCloseModal : handleSubmit}>
-                            {selectedApps.length === 0 ? 'Cancelar' : 'Gerar PDF'}
-                        </Button>
+            <SafeAreaView style={{ flex: 1, backgroundColor: Colors.secondary[100], paddingTop: 10, paddingHorizontal: 3 }}>
+                <Pressable
+                    style={({ pressed }) => [
+                        pressed && styles.pressed,
+                        styles.headerContainer,
+                    ]}
+                    onPress={handleClearApps} >
+                    <View style={{
+                        justifyContent: 'center',
+                        alignItems: 'center'
+                    }}>
+                        <Text style={{ fontWeight: 'bold', color: Colors.secondary[800], fontSize: 24 }}>{farm.replace('Fazenda ', '')} <Text style={{ fontSize: 10, color: Colors.secondary[500] }}>{selectedApps?.length}/{data?.length}</Text></Text>
                     </View>
-                </Modal>
-            </SafeAreaProvider>
+                    <View>
+                        <View
+                        >
+
+                            <Icon
+                                name={selectedApps.length > 0 ? "close-circle-outline" : "checkbox-multiple-marked-outline"}
+                                size={26}
+                                color={!selectedApps.length > 0 ? Colors.succes[500] : Colors.error[500]}
+                                style={{ marginRight: 5 }}
+                            />
+                        </View>
+                    </View>
+                </Pressable>
+                {
+                    data &&
+                    <ScrollView>
+                        {
+                            data.map((app, i) => {
+                                return (
+                                    <Pressable
+                                        style={({ pressed }) => [
+                                            // styles.button,
+                                            pressed && styles.pressed,
+                                        ]}
+                                        onPress={handleSelect.bind(this, app)}
+                                        key={i}
+                                    >
+                                        <View style={[styles.selectAppContainer, { backgroundColor: selectedApps.includes(app.idAp) ? Colors.succes[100] : Colors.secondary[100] }]}>
+                                            <View style={{ flexDirection: 'row', gap: 20 }}>
+                                                <Text style={styles.apTitle}>{app.code.replace('AP', 'AP ')}</Text>
+                                                <Text style={styles.opTitle}>{app.operation}</Text>
+                                            </View>
+                                            <View>
+                                                {
+                                                    selectedApps.includes(app.idAp) &&
+                                                    <MaterialCommunityIcons name="check-all" size={24} color="green" style={{ justifyContent: 'flex-end' }} />
+                                                }
+                                            </View>
+                                        </View>
+                                    </Pressable>
+                                )
+                            })
+                        }
+                    </ScrollView>
+                }
+            </SafeAreaView>
+            <View style={{
+                paddingBottom: 40, paddingTop: 20, paddingHorizontal: 10, backgroundColor: Colors.secondary[100],
+            }}>
+                <Button
+                    btnStyles={{
+                        height: 50, backgroundColor: selectedApps.length === 0 ? Colors.gold[600] : Colors.succes[400],
+                    }}
+                    onPress={selectedApps.length === 0 ? handleCloseModal : handleSubmit}>
+                    {selectedApps.length === 0 ? 'Cancelar' : 'Gerar PDF'}
+                </Button>
+            </View>
         </>
 
     )
@@ -155,6 +161,10 @@ const FilterModalApps = (props) => {
 export default FilterModalApps
 
 const styles = StyleSheet.create({
+    modal: {
+        justifyContent: "flex-end", // Makes it slide from bottom
+        margin: 0, // Full width
+    },
     allBtn: {
         textDecorationLine: 'underline'
     },
@@ -195,8 +205,12 @@ const styles = StyleSheet.create({
         width: '100%',
         // backgroundColor: Colors.secondary[200],
         alignItems: 'flex-end',
+        flexDirection: 'column',
+        gap: 20,
         justifyContent: 'space-between',
         // paddingVertical: 10,
+        paddingTop: 20,
+        paddingBottom: 5,
         flexDirection: 'row',
         paddingHorizontal: 10,
         borderBottomColor: 'black',

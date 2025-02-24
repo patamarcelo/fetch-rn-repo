@@ -62,11 +62,9 @@ const CardFarmBox = ({ route, navigation }) => {
 
     const [farmData, setfarmData] = useState([]);
 
-    const [modalVisible, setModalVisible] = useState(false);
-
     const handleExprotData = () => {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy)
-        setModalVisible(true)
+        navigation.navigate('FarmBoxFilterApps', { data: data, farm: farm })
     }
 
 
@@ -405,7 +403,7 @@ const CardFarmBox = ({ route, navigation }) => {
                     onPress={handleFilterProps}
                 />
             </View>
-            {
+            {/* {
                 modalVisible &&
                 <FilterModalApps
                     modalVisible={modalVisible}
@@ -413,7 +411,7 @@ const CardFarmBox = ({ route, navigation }) => {
                     data={data}
                     farm={farm}
                 />
-            }
+            } */}
         </>
     )
 }
