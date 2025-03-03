@@ -211,8 +211,8 @@ const PlantioScreen = () => {
                             console.log('Pull-to-refresh triggered');
                             handleUpdateApiData();
                         }}
-                        colors={[Colors.primary[200], Colors.primary[400], Colors.primary[600]]}
-                        tintColor={Colors.primary500}
+                        colors={[Colors.secondary[100], Colors.secondary[200], Colors.secondary[300]]}
+                        tintColor={Colors.secondary[100]}
                     />
                 }
             >

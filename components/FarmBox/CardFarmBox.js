@@ -1,4 +1,4 @@
-import { Pressable, View, Text, StyleSheet, Image, Easing, ScrollView, SafeAreaView, TouchableOpacity } from "react-native"
+import { Pressable, View, Text, StyleSheet, Image, Easing, ScrollView, SafeAreaView, TouchableOpacity, RefreshControl, Alert } from "react-native"
 import { Colors } from "../../constants/styles";
 
 import { useState, useRef, useEffect, useLayoutEffect } from "react";
@@ -38,11 +38,13 @@ import Animated, { BounceIn, BounceOut, FadeIn, FadeInRight, FadeInUp, FadeOut, 
 
 
 import FilterModalApps from "./FilterModalApps";
+import { EXPO_PUBLIC_REACT_APP_DJANGO_TOKEN } from "@env";
+import { NODELINK } from "../../utils/api";
 
 const CardFarmBox = ({ route, navigation }) => {
     // const { data, indexParent, showMapPlot } = props
     const { data, indexParent, farm } = route.params; // Extract route parameters
-    const { setFarmboxSearchBar, setFarmboxSearchQuery } = geralActions;
+    const { setFarmboxSearchBar, setFarmboxSearchQuery, setFarmBoxData } = geralActions;
 
     const stackNavigator = navigation.getParent()
     const tabBarHeight = useBottomTabBarHeight();
@@ -61,6 +63,8 @@ const CardFarmBox = ({ route, navigation }) => {
     const [totalSelected, setTotalSelected] = useState(0);
 
     const [farmData, setfarmData] = useState([]);
+
+    const [isLoading, setIsLoading] = useState(false);
 
     const handleExprotData = () => {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy)
@@ -245,6 +249,34 @@ const CardFarmBox = ({ route, navigation }) => {
         }
     }, []);
 
+    const getData = async () => {
+        setIsLoading(true);
+        try {
+            const response = await fetch(
+                `${NODELINK}/data-open-apps-fetch-app/`,
+                {
+                    headers: {
+                        Authorization: `Token ${EXPO_PUBLIC_REACT_APP_DJANGO_TOKEN}`,
+                        "Content-Type": "application/json"
+                    },
+                    method: "GET"
+                }
+            );
+            if (response.status === 200) {
+                console.log('atualização OK')
+                const data = await response.json();
+                dispatch(setFarmBoxData(data))
+            }
+        } catch (error) {
+            console.log("erro ao pegar os dados", error);
+            Alert.alert(
+                `Problema na API', 'possível erro de internet para pegar os dados ${error}`
+            );
+        } finally {
+            setIsLoading(false);
+        }
+    }
+
     return (
         <>
             <SafeAreaView>
@@ -256,6 +288,16 @@ const CardFarmBox = ({ route, navigation }) => {
                     />
                 )}
                 <ScrollView
+                    contentInsetAdjustmentBehavior='automatic'
+                    horizontal={false}
+                    refreshControl={
+                        <RefreshControl
+                            refreshing={isLoading}
+                            onRefresh={getData}
+                            colors={["#9Bd35A", "#689F38"]}
+                            tintColor={Colors.primary500}
+                        />
+                    }
                     ref={ref}
                     contentContainerStyle={{
                         paddingBottom: tabBarHeight + (showSearch ? 40 : -15), // Adjust this value based on your bottom tab height

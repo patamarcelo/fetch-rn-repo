@@ -356,6 +356,7 @@ const FarmBoxScreen = (props) => {
                 />
             )}
             <ScrollView 
+            contentInsetAdjustmentBehavior='automatic'
             ref={ref}
             style={[styles.mainContainer, { marginBottom: tabBarHeight }]}
                 horizontal={false}
