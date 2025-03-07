@@ -35,6 +35,36 @@ const FilterModalApps = (props) => {
 
 
     useEffect(() => {
+        if (Platform.OS === "android") {
+            navigation.getParent()?.setOptions({
+                tabBarStyle: { display: "none" },
+                headerShown: false,
+            });
+            StatusBar.setHidden(true); // Hide the status bar
+    
+            return () => {
+                navigation.getParent()?.setOptions({
+                    tabBarStyle: {
+                        display: "flex",
+                        backgroundColor: "transparent",
+                        elevation: 0,
+                        height: Platform.OS === "ios" ? 80 : 60,
+                        paddingHorizontal: 5,
+                        paddingTop: 0,
+                        backgroundColor: Colors.primary[901],
+                        position: "absolute",
+                        borderTopWidth: 0
+                    },
+                    headerShown: true,
+                });
+                StatusBar.setHidden(false); // Show the status bar again
+            };
+        }
+    }, [navigation]);
+
+
+
+    useEffect(() => {
         const allApps = data.map((app) => app.idAp)
         setSelectedApps(allApps)
     }, []);
@@ -83,7 +113,7 @@ const FilterModalApps = (props) => {
     return (
         <>
             <StatusBar backgroundColor="transparent" translucent />
-            <SafeAreaView style={{ flex: 1, backgroundColor: Colors.secondary[100], paddingTop: 10, paddingHorizontal: 3 }}>
+            <SafeAreaView style={{ flex: 1, backgroundColor: Colors.secondary[100], paddingHorizontal: 3 }}>
                 <Pressable
                     style={({ pressed }) => [
                         pressed && styles.pressed,
@@ -143,7 +173,7 @@ const FilterModalApps = (props) => {
                 }
             </SafeAreaView>
             <View style={{
-                paddingBottom: 40, paddingTop: 20, paddingHorizontal: 10, backgroundColor: Colors.secondary[100],
+                paddingBottom: 40, paddingTop: Platform.OS === 'ios'? 20 : 0, paddingHorizontal: 10, backgroundColor: Colors.secondary[100],
             }}>
                 <Button
                     btnStyles={{
@@ -209,6 +239,7 @@ const styles = StyleSheet.create({
         gap: 20,
         justifyContent: 'space-between',
         // paddingVertical: 10,
+        // paddingTop: Platform.OS === 'ios' ? 20 : 0,
         paddingTop: 20,
         paddingBottom: 5,
         flexDirection: 'row',

@@ -1,4 +1,4 @@
-import { View } from "react-native";
+import { View, Platform } from "react-native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 
@@ -35,7 +35,7 @@ const HomeStack = () => {
 				tabBarStyle: {
 					backgroundColor: "transparent",
 					elevation: 0,
-					height: 90,
+					height: Platform.OS === "ios" ? 80 : 60, // 90 for iOS, 60 (default) for Android
 					paddingHorizontal: 5,
 					paddingTop: 0,
 					backgroundColor: Colors.primary[901],

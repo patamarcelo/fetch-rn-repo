@@ -1,4 +1,4 @@
-import { Pressable, View, Text, StyleSheet, Image, Easing, ScrollView, SafeAreaView, TouchableOpacity, RefreshControl, Alert } from "react-native"
+import { Pressable, View, Text, StyleSheet, Image, Easing, ScrollView, SafeAreaView, TouchableOpacity, RefreshControl, Alert, Platform } from "react-native"
 import { Colors } from "../../constants/styles";
 
 import { useState, useRef, useEffect, useLayoutEffect } from "react";
@@ -73,7 +73,7 @@ const CardFarmBox = ({ route, navigation }) => {
 
 
 
-    useLayoutEffect(() => {
+    useEffect(() => {
         const unsubscribeFocus = navigation.addListener("focus", () => {
             const currentStack = navigation.getState();
             const stackName = currentStack.routes[0]['name']
@@ -290,6 +290,7 @@ const CardFarmBox = ({ route, navigation }) => {
                 <ScrollView
                     contentInsetAdjustmentBehavior='automatic'
                     horizontal={false}
+                    style={{ marginBottom: Platform.OS === 'android' ? 20 : 0 }}
                     refreshControl={
                         <RefreshControl
                             refreshing={isLoading}
@@ -319,9 +320,9 @@ const CardFarmBox = ({ route, navigation }) => {
                                     // onPress={handleOpen}
                                     >
                                         <View style={[styles.infoContainer, { backgroundColor: showAps[data.code] ? Colors.primary500 : Colors.primary800 }]}>
-                                            <Text style={{ color: 'whitesmoke', fontWeight: 'bold' }}>Área: {formatNumber(data.areaSolicitada)}</Text>
-                                            <Text style={{ color: 'whitesmoke', fontWeight: 'bold' }}>Aplicado: {formatNumber(data.areaAplicada)}</Text>
-                                            <Text style={{ color: 'whitesmoke', fontWeight: 'bold' }}>Saldo: {formatNumber(data.saldoAreaAplicar)}</Text>
+                                            <Text style={{ color: 'whitesmoke', fontWeight: 'bold' }}>Área: <Text style={{ color: Colors.secondary[300] }}>{formatNumber(data.areaSolicitada)}</Text></Text>
+                                            <Text style={{ color: 'whitesmoke', fontWeight: 'bold' }}>Aplicado: <Text style={{ color: Colors.secondary[300] }}>{formatNumber(data.areaAplicada)}</Text></Text>
+                                            <Text style={{ color: 'whitesmoke', fontWeight: 'bold' }}>Saldo: <Text style={{ color: Colors.secondary[300] }}>{formatNumber(data.saldoAreaAplicar)}</Text></Text>
 
                                         </View>
                                         <Pressable
@@ -332,7 +333,7 @@ const CardFarmBox = ({ route, navigation }) => {
 
                                             <View style={styles.headerContainer}>
                                                 <View>
-                                                    <Text style={styles.headerTitle}> {data?.code?.split('AP')}</Text>
+                                                    <Text style={[styles.headerTitle, { color: Colors.primary[600] }]}> {data?.code?.split('AP')}</Text>
                                                     <Text style={[styles.headerTitle, styles.dateTile]}> {data?.dateAp?.split('-').reverse().join('/')}</Text>
                                                 </View>
                                                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
