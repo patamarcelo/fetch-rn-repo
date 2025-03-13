@@ -22,7 +22,7 @@ import { LINK } from '../utils/api';
 import { EXPO_PUBLIC_REACT_APP_DJANGO_TOKEN } from "@env";
 import dayjs from 'dayjs';
 import { FAB } from "react-native-paper"; // Floating Action Button
-
+import * as Haptics from 'expo-haptics';
 
 
 
@@ -109,6 +109,7 @@ const PlantioTalhoesDescription = ({ navigation }) => {
     };
 
     const handleFilterPlant = () => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy)
         setFilterByDate(!filterByDate)
     }
 
