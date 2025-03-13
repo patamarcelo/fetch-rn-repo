@@ -48,6 +48,8 @@ const PlantioTalhoesDescription = ({ navigation }) => {
     const dispatch = useDispatch()
 
     const [filterByDate, setFilterByDate] = useState(false);
+    const [filterdByLoad, setFilterdByLoad] = useState(false);
+    const [filteredNotLoading, setFilteredNotLoading] = useState(false);
 
 
     // Filter data based on farm
@@ -112,6 +114,14 @@ const PlantioTalhoesDescription = ({ navigation }) => {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy)
         setFilterByDate(!filterByDate)
     }
+    const handleFilterLoad = () => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy)
+        setFilterdByLoad(!filterdByLoad)
+    }
+    const handleFilterNotLoad = () => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy)
+        setFilteredNotLoading(!filteredNotLoading)
+    }
 
     return (
         <>
@@ -138,7 +148,13 @@ const PlantioTalhoesDescription = ({ navigation }) => {
                             // keyboardDismissMode='on-drag'
                             scrollEnabled={true}
                             contentContainerStyle={{ paddingBottom: tabBarHeight+ 50, paddingTop: 10 }}
-                            data={data.filter((plantio) => plantio.talhao__fazenda__nome === farm).sort((a, b) => filterByDate ? daysUntilFutureDate(a.data_plantio, a.variedade__dias_ciclo) - daysUntilFutureDate(b.data_plantio, b.variedade__dias_ciclo) : 0)}
+                            data={
+                                data
+                                .filter((plantio) => plantio.talhao__fazenda__nome === farm)
+                                .filter((plantio) => filterdByLoad ? plantio.area_parcial > 0 : true)
+                                .filter((plantio) => filteredNotLoading ? plantio.area_parcial === null : true)
+                                .sort((a, b) => filterByDate ? daysUntilFutureDate(a.data_plantio, a.variedade__dias_ciclo) - daysUntilFutureDate(b.data_plantio, b.variedade__dias_ciclo) : 0)
+                            }
                             keyExtractor={(item, i) => item.id.toString()}
                             renderItem={PlantioTalhoesCardScreen}
                             ItemSeparatorComponent={() => <View style={{ height: 13 }} />}
@@ -163,6 +179,24 @@ const PlantioTalhoesDescription = ({ navigation }) => {
                                 onPress={handleFilterPlant}
                             />
                         </SaveView>
+                        <SaveView style={styles.fabContainer2}>
+                            <FAB
+                                style={[styles.fab, {marginBottom: tabBarHeight, backgroundColor: filterdByLoad ? 'rgba(153,204,153,0.4)' : 'rgba(200, 200, 200, 0.3)'}]}
+                                icon={"truck"}
+                                color="black" // Icon color
+                                onPress={handleFilterLoad}
+                                disabled={filteredNotLoading} // Disable if `filteredNotLoading` is false
+                            />
+                        </SaveView>
+                        <SaveView style={styles.fabContainer3}>
+                            <FAB
+                                style={[styles.fab, {marginBottom: tabBarHeight, backgroundColor: filteredNotLoading ? 'rgba(255,102,102,0.4)' : 'rgba(200, 200, 200, 0.3)'}]}
+                                icon={"truck-remove"}
+                                color="black" // Icon color
+                                onPress={handleFilterNotLoad}
+                                disabled={filterdByLoad} // Disable if `filteredNotLoading` is false
+                            />
+                        </SaveView>
                     </SafeAreaView>
             }
         </>
@@ -173,6 +207,16 @@ const PlantioTalhoesDescription = ({ navigation }) => {
 export default PlantioTalhoesDescription
 
 const styles = StyleSheet.create({
+    fabContainer3: {
+        position: "absolute",
+        right: 200,
+        bottom: 20
+    },
+    fabContainer2: {
+        position: "absolute",
+        right: 140,
+        bottom: 20
+    },
     fabContainer: {
         position: "absolute",
         right: 80,
