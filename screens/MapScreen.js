@@ -23,6 +23,8 @@ import BottomSheetApp from "../components/MapComp/BottomSheet";
 import { useSelector } from "react-redux";
 import { selectMapDataPlot } from "../store/redux/selector";
 
+import Legend from "../components/MapComp/Legends";
+
 
 
 
@@ -59,6 +61,9 @@ const MapScreen = ({ navigation, route }) => {
 	const mapRef = createRef();
 
 	const { data } = route?.params
+
+
+	// console.log('data here:::', data)
 
 
 	const [zoomLevel, setZoomLevel] = useState(0);
@@ -232,11 +237,17 @@ const MapScreen = ({ navigation, route }) => {
 		return <Text>Loading..</Text>
 	}
 
+	const handleLineColor = (dataParcela) => {
+		if (!dataParcela) return 'white'
+		return dataParcela?.fillColorParce
+	}
+
 	if (mapCoordsInit.latitude !== null) {
 
 		return (
 			<View style={styles.container}>
 				<MapView
+					// provider={PROVIDER_GOOGLE}
 					onRegionChangeComplete={onRegionChangeComplete}
 					provider={Platform.OS === 'android' ? PROVIDER_GOOGLE : undefined} // Use Google Maps for Android, default (Apple Maps) for iOS
 					ref={mapRef}
@@ -257,14 +268,18 @@ const MapScreen = ({ navigation, route }) => {
 				>
 					{
 						filteredFarmArr.length > 0 && filteredFarmArr.map((coordArr, i) => {
+
 							const canPress = data.parcelas.find((parc) => parc.parcela.split(" ").join("") === coordArr.talhao.split(" ").join(""))
 							const isPressedHere = isPressed && isPressed === canPress?.parcela ? 1 : 0.6
+							console.log('can press data: ', canPress)
 							return (
 								<View key={i}>
 									<Polygon
 										fillColor={canPress ? `rgba(251,191,112,${isPressedHere})` : "rgba(245,245,245,0.6)"}
 										// fillColor="#FBBF70"
 										coordinates={coordArr.coords}
+										strokeColor={handleLineColor(canPress)} // Set your desired border color here
+										strokeWidth={2} // Set the border width (thickness)
 										onPress={e => {
 											console.log('Press Event',)
 											if (canPress) {
@@ -286,21 +301,18 @@ const MapScreen = ({ navigation, route }) => {
 										}}
 										tappable={true}
 									/>
-									{zoomLevel < 15 && (
-										<Marker
-											key={zoomLevel}  // Force re-render by using zoom level as key
-											hideCallout={true}
-											showCallout={true}
-											tracksViewChanges={false}
-											coordinate={{
-												latitude: coordArr.talhaoCenterGeo.lat,
-												longitude: coordArr.talhaoCenterGeo.lng
-											}}
-										>
-
-											<Text>{coordArr.talhao}</Text>
-										</Marker>
-									)}
+									<Marker
+										key={i + 'i'}  // Force re-render by using zoom level as key
+										hideCallout={true}
+										showCallout={true}
+										tracksViewChanges={false}
+										coordinate={{
+											latitude: coordArr.talhaoCenterGeo.lat,
+											longitude: coordArr.talhaoCenterGeo.lng
+										}}
+									>
+										<Text>{coordArr.talhao}</Text>
+									</Marker>
 
 								</View>
 							)
@@ -385,6 +397,20 @@ const MapScreen = ({ navigation, route }) => {
 						}}
 					/>
 				</View>
+				<View
+					style={{
+						width: 50,
+						height: 50,
+						backgroundColor: "transparent",
+						position: "absolute",
+						bottom: "8%",
+						right: "84%",
+						// zIndex: 10,
+						borderRadius: 50
+					}}
+				>
+					<Legend />
+				</View>
 
 				<View
 					style={{
@@ -403,7 +429,7 @@ const MapScreen = ({ navigation, route }) => {
 					}}
 				>
 					<Text style={{ textAlign: 'center', color: 'black', fontWeight: '500' }}>
-						<View style={{flexDirection: 'column', alignItems: 'center'}}>
+						<View style={{ flexDirection: 'column', alignItems: 'center' }}>
 							<Text style={{ fontWeight: 'bold' }}>
 								{data.code.replace(/([A-Za-z]+)(\d+)/, '$1 $2')}
 							</Text>

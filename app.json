@@ -25,6 +25,9 @@
       "assets/**/*"
     ],
     "ios": {
+      "config": {
+        "googleMapsApiKey":  "process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY"
+        },
       "supportsTablet": true,
       "bundleIdentifier": "com.patamarcelo.fetchapp",
       "infoPlist": {
@@ -39,7 +42,7 @@
       "package": "com.patamarcelo.fetchapp",
       "config": {
         "googleMaps": {
-          "apiKey": "AIzaSyC74WnhqSXYu2RFGeIxKUC46yWAoSFRx9U"
+          "apiKey": "process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY"
         }
       },
       "permissions": [
