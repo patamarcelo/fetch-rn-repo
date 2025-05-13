@@ -63,7 +63,7 @@ const MapScreen = ({ navigation, route }) => {
 	const { data } = route?.params
 
 
-	// console.log('data here:::', data)
+	console.log('data here:::', data)
 
 
 	const [zoomLevel, setZoomLevel] = useState(0);
@@ -409,7 +409,10 @@ const MapScreen = ({ navigation, route }) => {
 						borderRadius: 50
 					}}
 				>
-					<Legend />
+					<Legend 
+						aplicado={data?.areaAplicada || 0}
+						solicitado={data?.areaSolicitada || 0}
+					/>
 				</View>
 
 				<View
