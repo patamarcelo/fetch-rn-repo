@@ -292,9 +292,10 @@ const FarmBoxScreen = (props) => {
     );
 
     const handleShowFarm = (farms) => {
-        const data = farmData.filter((farmName) => farmName.farmName === farms)
+        // const data = farmData.filter((farmName) => farmName.farmName === farms)
         setSelectedFarm(farms)
-        navigation.navigate('FarmBoxFarms', { data, farm: farms, showSearch });
+        // navigation.navigate('FarmBoxFarms', { data, farm: farms, showSearch });
+        navigation.navigate('FarmBoxFarms', {farm: farms, showSearch });
         if (showFarm === farms) {
             setShowFarm(null)
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy)

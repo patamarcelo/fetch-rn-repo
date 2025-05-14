@@ -14,7 +14,7 @@ import * as Haptics from 'expo-haptics';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import { useNavigation } from "@react-navigation/native";
 import { exportPolygonsAsKML } from "../../utils/kml-generator";
-import { selectMapDataPlot } from "../../store/redux/selector";
+import { selectMapDataPlot, selectFarmBoxData } from "../../store/redux/selector";
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons'
 
@@ -43,13 +43,15 @@ import { NODELINK } from "../../utils/api";
 
 const CardFarmBox = ({ route, navigation }) => {
     // const { data, indexParent, showMapPlot } = props
-    const { data, indexParent, farm } = route.params; // Extract route parameters
+    const { indexParent, farm } = route.params; // Extract route parameters
     const { setFarmboxSearchBar, setFarmboxSearchQuery, setFarmBoxData } = geralActions;
 
     const stackNavigator = navigation.getParent()
     const tabBarHeight = useBottomTabBarHeight();
     const ref = useRef(null);
     const dispatch = useDispatch()
+
+    const { data : data } = useSelector(selectFarmBoxData)
 
 
 
@@ -245,7 +247,15 @@ const CardFarmBox = ({ route, navigation }) => {
 
     useEffect(() => {
         if (data) {
-            setfarmData(data)
+            const newData = data.filter((farmName) => farmName.farmName === farm)
+            setfarmData(newData)
+        }
+    }, [data]);
+    
+    useEffect(() => {
+        if (data) {
+            const newData = data.filter((farmName) => farmName.farmName === farm)
+            setfarmData(newData)
         }
     }, []);
 
