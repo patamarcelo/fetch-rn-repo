@@ -266,6 +266,9 @@ const CardFarmBox = ({ route, navigation }) => {
                 console.log('atualização OK')
                 const data = await response.json();
                 dispatch(setFarmBoxData(data))
+                console.log('data here: ', data)
+                const newData = data.data.filter((farmName) => farmName.farmName === farm)
+                setfarmData(newData)
             }
         } catch (error) {
             console.log("erro ao pegar os dados", error);
@@ -279,7 +282,7 @@ const CardFarmBox = ({ route, navigation }) => {
 
     return (
         <>
-            <SafeAreaView>
+            <SafeAreaView style={{flex: 1}}>
                 {showSearch && (
                     <SearchBar
                         placeholder="Selecione um produto ou operação..."
