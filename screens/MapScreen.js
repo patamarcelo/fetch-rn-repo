@@ -242,6 +242,28 @@ const MapScreen = ({ navigation, route }) => {
 		return dataParcela?.fillColorParce
 	}
 
+	const getColor = (cultura, variedadeInside, colorInside = 'green') => {
+			if(cultura === 'Arroz'){
+				return "rgba(251,191,112,1)"
+			}
+			if(cultura === 'Soja'){
+				return colorInside
+			}
+			if (variedadeInside === 'Mungo Preto') {
+				return 'rgba(170,88,57,1.0)'
+			}
+			if (variedadeInside === 'Mungo Verde') {
+				return '#82202B'
+			}
+			if (variedadeInside === 'Caupi') {
+				return '#3F4B7D'
+			}
+			// if (!variedadeInside) {
+			// 	return '#f0f0f0'
+			// }
+			return "rgba(245,245,245,0.6)"
+		}
+
 	if (mapCoordsInit.latitude !== null) {
 
 		return (
@@ -271,12 +293,15 @@ const MapScreen = ({ navigation, route }) => {
 
 							const canPress = data.parcelas.find((parc) => parc.parcela.split(" ").join("") === coordArr.talhao.split(" ").join(""))
 							const isPressedHere = isPressed && isPressed === canPress?.parcela ? 1 : 0.6
-							console.log('can press data: ', canPress)
+							// console.log('can press data: ', canPress)
+							const cultura = canPress?.cultura || ''
+							const variedade = canPress?.variedade || ''
+
 							return (
 								<View key={i}>
 									<Polygon
 										fillColor={canPress ? `rgba(251,191,112,${isPressedHere})` : "rgba(245,245,245,0.6)"}
-										// fillColor="#FBBF70"
+										// fillColor={getColor(cultura, variedade)}
 										coordinates={coordArr.coords}
 										strokeColor={handleLineColor(canPress)} // Set your desired border color here
 										strokeWidth={2} // Set the border width (thickness)

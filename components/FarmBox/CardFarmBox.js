@@ -51,7 +51,7 @@ const CardFarmBox = ({ route, navigation }) => {
     const ref = useRef(null);
     const dispatch = useDispatch()
 
-    const { data : data } = useSelector(selectFarmBoxData)
+    const { data: data } = useSelector(selectFarmBoxData)
 
 
 
@@ -229,10 +229,15 @@ const CardFarmBox = ({ route, navigation }) => {
 
         const filterApplications = (applications) => {
             if (searchQuery?.trim() === "") {
+                if (data) {
+                    const newData = data.filter((farmName) => farmName.farmName === farm)
+                    setfarmData(newData)
+                }
                 // Return the full array if the search query is empty
-                setfarmData(applications);
+                // setfarmData(applications);
             } else {
                 const filteredData = applications
+                    .filter((farmName) => farmName.farmName === farm)
                     .filter((data) =>
                         data.prods.some((prod) =>
                             removeAccents(prod.product)?.toLowerCase().includes(removeAccents(searchQuery)?.toLowerCase())
@@ -243,21 +248,21 @@ const CardFarmBox = ({ route, navigation }) => {
         };
 
         filterApplications(data);
-    }, [searchQuery]);
+    }, [searchQuery, data]);
 
-    useEffect(() => {
-        if (data) {
-            const newData = data.filter((farmName) => farmName.farmName === farm)
-            setfarmData(newData)
-        }
-    }, [data]);
-    
-    useEffect(() => {
-        if (data) {
-            const newData = data.filter((farmName) => farmName.farmName === farm)
-            setfarmData(newData)
-        }
-    }, []);
+    // useEffect(() => {
+    //     if (data) {
+    //         const newData = data.filter((farmName) => farmName.farmName === farm)
+    //         setfarmData(newData)
+    //     }
+    // }, [data]);
+
+    // useEffect(() => {
+    //     if (data) {
+    //         const newData = data.filter((farmName) => farmName.farmName === farm)
+    //         setfarmData(newData)
+    //     }
+    // }, []);
 
     const getData = async () => {
         setIsLoading(true);
@@ -292,7 +297,7 @@ const CardFarmBox = ({ route, navigation }) => {
 
     return (
         <>
-            <SafeAreaView style={{flex: 1}}>
+            <SafeAreaView style={{ flex: 1 }}>
                 {showSearch && (
                     <SearchBar
                         placeholder="Selecione um produto ou operação..."
@@ -329,7 +334,12 @@ const CardFarmBox = ({ route, navigation }) => {
                                         style={({ pressed }) => [
                                             styles.mainContainerAll,
                                             // pressed && styles.pressed, 
-                                            { marginTop: i !== 0 && 10, backgroundColor: !showAps[data.code] ? 'whitesmoke' : Colors.secondary[200], opacity: !showAps[data.code] ? 0.8 : 1 }]}
+                                            {
+                                                marginTop: i !== 0 && 10, backgroundColor: !showAps[data.code] ? 'whitesmoke' : Colors.secondary[200], opacity: !showAps[data.code] ? 0.8 : 1,
+                                                marginBottom: i === farmData.length -1 && 80
+                                            }
+                                        ]
+                                        }
                                     // onPress={handleOpen}
                                     >
                                         <View style={[styles.infoContainer, { backgroundColor: showAps[data.code] ? Colors.primary500 : Colors.primary800 }]}>

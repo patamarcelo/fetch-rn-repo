@@ -13,7 +13,7 @@ const Legend = ({ aplicado, solicitado }) => {
         <View style={styles.container}>
             <View style={styles.legendContainer}>
                 <View style={[styles.legendItem, { backgroundColor: "green", color: 'whitesmoke' }]}>
-                    <Text style={[styles.legendText, { color: 'whitesmoke' }]}>Aplicado : {formatNumber(aplicado)} Há</Text>
+                    <Text style={[styles.legendText, { color: 'whitesmoke' }]}>Aplicado: {formatNumber(aplicado)} Há</Text>
                 </View>
                 <View style={[styles.legendItem, { backgroundColor: "yellow", }]}>
                     <Text style={[styles.legendText, { color: 'black' }]}>Aplicando</Text>

@@ -65,7 +65,7 @@ const FilterModalApps = (props) => {
 
 
     useEffect(() => {
-        const allApps = data.map((app) => app.idAp)
+        const allApps = data.filter((farmName) => farmName.farmName === farm).map((app) => app.idAp)
         setSelectedApps(allApps)
     }, []);
 
@@ -104,7 +104,7 @@ const FilterModalApps = (props) => {
 
     const handleSubmit = async () => {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy)
-        const dataFiltered = data.filter((aps) => selectedApps.includes(aps.idAp))
+        const dataFiltered = data.filter((farmName) => farmName.farmName === farm).filter((aps) => selectedApps.includes(aps.idAp))
         await createApplicationPdf(dataFiltered, farm)
         navigation.goBack()
     }
@@ -124,7 +124,7 @@ const FilterModalApps = (props) => {
                         justifyContent: 'center',
                         alignItems: 'center'
                     }}>
-                        <Text style={{ fontWeight: 'bold', color: Colors.secondary[800], fontSize: 24 }}>{farm.replace('Fazenda ', '')} <Text style={{ fontSize: 10, color: Colors.secondary[500] }}>{selectedApps?.length}/{data?.length}</Text></Text>
+                        <Text style={{ fontWeight: 'bold', color: Colors.secondary[800], fontSize: 24 }}>{farm.replace('Fazenda ', '')} <Text style={{ fontSize: 10, color: Colors.secondary[500] }}>{selectedApps?.length}/{data.filter((farmName) => farmName.farmName === farm)?.length}</Text></Text>
                     </View>
                     <View>
                         <View
@@ -143,7 +143,7 @@ const FilterModalApps = (props) => {
                     data &&
                     <ScrollView>
                         {
-                            data.map((app, i) => {
+                            data.filter((farmName) => farmName.farmName === farm).map((app, i) => {
                                 return (
                                     <Pressable
                                         style={({ pressed }) => [
