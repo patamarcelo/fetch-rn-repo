@@ -71,7 +71,7 @@ const geralSlice = createSlice({
 
 			// Initialize colheitaDataFilterSelected if null
 			if (!state.colheitaDataFilterSelected) {
-				state.colheitaDataFilterSelected = { farm: [], proj: [], variety: [] };
+				state.colheitaDataFilterSelected = { farm: [], proj: [], variety: [], culture: [] };
 			}
 
 			// Initialize specific key if it does not exist

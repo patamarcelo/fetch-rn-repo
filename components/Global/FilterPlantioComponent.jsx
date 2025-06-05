@@ -25,7 +25,7 @@ const FilterPlantioComponent = () => {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy)
         navigation.navigate('FilterPlantioScreen')
     }
-    const hasFilters = filters?.farm?.length > 0 || filters?.proj?.length > 0 || filters?.variety?.length > 0
+    const hasFilters = filters?.farm?.length > 0 || filters?.proj?.length > 0 || filters?.variety?.length > 0 || filters?.culture?.length > 0
 
     const handleClearFilters = () => {
         dispatch(clearColheitaFilter());

@@ -1,4 +1,4 @@
-import { StyleSheet, Platform, View, Alert, ActivityIndicator, SafeAreaView, RefreshControl, ScrollView } from 'react-native'
+import { StyleSheet, Platform, Pressable, View, Alert, ActivityIndicator, SafeAreaView, RefreshControl, ScrollView, Text } from 'react-native'
 import { useEffect, useState } from 'react'
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
@@ -15,7 +15,9 @@ import { Colors } from '../constants/styles';
 import { useDispatch, useSelector } from "react-redux";
 import { geralActions } from '../store/redux/geral';
 import ProgressCircleCard from '../components/Plantio/Geral';
-import { selectColheitaData } from '../store/redux/selector';
+import { selectColheitaData, selectColheitaDataToggle } from '../store/redux/selector';
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons'; // ou qualquer outro ícone
+
 
 
 import FilterPlantioScreen from '../components/Global/FilterPlantioComponent';
@@ -40,7 +42,7 @@ const TotalFarmData = (itemData) => {
 };
 const PlantioScreen = () => {
     const dispatch = useDispatch()
-    const { setColheitaData } = geralActions
+    const { setColheitaData, clearColheitaFilter } = geralActions
     const colheitaData = useSelector(selectColheitaData)
     const [dataPlantioScreen, setDataPlantioScreen] = useState([]);
     const [isLoadingData, setIsLoadingData] = useState(false);
@@ -55,12 +57,20 @@ const PlantioScreen = () => {
     const [totalScsColhidos, setTotalScsColhidos] = useState(0);
     const [mediaGeral, setMediaGeral] = useState(0);
 
+    const filters = useSelector(selectColheitaDataToggle)
+
+    const safraCiclo = {
+        safra: "2025/2026",
+        ciclo: "1",
+    }
+
     useEffect(() => {
         if (colheitaData) {
             let totalAreaHere = 0
             let totalParcialHere = 0
             colheitaData?.grouped_data?.forEach(element => {
                 element.variedades?.forEach(element => {
+                    console.log('element', element)
                     totalAreaHere += element.colheita
                     totalParcialHere += element.parcial
                 });
@@ -84,31 +94,41 @@ const PlantioScreen = () => {
 
     useEffect(() => {
         if (colheitaData) {
-            let totalAreaHere = 0
-            let totalParcialHere = 0
-            colheitaData?.grouped_data?.forEach(element => {
-                element.variedades?.forEach(element => {
-                    totalAreaHere += element.colheita
-                    totalParcialHere += element.parcial
+            let totalAreaHere = 0;
+            let totalParcialHere = 0;
+
+
+            const cultureFilter = filters?.culture?.length > 0 ? filters.culture : null;
+            const varietyFilter = filters?.variety?.length > 0 ? filters.variety : null;
+
+            colheitaData.grouped_data?.forEach(grouped => {
+                grouped.variedades?.forEach(variedade => {
+                    const matchCulture = !cultureFilter || cultureFilter.includes(variedade.cultura);
+                    const matchVariety = !varietyFilter || varietyFilter.includes(variedade.variedade);
+
+                    if (matchCulture && matchVariety) {
+                        totalAreaHere += variedade.colheita || 0;
+                        totalParcialHere += variedade.parcial || 0;
+                    }
                 });
             });
-            setTotalArea(totalAreaHere)
-            setTotalAreaColhida(totalParcialHere)
 
-            let totalGeral = 0
-            colheitaData.data.forEach((data) => {
-                if (data?.cargas?.length > 0) {
-                    const newTotal = data?.cargas[0].total_peso_liquido
-                    totalGeral += newTotal
-                }
-            })
-            const totalScs = totalGeral > 0 ? (totalGeral / 60) : 0
-            setTotalScsColhidos(totalScs)
-            const media = totalScs / totalParcialHere
-            setMediaGeral(media)
+            setTotalArea(totalAreaHere);
+            setTotalAreaColhida(totalParcialHere);
+
+            let totalGeral = 0;
+            colheitaData.data?.forEach(data => {
+                const peso = data?.cargas?.[0]?.total_peso_liquido;
+                if (peso) totalGeral += peso;
+            });
+
+            const totalScs = totalGeral > 0 ? (totalGeral / 60) : 0;
+            setTotalScsColhidos(totalScs);
+
+            const media = totalParcialHere > 0 ? totalScs / totalParcialHere : 0;
+            setMediaGeral(media);
         }
     }, [colheitaData]);
-
 
 
     useEffect(() => {
@@ -117,10 +137,7 @@ const PlantioScreen = () => {
             try {
                 const response = await fetch(LINK + "/plantio/get_colheita_plantio_info_react_native/", {
                     method: "POST",
-                    body: JSON.stringify({
-                        safra: "2024/2025",
-                        ciclo: "3",
-                    }),
+                    body: JSON.stringify(safraCiclo),
                     headers: {
                         "Content-Type": "application/json",
                         Authorization: `Token ${EXPO_PUBLIC_REACT_APP_DJANGO_TOKEN}`,
@@ -144,7 +161,7 @@ const PlantioScreen = () => {
                 setIsLoadingData(false)
             }
         }
-        if (!colheitaData){
+        if (!colheitaData) {
             const newData = handleUpdateApiData()
             console.log("new data Here: ", newData)
         }
@@ -156,10 +173,7 @@ const PlantioScreen = () => {
         try {
             const response = await fetch(LINK + "/plantio/get_colheita_plantio_info_react_native/", {
                 method: "POST",
-                body: JSON.stringify({
-                    safra: "2024/2025",
-                    ciclo: "3",
-                }),
+                body: JSON.stringify(safraCiclo),
                 headers: {
                     "Content-Type": "application/json",
                     Authorization: `Token ${EXPO_PUBLIC_REACT_APP_DJANGO_TOKEN}`,
@@ -183,6 +197,10 @@ const PlantioScreen = () => {
             console.log('Finally block reached');  //
             setIsRefreshing(false)
         }
+    }
+
+    const handleClearFilters = () => {
+        dispatch(clearColheitaFilter());
     }
 
     if (isLoadingData) {
@@ -257,6 +275,58 @@ const PlantioScreen = () => {
                                 )}
                             /> */}
                         </>
+                    )
+                }
+                {
+                    colheitaData?.grouped_data?.length === 0 && filters && (
+                        <View
+                            style={{
+                                padding: 20,
+                                margin: 20,
+                                backgroundColor: Colors.secondary[50],
+                                borderRadius: 12,
+                                borderWidth: 1,
+                                borderColor: Colors.secondary[200],
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                shadowColor: '#000',
+                                shadowOffset: { width: 0, height: 2 },
+                                shadowOpacity: 0.1,
+                                shadowRadius: 6,
+                                elevation: 3,
+                            }}
+                        >
+                            <Icon name="magnify-remove-outline" size={48} color={Colors.secondary[400]} />
+                            <Text
+                                style={{
+                                    marginTop: 12,
+                                    fontSize: 16,
+                                    fontWeight: '500',
+                                    color: Colors.secondary[600],
+                                    textAlign: 'center',
+                                }}
+                            >
+                                Nenhum resultado encontrado com os filtros selecionados.
+                            </Text>
+
+                            <Pressable
+                                onPress={handleClearFilters} // certifique-se que essa função existe
+                                style={({ pressed }) => [
+                                    {
+                                        marginTop: 20,
+                                        backgroundColor: Colors.primary[500],
+                                        paddingVertical: 10,
+                                        paddingHorizontal: 20,
+                                        borderRadius: 8,
+                                        opacity: pressed ? 0.8 : 1,
+                                    },
+                                ]}
+                            >
+                                <Text style={{ color: '#fff', fontWeight: '600' }}>
+                                    Limpar Filtros
+                                </Text>
+                            </Pressable>
+                        </View>
                     )
                 }
             </ScrollView>

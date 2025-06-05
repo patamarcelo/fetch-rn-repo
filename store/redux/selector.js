@@ -38,51 +38,74 @@ export const selectCurrentFilterSelected = (state) => state.geral.currentFilterS
 // Create a selector that automatically applies filters
 export const selectColheitaData = createSelector(
     [state => state.geral.colheitaData, state => state.geral.colheitaDataFilterSelected],
-    (colheitaData, colheitaDataFilterSelected) => {
-        // return colheitaData
-        if (!colheitaDataFilterSelected?.farm || !colheitaDataFilterSelected?.proj || !colheitaDataFilterSelected?.variety) {
-            return colheitaData
-        }
-        if (!colheitaData || !colheitaDataFilterSelected) return colheitaData;
-        let newObj = { ...colheitaData }
-        if (colheitaDataFilterSelected?.variety?.length > 0) {
-            const dataFiltered = colheitaData.data.filter((data) => colheitaDataFilterSelected.variety.includes(data.variedade__nome_fantasia))
-            const onlyProjs = dataFiltered.map((data) => data.talhao__fazenda__nome)
+    (colheitaData, filters) => {
+        if (!colheitaData || !filters) return colheitaData;
 
-            const groupedFiltered = colheitaData.grouped_data.filter((data) => onlyProjs.includes(data.farm)).map((data) => {
-                const variedades = data.variedades.filter((data) => colheitaDataFilterSelected?.variety.includes((data.variedade)))
-                return ({
-                    ...data,
-                    ['variedades']: variedades
-                }
+        let filteredData = [...colheitaData.data];
+        let filteredGrouped = [...colheitaData.grouped_data];
+
+        // Filtrar por variedade
+        if (filters.variety?.length > 0) {
+            filteredData = filteredData.filter(data =>
+                filters.variety.includes(data.variedade__nome_fantasia)
+            );
+
+            filteredGrouped = filteredGrouped
+                .filter(group =>
+                    filteredData.some(d => d.talhao__fazenda__nome === group.farm)
                 )
-            })
-
-            newObj['data'] = dataFiltered
-            newObj['grouped_data'] = groupedFiltered
-            console.log('newFIlteredDATA: ', dataFiltered )
-            console.log('newFIlteredDATA: ', dataFiltered.length )
-        } else {
-            newObj = { ...colheitaData }
+                .map(group => ({
+                    ...group,
+                    variedades: group.variedades.filter(v =>
+                        filters.variety.includes(v.variedade)
+                    ),
+                }));
         }
-        if (colheitaDataFilterSelected?.farm?.length > 0) {
-            const dataFiltered = newObj.data.filter((data) => colheitaDataFilterSelected.farm.includes(data.talhao__fazenda__fazenda__nome))
-            const onlyProjs = dataFiltered.map((data) => data.talhao__fazenda__nome)
 
-            const groupedFiltered = newObj.grouped_data.filter((data) => onlyProjs.includes(data.farm))
+        // Filtrar por cultura
+        if (filters.culture?.length > 0) {
+            filteredData = filteredData.filter(data =>
+                filters.culture.includes(data.variedade__cultura__cultura)
+            );
 
-            newObj['data'] = dataFiltered
-            newObj['grouped_data'] = groupedFiltered
+            filteredGrouped = filteredGrouped
+                .filter(group =>
+                    filteredData.some(d => d.talhao__fazenda__nome === group.farm)
+                )
+                .map(group => ({
+                    ...group,
+                    culturas: group.culturas.filter(c =>
+                        filters.culture.includes(c.cultura)
+                    ),
+                }));
         }
-        if (colheitaDataFilterSelected?.proj?.length > 0) {
-            const dataFiltered = newObj.data.filter((data) => colheitaDataFilterSelected.proj.includes(data.talhao__fazenda__nome))
-            const onlyProjs = dataFiltered.map((data) => data.talhao__fazenda__nome)
-            const groupedFiltered = newObj.grouped_data.filter((data) => onlyProjs.includes(data.farm))
 
-            newObj['data'] = dataFiltered
-            newObj['grouped_data'] = groupedFiltered
+        // Filtrar por fazenda
+        if (filters.farm?.length > 0) {
+            filteredData = filteredData.filter(data =>
+                filters.farm.includes(data.talhao__fazenda__fazenda__nome)
+            );
+
+            filteredGrouped = filteredGrouped.filter(group =>
+                filteredData.some(d => d.talhao__fazenda__nome === group.farm)
+            );
         }
-        return newObj
+
+        // Filtrar por projeto
+        if (filters.proj?.length > 0) {
+            filteredData = filteredData.filter(data =>
+                filters.proj.includes(data.talhao__fazenda__nome)
+            );
+
+            filteredGrouped = filteredGrouped.filter(group =>
+                filters.proj.includes(group.farm)
+            );
+        }
+
+        return {
+            ...colheitaData,
+            data: filteredData,
+            grouped_data: filteredGrouped,
+        };
     }
 );
-

@@ -23,6 +23,7 @@ const FilterPlantioScreen = ({ navigation }) => {
     const { setColheitaFilter, clearColheitaFilter, setCurrentFilterSelected } = geralActions
 
     const { farm, proj, variety } = filterData
+    console.log('filterData: ', filters)
     const tabBarHeight = useBottomTabBarHeight();
     const filterSelected = useSelector(selectCurrentFilterSelected)
 
@@ -60,23 +61,28 @@ const FilterPlantioScreen = ({ navigation }) => {
 
 
     const backgroundColor1 = selectedIndex.interpolate({
-        inputRange: [0, 1, 2],
-        outputRange: [Colors.primary[800], "#FFFFFF", "#FFFFFF"], // First View active
+        inputRange: [0, 1, 2, 3],
+        outputRange: [Colors.primary[800], "#FFFFFF", "#FFFFFF", "#FFFFFF"], // First View active
     });
 
     const backgroundColor2 = selectedIndex.interpolate({
-        inputRange: [0, 1, 2],
-        outputRange: ["#FFFFFF", Colors.primary[800], "#FFFFFF"], // Second View active
+        inputRange: [0, 1, 2, 3],
+        outputRange: ["#FFFFFF", Colors.primary[800], "#FFFFFF", "#FFFFFF"], // Second View active
     });
 
     const backgroundColor3 = selectedIndex.interpolate({
-        inputRange: [0, 1, 2],
-        outputRange: ["#FFFFFF", "#FFFFFF", Colors.primary[800]], // Third View active
+        inputRange: [0, 1, 2, 3],
+        outputRange: ["#FFFFFF", "#FFFFFF", Colors.primary[800], "#FFFFFF"], // Third View active
+    });
+    const backgroundColor4 = selectedIndex.interpolate({
+        inputRange: [0, 1, 2, 3],
+        outputRange: ["#FFFFFF", "#FFFFFF", "#FFFFFF", Colors.primary[800]], // Third View active
     });
     const handleFilterButons = [
         { label: 'Fazenda', title: 'fazenda', filter: 'farm', backcolor: backgroundColor1 },
         { label: 'Projeto', title: 'projeto', filter: 'proj', backcolor: backgroundColor2 },
-        { label: 'Variedade', title: 'variedade', filter: 'variety', backcolor: backgroundColor3 },
+        { label: 'Cultura', title: 'cultura', filter: 'culture', backcolor: backgroundColor3 },
+        { label: 'Variedade', title: 'variedade', filter: 'variety', backcolor: backgroundColor4 },
     ]
 
     useEffect(() => {
@@ -102,8 +108,8 @@ const FilterPlantioScreen = ({ navigation }) => {
         console.log('filters', filters)
     }, [filters]);
 
-    const hasFilters = filters?.farm?.length > 0 || filters?.proj?.length > 0 || filters?.variety?.length > 0
-    const getIndexOf = {'fazenda': '0%', 'projeto': '33%', 'variedade': '66%'}
+    const hasFilters = filters?.farm?.length > 0 || filters?.proj?.length > 0 || filters?.variety?.length > 0 || filters?.culture?.length > 0
+    const getIndexOf = { 'fazenda': '0%', 'projeto': '25%', 'cultura': '50%', 'variedade': '75%' }
     return (
         <SafeAreaView style={styles.mainContaier}>
             <View style={styles.headerContainer}>
@@ -114,7 +120,7 @@ const FilterPlantioScreen = ({ navigation }) => {
                     style={[
                         styles.percentBackground,
                         { backgroundColor: Colors.secondary[200] },
-                        { width: '33%', height: '90%', marginLeft: getIndexOf[filterSelected], padding: 2 }, // Dynamic width based on percent
+                        { width: '25%', height: '90%', marginLeft: getIndexOf[filterSelected], padding: 2 }, // Dynamic width based on percent
                     ]}
                 />
                 {
@@ -129,7 +135,7 @@ const FilterPlantioScreen = ({ navigation }) => {
                                     key={i}
                                     style={[{ borderColor: data.backcolor, borderBottomWidth: filterSelected === data.title ? 1 : 0, padding: 10, justifyContent: 'center', alignItems: 'center' }]}
                                 >
-                                    <Text style={[{ fontWeight: 'bold', fontSize: 18, color: filters && filters[data.filter].length > 0 && 'green' }]}>{data.label}</Text>
+                                    <Text style={[{ fontWeight: 'bold', fontSize: 12, color: filters && filters[data.filter].length > 0 && 'green' }]}>{data.label}</Text>
                                 </RealAnimated.View>
                             </TouchableOpacity>
                         )
@@ -181,7 +187,15 @@ const FilterPlantioScreen = ({ navigation }) => {
                 }
                 {
                     variety?.length > 0 && filterSelected === 'variedade' && (
-                        variety.map((data, i) => {
+                        (filters === null || filters.culture?.length === 0
+                            ? variety
+                            : variety.filter((data) =>
+                                filters.culture.some((cultura) => {
+                                    console.log('data', data, 'cultura', cultura);
+                                    return data.culture === cultura;
+                                })
+                            )
+                        ).map((data, i) => {
                             return (
                                 <Pressable onPress={handleFilterData.bind(this, 'variety', data.variety)} key={i}
                                     style={({ pressed }) => [
@@ -199,20 +213,43 @@ const FilterPlantioScreen = ({ navigation }) => {
                         })
                     )
                 }
+                {
+                    variety?.length > 0 && filterSelected === 'cultura' && (
+                        [...new Set(variety.map(item => item.culture))].map((culture, i) => {
+                            return (
+                                <Pressable onPress={handleFilterData.bind(this, 'culture', culture)} key={i}
+                                    style={({ pressed }) => [
+                                        styles.farmContainer, { backgroundColor: i % 2 === 0 && Colors.secondary[100] },
+                                        pressed && styles.pressed,
+                                    ]}
+                                >
+                                    <Text style={[styles.farmTitle, { color: filters?.culture?.includes(culture) ? Colors.succes[400] : Colors.secondary[600] }]}>{culture}</Text>
+                                    {
+                                        filters?.culture?.includes(culture) &&
+                                        <Icon name={'check-bold'} size={24} color={Colors.succes[300]} />
+                                    }
+                                </Pressable>
+                            )
+                        })
+                    )
+                }
             </ScrollView>
             <View style={[styles.fabContainer, { justifyContent: 'center', flex: 1, gap: 20, alignItems: 'flex-end', marginBottom: tabBarHeight }]}>
+                {
+                    hasFilters &&
+                    <Button
+                        btnStyles={{ width: 50, height: 50, borderRadius: '50%', backgroundColor: Colors.error[300] }}
+                        onPress={handleClearFilters}
+                        disabled={!hasFilters}
+                    >
+                        <Icon name="trash-can-outline" size={24} color="white" />
+                    </Button>
+                }
                 <Button
                     btnStyles={{ width: 50, height: 50, borderRadius: '50%', backgroundColor: Colors.gold[500] }}
                     onPress={handleGoBack}
                 >
                     <Icon name="arrow-left-bold" size={24} color={'white'} />
-                </Button>
-                <Button
-                    btnStyles={{ width: 50, height: 50, borderRadius: '50%', backgroundColor: Colors.error[300] }}
-                    onPress={handleClearFilters}
-                    disabled={!hasFilters}
-                >
-                    <Icon name="trash-can-outline" size={24} color="white" />
                 </Button>
             </View>
         </SafeAreaView>
