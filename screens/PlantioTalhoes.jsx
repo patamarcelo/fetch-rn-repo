@@ -209,17 +209,17 @@ export default PlantioTalhoesDescription
 const styles = StyleSheet.create({
     fabContainer3: {
         position: "absolute",
-        right: 200,
+        right: 240,
         bottom: 20
     },
     fabContainer2: {
         position: "absolute",
-        right: 140,
+        right: 180,
         bottom: 20
     },
     fabContainer: {
         position: "absolute",
-        right: 80,
+        right: 120,
         bottom: 20
     },
     fab: {

@@ -238,18 +238,18 @@ const FilterPlantioScreen = ({ navigation }) => {
                 {
                     hasFilters &&
                     <Button
-                        btnStyles={{ width: 50, height: 50, borderRadius: '50%', backgroundColor: Colors.error[300] }}
+                        btnStyles={{ width: 40, height: 40, borderRadius: '50%', backgroundColor: Colors.error[300] }}
                         onPress={handleClearFilters}
                         disabled={!hasFilters}
                     >
-                        <Icon name="trash-can-outline" size={24} color="white" />
+                        <Icon name="trash-can-outline" size={19} color="white" />
                     </Button>
                 }
                 <Button
-                    btnStyles={{ width: 50, height: 50, borderRadius: '50%', backgroundColor: Colors.gold[500] }}
+                    btnStyles={{ width: 40, height: 40, borderRadius: '50%', backgroundColor: Colors.gold[500] }}
                     onPress={handleGoBack}
                 >
-                    <Icon name="arrow-left-bold" size={24} color={'white'} />
+                    <Icon name="arrow-left-bold" size={19} color={'white'} />
                 </Button>
             </View>
         </SafeAreaView>

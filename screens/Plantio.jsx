@@ -68,13 +68,24 @@ const PlantioScreen = () => {
         if (colheitaData) {
             let totalAreaHere = 0
             let totalParcialHere = 0
-            colheitaData?.grouped_data?.forEach(element => {
-                element.variedades?.forEach(element => {
-                    console.log('element', element)
-                    totalAreaHere += element.colheita
-                    totalParcialHere += element.parcial
+
+            const cultureFilter = filters?.culture?.length > 0 ? filters.culture : null;
+            const varietyFilter = filters?.variety?.length > 0 ? filters.variety : null;
+
+
+            colheitaData.grouped_data?.forEach(grouped => {
+                grouped.variedades?.forEach(variedade => {
+                    const matchCulture = !cultureFilter || cultureFilter.includes(variedade.cultura);
+                    const matchVariety = !varietyFilter || varietyFilter.includes(variedade.variedade);
+
+                    if (matchCulture && matchVariety) {
+                        totalAreaHere += variedade.colheita || 0;
+                        totalParcialHere += variedade.parcial || 0;
+                    }
                 });
             });
+
+            
             setTotalArea(totalAreaHere)
             setTotalAreaColhida(totalParcialHere)
 

@@ -45,10 +45,20 @@ export const selectColheitaData = createSelector(
         let filteredGrouped = [...colheitaData.grouped_data];
 
         // Filtrar por variedade
-        if (filters.variety?.length > 0) {
+        const localFilters = { ...filters };
+
+        if (localFilters.variety?.length > 0) {
             filteredData = filteredData.filter(data =>
-                filters.variety.includes(data.variedade__nome_fantasia)
+                localFilters.variety.includes(data.variedade__nome_fantasia)
             );
+
+            // Inferir culturas, se não estiverem definidas
+            if (!localFilters.culture?.length) {
+                const inferredCultures = [
+                    ...new Set(filteredData.map(data => data.variedade__cultura__cultura)),
+                ];
+                localFilters.culture = inferredCultures;
+            }
 
             filteredGrouped = filteredGrouped
                 .filter(group =>
@@ -57,15 +67,15 @@ export const selectColheitaData = createSelector(
                 .map(group => ({
                     ...group,
                     variedades: group.variedades.filter(v =>
-                        filters.variety.includes(v.variedade)
+                        localFilters.variety.includes(v.variedade)
                     ),
                 }));
         }
 
-        // Filtrar por cultura
-        if (filters.culture?.length > 0) {
+        // Filtro de cultura (inclui agora os inferidos)
+        if (localFilters.culture?.length > 0) {
             filteredData = filteredData.filter(data =>
-                filters.culture.includes(data.variedade__cultura__cultura)
+                localFilters.culture.includes(data.variedade__cultura__cultura)
             );
 
             filteredGrouped = filteredGrouped
@@ -75,7 +85,7 @@ export const selectColheitaData = createSelector(
                 .map(group => ({
                     ...group,
                     culturas: group.culturas.filter(c =>
-                        filters.culture.includes(c.cultura)
+                        localFilters.culture.includes(c.cultura)
                     ),
                 }));
         }

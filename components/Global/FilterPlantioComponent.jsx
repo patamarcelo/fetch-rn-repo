@@ -35,10 +35,10 @@ const FilterPlantioComponent = () => {
             {
                 hasFilters &&
                 <Button
-                    btnStyles={[styles.fab2, { width: 50, height: 50, borderRadius: '50%', backgroundColor: Colors.error[300], marginBottom: tabBarHeight  }]}
+                    btnStyles={[styles.fab2, { width: 40, height: 40, borderRadius: '50%', backgroundColor: Colors.error[300], marginBottom: tabBarHeight  }]}
                     onPress={handleClearFilters}
                 >
-                    <Icon name="trash-can-outline" size={24} color="white" />
+                    <Icon name="trash-can-outline" size={19} color="white" />
                 </Button>
             }
             <FAB
@@ -64,8 +64,8 @@ const styles = StyleSheet.create({
         right: 0,
         bottom: 0,
         backgroundColor: "rgba(200, 200, 200, 0.3)", // Grey, almost transparent
-        width: 50,
-        height: 50,
+        width: 40,
+        height: 40,
         borderRadius: 25, // Makes it perfectly circular
         justifyContent: "center",
         alignItems: "center",
@@ -75,11 +75,11 @@ const styles = StyleSheet.create({
     },
     fab2: {
         position: "absolute",
-        right: 0,
-        bottom: 65,
+        right: 50,
+        bottom: 0,
         backgroundColor: "rgba(200, 200, 200, 0.3)", // Grey, almost transparent
-        width: 50,
-        height: 50,
+        width: 40,
+        height: 40,
         borderRadius: 25, // Makes it perfectly circular
         justifyContent: "center",
         alignItems: "center",
