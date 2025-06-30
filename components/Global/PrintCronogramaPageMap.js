@@ -10,22 +10,12 @@ import plotMap from './plot-map.json';   // caminho relativo ao arquivo
 export const createApplicationPdfMap = async (data, farm) => {
 
 
-    console.log('Abrindo PDF com MAPA \n')
+
     console.log('data', data, '\n')
     console.log('farm', farm)
-
-    // const imageAsset = Asset.fromModule(require('../../assets/mapa_fazenda.png')); // caminho relativo ao arquivo atual
-    //     await imageAsset.downloadAsync(); // garante que o asset está disponível localmente
-
-    //     const base64Image = await FileSystem.readAsStringAsync(
-    //     imageAsset.localUri,
-    //     { encoding: FileSystem.EncodingType.Base64 }
-    // );
     const dataFromJson = plotMap.data;               // já é objeto JS
 
 
-    
-    // const base64Image       = await getMapBase64(talhoesParaPintar, jsonPath);
 
 
     const formatNumber = number => number?.toLocaleString("pt-br", {
@@ -39,10 +29,6 @@ export const createApplicationPdfMap = async (data, farm) => {
         maximumFractionDigits: 3
     });
 
-    data.forEach(element => {
-        console.log('element', element)
-        console.log('\n')
-    });
 
 
     const getDap = (date) => {
@@ -63,16 +49,22 @@ export const createApplicationPdfMap = async (data, farm) => {
     }
 
 
-
+    const iconDict = [
+        { cultura: "Feijão", icon: require('../../utils/assets/icons/beans2.png'), alt: "feijao" },
+        { cultura: "Arroz", icon: require('../../utils/assets/icons/rice.png'), alt: "arroz" },
+        { cultura: "Soja", icon: require('../../utils/assets/icons/soy.png'), alt: "soja" },
+        { cultura: undefined, icon: require('../../utils/assets/icons/question.png'), alt: "?" }
+    ];
     const totalAplicar = data.filter((op) => !op.operation.toLowerCase().includes('colheita')).reduce((acc, curr) => acc += curr.saldoAreaAplicar, 0)
     const apCotainer = data.filter((op) => !op.operation.toLowerCase().includes('colheita')).map((app) => {
 
-        const talhoesParaPintar = app.parcelas.map((parcela) => parcela.parcela)
-        console.time('map-base64');
-        const base64Image = getMapSvgBase64(talhoesParaPintar, dataFromJson);
-        console.timeEnd('map-base64');
+    const talhoesParaPintar = app.parcelas.map((parcela) => parcela.parcela)
+    const cultura = app.parcelas?.[0]?.cultura ?? 'unknown';
+    console.time('map-base64');
+    const base64Image = getMapSvgBase64(talhoesParaPintar, dataFromJson, cultura);
+    console.timeEnd('map-base64');
 
-        const appsCards = app.parcelas.map((parcela) => {
+    const appsCards = app.parcelas.map((parcela) => {
 
             const areaAplicada = `<span><b>Aplicado:</b> ${formatNumber(parcela.areaAplicada)} há</span>`
             return `
@@ -132,7 +124,7 @@ export const createApplicationPdfMap = async (data, farm) => {
                 <div class="bordered-left produtos-conatiner">
                     <div class="prods-container-containing-map">
                         <div class="header-produto4 grid-produtos" style="border-bottom: 1px solid black;">
-                            <p>Dose</p>
+                            <b>Dose</b>
                             <b>Produto</b>
                             <b>Solicitado</b>
                         </div>

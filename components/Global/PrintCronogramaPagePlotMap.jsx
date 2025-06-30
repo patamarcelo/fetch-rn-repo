@@ -16,7 +16,7 @@ const projector = (polys) => {
     ];
 };
 
-export function getMapSvgBase64(highlightIds, rawPolygons) {
+export function getMapSvgBase64(highlightIds, rawPolygons, culture) {
     const polygons = rawPolygons.map(t => ({
         id: t.talhao__id_talhao,
         coords: t.map_geo_points.map(p => ({
@@ -25,6 +25,20 @@ export function getMapSvgBase64(highlightIds, rawPolygons) {
         })),
     }));
 
+    const getColor = (culture) => {
+        switch (culture.toLowerCase()) {
+            case 'arroz':
+                return '#FFD700'; // yellow (gold)
+            case 'soja':
+                return '#4CAF50'; // green
+            case 'feijão':
+                return '#8B4513'; // brown (saddle brown)
+            case 'feijao':
+                return '#8B4513'; // brown (saddle brown)
+            default:
+                return '#9E9E9E'; // gray for unknown
+        }
+    };
     // ---------- projeção 0‥SIZE × 0‥SIZE ----------
     const toXY = projector(polygons);
 
@@ -36,7 +50,7 @@ export function getMapSvgBase64(highlightIds, rawPolygons) {
                 .map(([x, y]) => `${x},${y}`)
                 .join(' ');
             const fill = highlightIds.includes(p.id)
-                ? 'rgba(80,200,120,0.4)'
+                ? getColor(culture)
                 : 'none';
             return `<polygon points="${points}" fill="${fill}" stroke="black" stroke-width="1"/>`;
         })
