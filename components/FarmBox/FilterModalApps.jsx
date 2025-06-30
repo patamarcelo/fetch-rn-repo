@@ -1,4 +1,4 @@
-import { StyleSheet, Text, View, StatusBar, ScrollView, Pressable, Platform } from 'react-native'
+import { StyleSheet, Text, View, StatusBar, ScrollView, Pressable, Platform, ActivityIndicator } from 'react-native'
 import { useState, useEffect } from 'react';
 import Button from '../ui/Button'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -8,7 +8,11 @@ import { Colors } from '../../constants/styles';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import * as Haptics from 'expo-haptics';
 import { createApplicationPdf } from '../Global/PrintCronogramaPage';
+import { createApplicationPdfMap } from '../Global/PrintCronogramaPageMap';
 import Icon from "react-native-vector-icons/MaterialCommunityIcons"; // Choose any icon set
+import { Ionicons } from '@expo/vector-icons'; // ou outro pacote de ícones que esteja usando
+
+
 
 
 const FilterModalApps = (props) => {
@@ -20,7 +24,20 @@ const FilterModalApps = (props) => {
     const [isModalVisible, setIsModalVisible] = useState(false);
     const [selectedApps, setSelectedApps] = useState([]);
 
+
+    const [loading, setLoading] = useState({
+        pdf: false,
+        pdfMap: false,
+    });
+
     const insets = useSafeAreaInsets();
+    const hasSelection = selectedApps.length > 0;
+    const baseBtnStyle = {
+        height: 50,
+        backgroundColor: hasSelection ? Colors.succes[400] : Colors.gold[600],
+        alignItems: 'center',
+        justifyContent: 'center',
+    };
 
     // Delay modal visibility to let the layout settle
     useEffect(() => {
@@ -41,7 +58,7 @@ const FilterModalApps = (props) => {
                 headerShown: false,
             });
             StatusBar.setHidden(true); // Hide the status bar
-    
+
             return () => {
                 navigation.getParent()?.setOptions({
                     tabBarStyle: {
@@ -102,10 +119,21 @@ const FilterModalApps = (props) => {
         });
     };
 
-    const handleSubmit = async () => {
+    const handleSubmit = async () => {        
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy)
+        setLoading(l => ({ ...l, pdf: true }));
         const dataFiltered = data.filter((farmName) => farmName.farmName === farm).filter((aps) => selectedApps.includes(aps.idAp))
         await createApplicationPdf(dataFiltered, farm)
+        setLoading(l => ({ ...l, pdf: false }));
+        navigation.goBack()
+    }
+
+    const handleSubmitWithMap = async () => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy)
+        setLoading(l => ({ ...l, pdfMap: true }));
+        const dataFiltered = data.filter((farmName) => farmName.farmName === farm).filter((aps) => selectedApps.includes(aps.idAp))
+        await createApplicationPdfMap(dataFiltered, farm)
+        setLoading(l => ({ ...l, pdfMap: false }));
         navigation.goBack()
     }
 
@@ -172,16 +200,62 @@ const FilterModalApps = (props) => {
                     </ScrollView>
                 }
             </SafeAreaView>
-            <View style={{
-                paddingBottom: 40, paddingTop: Platform.OS === 'ios'? 20 : 0, paddingHorizontal: 10, backgroundColor: Colors.secondary[100],
-            }}>
-                <Button
-                    btnStyles={{
-                        height: 50, backgroundColor: selectedApps.length === 0 ? Colors.gold[600] : Colors.succes[400],
-                    }}
-                    onPress={selectedApps.length === 0 ? handleCloseModal : handleSubmit}>
-                    {selectedApps.length === 0 ? 'Cancelar' : 'Gerar PDF'}
-                </Button>
+            <View
+                style={{
+                    paddingBottom: 40,
+                    paddingTop: Platform.OS === 'ios' ? 20 : 0,
+                    paddingHorizontal: 10,
+                    backgroundColor: Colors.secondary[100],
+                    flexDirection: 'row',
+                    justifyContent: hasSelection ? 'space-between' : 'center',
+                    alignItems: 'center',
+                }}
+            >
+                {hasSelection ? (
+                    <>
+                        {/* Gerar PDF */}
+                        <Button
+                            btnStyles={{ ...baseBtnStyle, width: '47%' }}
+                            disabled={loading.pdf || loading.pdfMap}        // evita toques duplos
+                            onPress={handleSubmit}
+                        >
+                            {loading.pdf ? (
+                                <ActivityIndicator color="white" />
+                            ) : (
+                                'Gerar PDF'
+                            )}
+                        </Button>
+
+                        {/* Gerar PDF + mapa */}
+                        <Button
+                            btnStyles={{ ...baseBtnStyle, width: '47%' }}
+                            disabled={loading.pdfMap}
+                            onPress={handleSubmitWithMap}
+                        >
+                            {loading.pdfMap ? (
+                                <ActivityIndicator color="white" />
+                            ) : (
+                                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                    <Ionicons
+                                        name="map-outline"
+                                        size={20}
+                                        color="white"
+                                        style={{ marginRight: 6 }}
+                                    />
+                                    <Text style={{ color: 'white', fontWeight: 'bold' }}>Gerar PDF</Text>
+                                </View>
+                            )}
+                        </Button>
+                    </>
+                ) : (
+                    /* Único botão Cancelar */
+                    <Button
+                        btnStyles={{ ...baseBtnStyle, width: '100%' }}
+                        onPress={handleCloseModal}
+                    >
+                        Cancelar
+                    </Button>
+                )}
             </View>
         </>
 
