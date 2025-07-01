@@ -240,7 +240,7 @@ const FilterModalApps = (props) => {
                         {/* Gerar PDF + mapa */}
                         <Button
                             btnStyles={{ ...baseBtnStyle, width: '47%' }}
-                            disabled={loading.pdfMap}
+                            disabled={loading.pdfMap || plotMap?.length === 0}
                             onPress={handleSubmitWithMap}
                         >
                             {isBusy ? (

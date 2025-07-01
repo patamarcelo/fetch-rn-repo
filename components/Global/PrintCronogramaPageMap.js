@@ -6,6 +6,8 @@ import { Asset } from 'expo-asset';
 import { getMapSvgBase64 } from "./PrintCronogramaPagePlotMap.jsx";
 // import plotMap from './plot-map.json';   // caminho relativo ao arquivo
 
+import { iconDict } from "../../utils/assets/icon-dict.js";
+
 
 export const createApplicationPdfMap = async (data, farm, plotMap) => {
 
@@ -46,12 +48,8 @@ export const createApplicationPdfMap = async (data, farm, plotMap) => {
     }
 
 
-    const iconDict = [
-        { cultura: "Feijão", icon: require('../../utils/assets/icons/beans2.png'), alt: "feijao" },
-        { cultura: "Arroz", icon: require('../../utils/assets/icons/rice.png'), alt: "arroz" },
-        { cultura: "Soja", icon: require('../../utils/assets/icons/soy.png'), alt: "soja" },
-        { cultura: undefined, icon: require('../../utils/assets/icons/question.png'), alt: "?" }
-    ];
+
+
     const totalAplicar = data.filter((op) => !op.operation.toLowerCase().includes('colheita')).reduce((acc, curr) => acc += curr.saldoAreaAplicar, 0)
     const apCotainer = data.filter((op) => !op.operation.toLowerCase().includes('colheita')).map((app) => {
 
@@ -61,7 +59,16 @@ export const createApplicationPdfMap = async (data, farm, plotMap) => {
     const base64Image = getMapSvgBase64(talhoesParaPintar, dataFromJson, cultura);
     console.timeEnd('map-base64');
 
-    const appsCards = app.parcelas.map((parcela) => {
+    const culturaAtual = app.parcelas?.[0]?.cultura ?? undefined;
+    // procura no iconDict; se não achar, usa o “?” (último item)
+    const { base64: iconBase64, alt } =
+    iconDict.find(i => i.cultura === culturaAtual) ?? iconDict.at(-1);
+
+    // tag pronta para colar
+    const iconTag = `<img src="${iconBase64}" alt="${alt}"
+                    style="width:16px;height:16px;margin-right:4px;vertical-align:middle" />`;
+    
+        const appsCards = app.parcelas.map((parcela) => {
 
             const areaAplicada = `<span><b>Aplicado:</b> ${formatNumber(parcela.areaAplicada)} há</span>`
             return `
@@ -96,7 +103,7 @@ export const createApplicationPdfMap = async (data, farm, plotMap) => {
         <div class="ap-container bordered">
             <div class="resumo-container bordered">
                 <div class="resumo-container-app-number">
-                    <span><b>${app?.code.replace('AP', "AP ")}</b></span>
+                    <span>${iconTag}<b>${app?.code.replace('AP', "AP ")}</b></span>
                     <span><b>${app?.operation}</b></span>
                 </div>
                 <div class="resumo-container-app-date">
@@ -207,8 +214,9 @@ export const createApplicationPdfMap = async (data, farm, plotMap) => {
 
                 .resumo-container-app-number {
                     display: flex;
-                    align-self: center;
-                    margin-left: 20px;
+                    justify-content: center; 
+                    align-items: center;    
+                    margin-left: 5px;
                     gap: 30px;
                 }
                 
@@ -294,8 +302,8 @@ export const createApplicationPdfMap = async (data, farm, plotMap) => {
                     justify-content: space-around;
 
                     /* ➡️ LARGURA — reduza de 40 % para 30 % (ou o valor que preferir) */
-                    width: 60%;
-                    flex: 0 0 60%;   /* evita que cresça/encolha no flexbox */
+                    width: 80%;
+                    flex: 0 0 80%;   /* evita que cresça/encolha no flexbox */
 
                     /* ➡️ PADDING — menos “folga” interna */
                     padding: 2px 4px;

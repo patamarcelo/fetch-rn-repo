@@ -19,44 +19,62 @@ const projector = (polys) => {
 export function getMapSvgBase64(highlightIds, rawPolygons, culture) {
     const polygons = rawPolygons.map(t => ({
         id: t.talhao__id_talhao,
+        center: {               // lat/lon of the label
+            lat: +t.map_centro_id.lat,
+            lon: +t.map_centro_id.lng,
+        },
         coords: t.map_geo_points.map(p => ({
             lat: +p.latitude,
             lon: +p.longitude,
         })),
     }));
 
-    const getColor = (culture) => {
-        switch (culture.toLowerCase()) {
-            case 'arroz':
-                return '#FFD700'; // yellow (gold)
-            case 'soja':
-                return '#4CAF50'; // green
-            case 'feijão':
-                return '#8B4513'; // brown (saddle brown)
-            case 'feijao':
-                return '#8B4513'; // brown (saddle brown)
-            default:
-                return '#9E9E9E'; // gray for unknown
+    /* color helper --------------------------------------------------------- */
+    const getColor = c => ({
+        arroz: '#FFD700',
+        soja: '#4CAF50',
+        feijão: '#8B4513',
+        feijao: '#8B4513',
+    }[c.toLowerCase()] || '#9E9E9E');
+
+    /* projection ----------------------------------------------------------- */
+    const toXY = projector(polygons);        // keeps your existing projector
+
+    /* build SVG ------------------------------------------------------------ */
+    const svgBody = polygons.map(p => {
+        const points = p.coords
+            .map(toXY)
+            .map(([x, y]) => `${x},${y}`)
+            .join(' ');
+
+        const isHighlight = highlightIds.includes(p.id);
+        const fill = isHighlight ? getColor(culture) : 'none';
+
+        /* label only for highlighted polygons */
+        let label = '';
+        if (isHighlight) {
+            const [cx, cy] = toXY(p.center);     // project the pre-computed centre
+            label = `<text x="${cx}" y="${cy}" text-anchor="middle"
+                     font-size="12" font-weight="bold"
+                     fill="white" stroke="black" stroke-width="0.4">
+                 ${p.id}
+               </text>`;
         }
-    };
-    // ---------- projeção 0‥SIZE × 0‥SIZE ----------
-    const toXY = projector(polygons);
 
-    // ---------- monta o SVG em texto ---------------
-    const svgBody = polygons
-        .map(p => {
-            const points = p.coords
-                .map(toXY)
-                .map(([x, y]) => `${x},${y}`)
-                .join(' ');
-            const fill = highlightIds.includes(p.id)
-                ? getColor(culture)
-                : 'none';
-            return `<polygon points="${points}" fill="${fill}" stroke="black" stroke-width="1"/>`;
-        })
-        .join('');
+        return `
+      <polygon points="${points}" fill="${fill}"
+               stroke="black" stroke-width="1"/>
+      ${label}`;
+    }).join('');
 
-    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${SIZE}" height="${SIZE}" viewBox="0 0 ${SIZE} ${SIZE}" preserveAspectRatio="xMidYMid slice" style="background:#fff">${svgBody}</svg>`;
+    const svg = `
+    <svg xmlns="http://www.w3.org/2000/svg"
+         width="${SIZE}" height="${SIZE}"
+         viewBox="0 0 ${SIZE} ${SIZE}"
+         preserveAspectRatio="xMidYMid slice"
+         style="background:#fff">
+      ${svgBody}
+    </svg>`;
 
-    return btoa(svg); // <- string pronta
+    return btoa(svg);    // base-64 string ready for <img>, <iframe> …
 }
