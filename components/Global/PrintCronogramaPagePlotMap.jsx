@@ -16,10 +16,12 @@ const projector = (polys) => {
     ];
 };
 
-export function getMapSvgBase64(highlightIds, rawPolygons, culture) {
+export function getMapSvgString(highlightIds, rawPolygons, culture) {
+    console.time('[PDF] svg-build');               // ⏱️ mede o tempo total
+    console.log('[PDF] polígonos:', rawPolygons.length);
     const polygons = rawPolygons.map(t => ({
         id: t.talhao__id_talhao,
-        center: {               // lat/lon of the label
+        center: {
             lat: +t.map_centro_id.lat,
             lon: +t.map_centro_id.lng,
         },
@@ -29,7 +31,6 @@ export function getMapSvgBase64(highlightIds, rawPolygons, culture) {
         })),
     }));
 
-    /* color helper --------------------------------------------------------- */
     const getColor = c => ({
         arroz: '#FFD700',
         soja: '#4CAF50',
@@ -37,10 +38,8 @@ export function getMapSvgBase64(highlightIds, rawPolygons, culture) {
         feijao: '#8B4513',
     }[c.toLowerCase()] || '#9E9E9E');
 
-    /* projection ----------------------------------------------------------- */
-    const toXY = projector(polygons);        // keeps your existing projector
+    const toXY = projector(polygons);
 
-    /* build SVG ------------------------------------------------------------ */
     const svgBody = polygons.map(p => {
         const points = p.coords
             .map(toXY)
@@ -50,10 +49,9 @@ export function getMapSvgBase64(highlightIds, rawPolygons, culture) {
         const isHighlight = highlightIds.includes(p.id);
         const fill = isHighlight ? getColor(culture) : 'none';
 
-        /* label only for highlighted polygons */
         let label = '';
         if (isHighlight) {
-            const [cx, cy] = toXY(p.center);     // project the pre-computed centre
+            const [cx, cy] = toXY(p.center);
             label = `<text x="${cx}" y="${cy}" text-anchor="middle"
                      font-size="12" font-weight="bold"
                      fill="white" stroke="black" stroke-width="0.4">
@@ -67,14 +65,18 @@ export function getMapSvgBase64(highlightIds, rawPolygons, culture) {
       ${label}`;
     }).join('');
 
-    const svg = `
+    let svg = `
     <svg xmlns="http://www.w3.org/2000/svg"
-         width="${SIZE}" height="${SIZE}"
-         viewBox="0 0 ${SIZE} ${SIZE}"
-         preserveAspectRatio="xMidYMid slice"
-         style="background:#fff">
-      ${svgBody}
+        width="${SIZE}" height="${SIZE}"
+        viewBox="0 0 ${SIZE} ${SIZE}"
+        preserveAspectRatio="xMidYMid meet"
+        style="background:#fff">
+        ${svgBody}
     </svg>`;
-
-    return btoa(svg);    // base-64 string ready for <img>, <iframe> …
+    
+    svg = svg.replace(/\\s{2,}/g, ' ').trim();
+    
+    console.timeEnd('[PDF] svg-build');            // imprime duração
+    console.log('[PDF] svg chars:', svg.length);   // tamanho final
+    return svg;  // Retorna a string SVG pura, não codificada
 }

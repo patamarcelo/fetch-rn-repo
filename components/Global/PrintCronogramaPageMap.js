@@ -1,19 +1,22 @@
 import * as Print from "expo-print";
 import { shareAsync } from "expo-sharing";
 import * as FileSystem from 'expo-file-system';
+import { Platform } from "react-native";
+
 
 import { Asset } from 'expo-asset';
-import { getMapSvgBase64 } from "./PrintCronogramaPagePlotMap.jsx";
+import { getMapSvgString } from "./PrintCronogramaPagePlotMap.jsx";
 // import plotMap from './plot-map.json';   // caminho relativo ao arquivo
 
 import { iconDict } from "../../utils/assets/icon-dict.js";
 
 
 export const createApplicationPdfMap = async (data, farm, plotMap) => {
-
+    
+    const isAndroid = Platform.OS === "android";
 
     const dataFromJson = plotMap.data;               // já é objeto JS
-
+    
 
 
 
@@ -55,9 +58,9 @@ export const createApplicationPdfMap = async (data, farm, plotMap) => {
 
     const talhoesParaPintar = app.parcelas.map((parcela) => parcela.parcela)
     const cultura = app.parcelas?.[0]?.cultura ?? 'unknown';
-    console.time('map-base64');
-    const base64Image = getMapSvgBase64(talhoesParaPintar, dataFromJson, cultura);
-    console.timeEnd('map-base64');
+    console.time('[PDF] gerar-SVGs');
+    const svgMinified = getMapSvgString(talhoesParaPintar, dataFromJson, cultura);
+    console.timeEnd('[PDF] gerar-SVGs');
 
     const culturaAtual = app.parcelas?.[0]?.cultura ?? undefined;
     // procura no iconDict; se não achar, usa o “?” (último item)
@@ -68,6 +71,8 @@ export const createApplicationPdfMap = async (data, farm, plotMap) => {
     const iconTag = `<img src="${iconBase64}" alt="${alt}"
                     style="width:16px;height:16px;margin-right:4px;vertical-align:middle" />`;
     
+    console.log('[PDF] ===== Início =====');
+    console.log('[PDF] apps:', data?.length, 'farm:', farm);
         const appsCards = app.parcelas.map((parcela) => {
 
             const areaAplicada = `<span><b>Aplicado:</b> ${formatNumber(parcela.areaAplicada)} há</span>`
@@ -98,7 +103,7 @@ export const createApplicationPdfMap = async (data, farm, plotMap) => {
         }).join('');
 
         const totalRealizado = app?.areaSolicitada - app?.saldoAreaAplicar
-        const imgTag = `<img src="data:image/svg+xml;base64,${base64Image}" style="width:90%;max-height:100vh"/>`;
+        
         return `
         <div class="ap-container bordered">
             <div class="resumo-container bordered">
@@ -133,8 +138,8 @@ export const createApplicationPdfMap = async (data, farm, plotMap) => {
                             <b>Solicitado</b>
                         </div>
                         ${prodsCards}
-                        <div style="width:95%; height:100%; margin-top:10px;">
-                            ${imgTag}
+                        <div class="map-wrapper">
+                            ${svgMinified}
                         </div>
                     </div>
                 </div>
@@ -143,15 +148,23 @@ export const createApplicationPdfMap = async (data, farm, plotMap) => {
         `
     }).join('');
 
+    console.time('[PDF] html-build');
     const htmlContent = `
     <html lang="en">
         <head>
             <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <meta name="viewport" content="width=device-width,  initial-scale=${isAndroid ? '0.7' : '1.0'}">
             <title>Document</title>
             <style>
+                .map-wrapper svg {
+                    width: 90%;
+                    height: auto;         
+                    max-height: 100%;
+                    padding-top: 30px;
+                }
                 @page {
                     size: A4;
+                    margin: 0;
                     margin-top: 10px;
                     margin-bottom: 10px;
                 }
@@ -169,7 +182,7 @@ export const createApplicationPdfMap = async (data, farm, plotMap) => {
                     flex-direction: column;
                     justify-content: center;
                     align-items: center;
-                    gap: 20px
+                    gap: 20px;
                 }
 
                 .main-container header {
@@ -456,7 +469,7 @@ export const createApplicationPdfMap = async (data, farm, plotMap) => {
         </head>
 
         <body>
-            <div class="main-container">
+            <div class="main-container page">
                 <div>
 
                     <div class="header-container">
@@ -474,7 +487,8 @@ export const createApplicationPdfMap = async (data, farm, plotMap) => {
 
         </html>
     `
-
+    console.timeEnd('[PDF] html-build');
+    console.log('[PDF] html length:', htmlContent.length);
     try {
         // Create a timestamp and formatted filename
         const formattedDate = new Date().toLocaleDateString('en-GB').replace(/\//g, '-'); // Optional: DD-MM-YYYY format
@@ -482,10 +496,13 @@ export const createApplicationPdfMap = async (data, farm, plotMap) => {
         const newUri = `${FileSystem.documentDirectory}${filename}`;
 
         // Create a PDF from HTML content
+        console.time('[PDF] printToFile');
         const { uri } = await Print.printToFileAsync({
             html: htmlContent,
             base64: false,
         });
+        console.timeEnd('[PDF] printToFile');
+        console.log('[PDF] PDF gerado em:', uri);
 
         // Check if the PDF was created
         const fileInfo = await FileSystem.getInfoAsync(uri);
