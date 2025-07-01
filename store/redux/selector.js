@@ -31,6 +31,10 @@ export const selectColheitaDataToggle = (state) => state.geral.colheitaDataFilte
 export const selectCurrentFilterSelected = (state) => state.geral.currentFilterSelected
 
 
+export const selectExportStatus = (state) => state.auth.status;
+export const selectPlotMapData  = (state) => state.auth.dataPlotMap;
+
+
 
 
 // export const selectColheitaData = (state) => state.geral.colheitaData

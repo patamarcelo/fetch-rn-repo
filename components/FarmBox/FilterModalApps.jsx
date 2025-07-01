@@ -11,12 +11,15 @@ import { createApplicationPdf } from '../Global/PrintCronogramaPage';
 import { createApplicationPdfMap } from '../Global/PrintCronogramaPageMap';
 import Icon from "react-native-vector-icons/MaterialCommunityIcons"; // Choose any icon set
 import { Ionicons } from '@expo/vector-icons'; // ou outro pacote de ícones que esteja usando
-
-
+import { selectExportStatus } from '../../store/redux/authSlice';
+import { useSelector, useDispatch } from 'react-redux';
+import { selectPlotMapData } from '../../store/redux/selector';
+import { resetExportState } from '../../store/redux/authSlice';
 
 
 const FilterModalApps = (props) => {
     // const { modalVisible, setModalVisible, data, farm, route } = props
+    const dispatch = useDispatch()
     const { modalVisible, setModalVisible, route, navigation } = props
 
     const { data, farm } = route?.params
@@ -24,11 +27,18 @@ const FilterModalApps = (props) => {
     const [isModalVisible, setIsModalVisible] = useState(false);
     const [selectedApps, setSelectedApps] = useState([]);
 
+    const exportStatus = useSelector(selectExportStatus);           // ← global
+    const isExportingMap = exportStatus === 'pending';
+    const plotMap = useSelector(selectPlotMapData)
 
     const [loading, setLoading] = useState({
         pdf: false,
         pdfMap: false,
     });
+
+    const localLoading = loading.pdfMap;
+    const isBusy = isExportingMap || localLoading;
+
 
     const insets = useSafeAreaInsets();
     const hasSelection = selectedApps.length > 0;
@@ -119,7 +129,7 @@ const FilterModalApps = (props) => {
         });
     };
 
-    const handleSubmit = async () => {        
+    const handleSubmit = async () => {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy)
         setLoading(l => ({ ...l, pdf: true }));
         const dataFiltered = data.filter((farmName) => farmName.farmName === farm).filter((aps) => selectedApps.includes(aps.idAp))
@@ -132,9 +142,10 @@ const FilterModalApps = (props) => {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy)
         setLoading(l => ({ ...l, pdfMap: true }));
         const dataFiltered = data.filter((farmName) => farmName.farmName === farm).filter((aps) => selectedApps.includes(aps.idAp))
-        await createApplicationPdfMap(dataFiltered, farm)
+        await createApplicationPdfMap(dataFiltered, farm, plotMap)
         setLoading(l => ({ ...l, pdfMap: false }));
         navigation.goBack()
+        dispatch(resetExportState())
     }
 
 
@@ -232,7 +243,7 @@ const FilterModalApps = (props) => {
                             disabled={loading.pdfMap}
                             onPress={handleSubmitWithMap}
                         >
-                            {loading.pdfMap ? (
+                            {isBusy ? (
                                 <ActivityIndicator color="white" />
                             ) : (
                                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>

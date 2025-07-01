@@ -41,6 +41,8 @@ import FilterModalApps from "./FilterModalApps";
 import { EXPO_PUBLIC_REACT_APP_DJANGO_TOKEN } from "@env";
 import { NODELINK } from "../../utils/api";
 
+import { exportPdf } from "../../store/redux/authSlice";
+
 const CardFarmBox = ({ route, navigation }) => {
     // const { data, indexParent, showMapPlot } = props
     const { indexParent, farm } = route.params; // Extract route parameters
@@ -68,8 +70,17 @@ const CardFarmBox = ({ route, navigation }) => {
 
     const [isLoading, setIsLoading] = useState(false);
 
+
     const handleExprotData = () => {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy)
+        const allApps = data.filter((farmName) => farmName.farmName === farm)
+        const params = {
+            safra: allApps[0]?.safra,
+            ciclo: allApps[0]?.ciclo,
+            farm: allApps[0]?.farmId
+
+        }
+        dispatch(exportPdf(params))
         navigation.navigate('FarmBoxFilterApps', { data: data, farm: farm })
     }
 
@@ -336,7 +347,7 @@ const CardFarmBox = ({ route, navigation }) => {
                                             // pressed && styles.pressed, 
                                             {
                                                 marginTop: i !== 0 && 10, backgroundColor: !showAps[data.code] ? 'whitesmoke' : Colors.secondary[200], opacity: !showAps[data.code] ? 0.8 : 1,
-                                                marginBottom: i === farmData.length -1 && 80
+                                                marginBottom: i === farmData.length - 1 && 80
                                             }
                                         ]
                                         }

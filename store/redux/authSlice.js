@@ -1,6 +1,7 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut, sendPasswordResetEmail } from 'firebase/auth';
 import { auth } from '../firebase';
+import { LINK } from '../../utils/api';
 
 // Thunks
 export const login = createAsyncThunk('auth/login', async ({ email, password }, thunkAPI) => {
@@ -35,7 +36,34 @@ export const recoverPassword = createAsyncThunk(
     }
 );
 
+export const exportPdf = createAsyncThunk(
+    'export/pdf',
+    async (safraCiclo, thunkAPI) => {
+        try {
+            const res = await fetch(
+                `${LINK}/plantio/get_plot_mapa_data_fetchrn_app/`,
+                {
+                    method: 'POST',
+                    body: JSON.stringify(safraCiclo),    // <– recebe o mesmo objeto que você despacha
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Authorization: `Token ${process.env.EXPO_PUBLIC_REACT_APP_DJANGO_TOKEN}`,
+                    },
+                }
+            );
 
+            if (!res.ok) {
+                const msg = await res.text();
+                throw new Error(msg || 'Erro desconhecido');
+            }
+
+            const data = await res.json();
+            return data;                             // vai para exportPdf.fulfilled
+        } catch (err) {
+            return thunkAPI.rejectWithValue(err.message);
+        }
+    }
+);
 const authSlice = createSlice({
     name: 'auth',
     initialState: {
@@ -45,6 +73,8 @@ const authSlice = createSlice({
         error: null,
         passwordRecoveryMessage: null,
         success: null,
+        status: 'idle',        // 'idle' | 'pending' | 'succeeded' | 'failed'
+        dataPlotMap: [],
     },
     reducers: {
         setUser(state, action) {
@@ -56,6 +86,11 @@ const authSlice = createSlice({
         },
         clearError: (state) => {
             state.error = null;
+        },
+        resetExportState: (state) => {
+            state.status = 'idle';
+            state.error = null;
+            state.dataPlotMap = [];
         },
     },
     extraReducers: (builder) => {
@@ -77,9 +112,9 @@ const authSlice = createSlice({
                 state.user = null;
                 state.isAuthenticated = false;
                 state.loading = false,
-                state.error = null,
-                state.passwordRecoveryMessage = null,
-                state.success = null
+                    state.error = null,
+                    state.passwordRecoveryMessage = null,
+                    state.success = null
             })
             .addCase(recoverPassword.pending, (state) => {
                 state.loading = true;
@@ -95,9 +130,21 @@ const authSlice = createSlice({
                 state.loading = false;
                 state.error = action.payload;
                 state.success = null;
+            })
+            .addCase(exportPdf.pending, (s) => { s.status = 'pending'; })
+            .addCase(exportPdf.fulfilled, (s, a) => {
+                s.status = 'succeeded';
+                s.dataPlotMap = a.payload;        // ← guarda tudo
+            })
+            .addCase(exportPdf.rejected, (s, a) => {
+                s.status = 'failed';
+                s.error = a.payload;
             });
     },
 });
 
-export const { setUser, clearRecoveryMessage, clearError } = authSlice.actions;
+export const selectExportStatus = (state) => state.auth.status;      // se ainda estiver no authSlice
+export const selectExportError = (state) => state.auth.error;
+
+export const { setUser, clearRecoveryMessage, clearError , resetExportState} = authSlice.actions;
 export default authSlice.reducer;

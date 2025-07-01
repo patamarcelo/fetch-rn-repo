@@ -4,15 +4,12 @@ import * as FileSystem from 'expo-file-system';
 
 import { Asset } from 'expo-asset';
 import { getMapSvgBase64 } from "./PrintCronogramaPagePlotMap.jsx";
-import plotMap from './plot-map.json';   // caminho relativo ao arquivo
+// import plotMap from './plot-map.json';   // caminho relativo ao arquivo
 
 
-export const createApplicationPdfMap = async (data, farm) => {
+export const createApplicationPdfMap = async (data, farm, plotMap) => {
 
 
-
-    console.log('data', data, '\n')
-    console.log('farm', farm)
     const dataFromJson = plotMap.data;               // já é objeto JS
 
 
