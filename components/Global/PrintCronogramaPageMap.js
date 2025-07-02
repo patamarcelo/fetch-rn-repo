@@ -5,7 +5,7 @@ import { Platform } from "react-native";
 
 
 import { Asset } from 'expo-asset';
-import { getMapSvgString } from "./PrintCronogramaPagePlotMap.jsx";
+import { getMapSvgString } from "./PrintCronogramaPagePlotMap.js";
 // import plotMap from './plot-map.json';   // caminho relativo ao arquivo
 
 import { iconDict } from "../../utils/assets/icon-dict.js";
@@ -500,6 +500,7 @@ export const createApplicationPdfMap = async (data, farm, plotMap) => {
         const { uri } = await Print.printToFileAsync({
             html: htmlContent,
             base64: false,
+            operation: Print.Orientation.landscape
         });
         console.timeEnd('[PDF] printToFile');
         console.log('[PDF] PDF gerado em:', uri);
