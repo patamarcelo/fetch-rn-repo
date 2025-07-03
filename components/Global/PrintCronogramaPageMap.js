@@ -8,7 +8,8 @@ import { Asset } from 'expo-asset';
 import { getMapSvgString } from "./PrintCronogramaPagePlotMap.js";
 // import plotMap from './plot-map.json';   // caminho relativo ao arquivo
 
-import { iconDict } from "../../utils/assets/icon-dict.js";
+// import { iconDict } from "../../utils/assets/icon-dict.js";
+import { svgToDataUri } from "./PrintCronogramaPagePlotMap.js";
 
 
 export const createApplicationPdfMap = async (data, farm, plotMap) => {
@@ -63,6 +64,7 @@ export const createApplicationPdfMap = async (data, farm, plotMap) => {
         console.log('[PDF] passo 2 – gerar SVG');
         console.time('[PDF] gerar-SVGs');
         const svgMinified = getMapSvgString(talhoesParaPintar, dataFromJson, cultura);
+        const svgDataUri  = svgToDataUri(svgMinified);   // ← imagem base64
         console.timeEnd('[PDF] gerar-SVGs');
         console.log('[PDF] SVG pronto, tamanho', svgMinified.length);
 
@@ -71,14 +73,14 @@ export const createApplicationPdfMap = async (data, farm, plotMap) => {
 
         console.log('[PDF] passo 2 – gerar Icons');
         console.time('[PDF] gerar-Iconss');
-        const { base64: iconBase64, alt } =
-            iconDict.find(i => i.cultura === culturaAtual) ?? iconDict.at(-1);
+        // const { base64: iconBase64, alt } =
+        //     iconDict.find(i => i.cultura === culturaAtual) ?? iconDict.at(-1);
         console.timeEnd('[PDF] gerar-Iconss');
-        console.log('[PDF] Icons pronto, tamanho', iconBase64.length);
+        // console.log('[PDF] Icons pronto, tamanho', iconBase64.length);
 
         // tag pronta para colar
-        const iconTag = `<img src="${iconBase64}" alt="${alt}"
-                    style="width:16px;height:16px;margin-right:4px;vertical-align:middle" />`;
+        // const iconTag = `<img src="${iconBase64}" alt="${alt}"
+        //             style="width:16px;height:16px;margin-right:4px;vertical-align:middle" />`;
 
         console.log('[PDF] ===== Início =====');
         console.log('[PDF] apps:', data?.length, 'farm:', farm);
@@ -117,7 +119,7 @@ export const createApplicationPdfMap = async (data, farm, plotMap) => {
         <div class="ap-container bordered">
             <div class="resumo-container bordered">
                 <div class="resumo-container-app-number">
-                    <span>${iconTag}<b>${app?.code.replace('AP', "AP ")}</b></span>
+                    <span><b>${app?.code.replace('AP', "AP ")}</b></span>
                     <span><b>${app?.operation}</b></span>
                 </div>
                 <div class="resumo-container-app-date">
@@ -148,7 +150,7 @@ export const createApplicationPdfMap = async (data, farm, plotMap) => {
                         </div>
                         ${prodsCards}
                         <div class="map-wrapper">
-                            ${svgMinified}
+                            <img src="${svgDataUri}" style="width:90%;height:auto;max-height:100%;padding-top:30px;" />
                         </div>
                     </div>
                 </div>

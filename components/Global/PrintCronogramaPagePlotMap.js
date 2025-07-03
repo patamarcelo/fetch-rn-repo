@@ -78,3 +78,15 @@ export function getMapSvgString(highlightIds, rawPolygons, culture) {
             </svg>`;
     }
 }
+
+
+
+/** Converte a string SVG para data-URI */
+export function svgToDataUri(svg) {
+    // encodeURIComponent → evita caracteres UTF-8 “quebrarem” o base64
+    const encoded = encodeURIComponent(svg).replace(/%([0-9A-F]{2})/g, (_m, p1) =>
+        String.fromCharCode('0x' + p1)
+    );
+    const base64 = btoa(encoded);
+    return `data:image/svg+xml;base64,${base64}`;
+}
