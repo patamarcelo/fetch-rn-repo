@@ -1,9 +1,11 @@
-import React, { useLayoutEffect, useState } from 'react';
+import React, { useLayoutEffect, useState, useRef, useEffect } from 'react';
 import { View, Text, TextInput, Button, StyleSheet, Alert, TouchableOpacity, Image, Platform } from 'react-native';
+import { Animated } from 'react-native';
+
+import { KeyboardAvoidingView, TouchableWithoutFeedback, Keyboard } from 'react-native';
+
 import { useDispatch, useSelector } from 'react-redux';
 import { login, recoverPassword, clearError } from '../store/redux/authSlice';
-import { KeyboardAvoidingView } from 'react-native';
-import { TouchableWithoutFeedback, Keyboard } from 'react-native';
 import { ActivityIndicator } from 'react-native-paper';
 
 import Ionicons from "@expo/vector-icons/Ionicons";
@@ -13,10 +15,17 @@ import { Colors } from '../constants/styles';
 import * as Haptics from "expo-haptics";
 
 import { expo } from "../app.json";
-import { ScrollView } from 'react-native-gesture-handler';
+// import { ScrollView } from 'react-native-gesture-handler';
+import { ScrollView } from 'react-native';
+
 
 
 const LoginScreen = ({ navigation }) => {
+
+    const dispatch = useDispatch();
+    const { loading, error } = useSelector((state) => state.auth);
+
+
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(true);
@@ -24,8 +33,48 @@ const LoginScreen = ({ navigation }) => {
     const isDisabled = loading || !email || !password;
     const isDisabledRecover = loading || !email;
 
-    const dispatch = useDispatch();
-    const { loading, error } = useSelector((state) => state.auth);
+    const passwordRef = useRef(null);
+
+    const fadeAnim = useRef(new Animated.Value(1)).current; // opacity: starts visible
+    const slideAnim = useRef(new Animated.Value(0)).current; // translateY
+
+    useEffect(() => {
+        const keyboardShow = Keyboard.addListener("keyboardDidShow", () => {
+            Animated.parallel([
+                Animated.timing(fadeAnim, {
+                    toValue: 0,
+                    duration: 200,
+                    useNativeDriver: true,
+                }),
+                Animated.timing(slideAnim, {
+                    toValue: 20, // slide down a bit
+                    duration: 200,
+                    useNativeDriver: true,
+                }),
+            ]).start();
+        });
+
+        const keyboardHide = Keyboard.addListener("keyboardDidHide", () => {
+            Animated.parallel([
+                Animated.timing(fadeAnim, {
+                    toValue: 1,
+                    duration: 200,
+                    useNativeDriver: true,
+                }),
+                Animated.timing(slideAnim, {
+                    toValue: 0,
+                    duration: 200,
+                    useNativeDriver: true,
+                }),
+            ]).start();
+        });
+
+        return () => {
+            keyboardShow.remove();
+            keyboardHide.remove();
+        };
+    }, []);
+
 
     const handleLogin = async () => {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy)
@@ -76,13 +125,18 @@ const LoginScreen = ({ navigation }) => {
 
 
     return (
-        <TouchableWithoutFeedback>
-            <ScrollView contentContainerStyle={{ flex: 1 }}>
-                <View style={{ flex: 1 }}>
-                    <KeyboardAvoidingView
-                        behavior={Platform.OS === "ios" ? "padding" : undefined}
-                        style={styles.content}
-                    >
+        <KeyboardAvoidingView
+            style={{ flex: 1 }}
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 0} // adjust for header if needed
+        >
+            <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+                <ScrollView
+                    contentContainerStyle={{ flexGrow: 1, paddingTop: Platform.OS === 'ios' ? 30 : 0 }}
+                    keyboardShouldPersistTaps="handled"
+
+                >
+                    <View style={styles.content}>
                         <View style={styles.shadowContainer}>
                             <Text style={styles.title}>Applicações</Text>
                         </View>
@@ -94,6 +148,9 @@ const LoginScreen = ({ navigation }) => {
                             onChangeText={setEmail}
                             keyboardType="email-address"
                             onBlur={handleBlur} // Clear errors when the input loses focus
+
+                            returnKeyType="next"
+                            onSubmitEditing={() => passwordRef.current?.focus()}
                         />
                         <View style={styles.iconCointainer}>
                             <TextInput
@@ -104,6 +161,10 @@ const LoginScreen = ({ navigation }) => {
                                 onChangeText={setPassword}
                                 secureTextEntry={showPassword}
                                 onBlur={handleBlur} // Clear errors when the input loses focus
+
+                                ref={passwordRef}
+                                returnKeyType="go"
+                                onSubmitEditing={handleLogin}
                             />
                             <Ionicons
                                 style={styles.icon}
@@ -132,37 +193,58 @@ const LoginScreen = ({ navigation }) => {
                         >
                             <Text style={styles.forgetPassText}>Esqueci a Senha</Text>
                         </TouchableOpacity>
-                    </KeyboardAvoidingView>
-                    <View style={styles.titleContainer}>
-                        <View style={styles.shadowContainer}>
-                            <Image
-                                source={require("../assets/diamond.png")}
-                                style={styles.image}
-                            />
-                        </View>
-                        <Text
-                            style={{
-                                color: "grey",
-                                opacity: 0.5,
-                                fontWeight: 'bold'
-                            }}
+                        <Animated.View
+                            style={[
+                                styles.footer,
+                                {
+                                    opacity: fadeAnim,
+                                    transform: [{ translateY: slideAnim }],
+                                },
+                            ]}
                         >
-                            {expo.version}
-                        </Text>
+                            <View style={styles.shadowContainer}>
+                                <Image
+                                    source={require("../assets/diamond.png")}
+                                    style={styles.image}
+                                />
+                            </View>
+                            <Text
+                                style={{
+                                    color: "grey",
+                                    opacity: 0.5,
+                                    fontWeight: 'bold'
+                                }}
+                            >
+                                {expo.version}
+                            </Text>
+                        </Animated.View>
                     </View>
-                </View>
-            </ScrollView>
-        </TouchableWithoutFeedback>
+                </ScrollView>
+            </TouchableWithoutFeedback>
+        </KeyboardAvoidingView>
     );
 };
 
 const styles = StyleSheet.create({
+    footer: {
+        position: 'absolute',
+        bottom: Platform.OS === 'ios' ?  35 : 20,
+        left: 0,
+        right: 0,
+        alignItems: 'center',
+    },
+    version: {
+        color: 'grey',
+        opacity: 0.5,
+        fontWeight: 'bold',
+    },
     shadowContainer: {
         shadowColor: "#000",  // Shadow color
         shadowOffset: { width: 3, height: 5 },  // Offset for drop shadow effect
         shadowOpacity: 0.4,  // Opacity of shadow
         shadowRadius: 4,  // Spread of shadow
         elevation: 8,  // Required for Android
+        bottom: 0
     },
     content: {
         flex: 1,

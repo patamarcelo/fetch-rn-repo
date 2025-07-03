@@ -16,6 +16,8 @@ import { useSelector, useDispatch } from 'react-redux';
 import { selectPlotMapData } from '../../store/redux/selector';
 import { resetExportState } from '../../store/redux/authSlice';
 
+import { promiseWithTimeout } from '../../utils/timeout-util';
+
 
 const FilterModalApps = (props) => {
     // const { modalVisible, setModalVisible, data, farm, route } = props
@@ -139,14 +141,30 @@ const FilterModalApps = (props) => {
     }
 
     const handleSubmitWithMap = async () => {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy)
-        setLoading(l => ({ ...l, pdfMap: true }));
-        const dataFiltered = data.filter((farmName) => farmName.farmName === farm).filter((aps) => selectedApps.includes(aps.idAp))
-        await createApplicationPdfMap(dataFiltered, farm, plotMap)
-        setLoading(l => ({ ...l, pdfMap: false }));
-        navigation.goBack()
-        dispatch(resetExportState())
-    }
+        try {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+            setLoading(l => ({ ...l, pdfMap: true }));
+
+            const dataFiltered = data
+                .filter(f => f.farmName === farm)
+                .filter(aps => selectedApps.includes(aps.idAp));
+
+            // 👉 timeout opcional para não travar pra sempre
+            await promiseWithTimeout(
+                createApplicationPdfMap(dataFiltered, farm, plotMap),
+                30000,                                // 30 s
+            );
+
+            navigation.goBack();
+            dispatch(resetExportState());
+        } catch (err) {
+            console.error('[PDF] Falha em createApplicationPdfMap:', err);
+            Alert.alert('Erro', 'Não consegui gerar o PDF: ' + err.message);
+        } finally {
+            setLoading(l => ({ ...l, pdfMap: false }));
+        }
+    };
+
 
 
     return (

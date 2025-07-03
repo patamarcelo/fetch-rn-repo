@@ -12,11 +12,11 @@ import { iconDict } from "../../utils/assets/icon-dict.js";
 
 
 export const createApplicationPdfMap = async (data, farm, plotMap) => {
-    
+
     const isAndroid = Platform.OS === "android";
 
     const dataFromJson = plotMap.data;               // já é objeto JS
-    
+
 
 
 
@@ -56,23 +56,32 @@ export const createApplicationPdfMap = async (data, farm, plotMap) => {
     const totalAplicar = data.filter((op) => !op.operation.toLowerCase().includes('colheita')).reduce((acc, curr) => acc += curr.saldoAreaAplicar, 0)
     const apCotainer = data.filter((op) => !op.operation.toLowerCase().includes('colheita')).map((app) => {
 
-    const talhoesParaPintar = app.parcelas.map((parcela) => parcela.parcela)
-    const cultura = app.parcelas?.[0]?.cultura ?? 'unknown';
-    console.time('[PDF] gerar-SVGs');
-    const svgMinified = getMapSvgString(talhoesParaPintar, dataFromJson, cultura);
-    console.timeEnd('[PDF] gerar-SVGs');
+        const talhoesParaPintar = app.parcelas.map((parcela) => parcela.parcela)
+        const cultura = app.parcelas?.[0]?.cultura ?? 'unknown';
 
-    const culturaAtual = app.parcelas?.[0]?.cultura ?? undefined;
-    // procura no iconDict; se não achar, usa o “?” (último item)
-    const { base64: iconBase64, alt } =
-    iconDict.find(i => i.cultura === culturaAtual) ?? iconDict.at(-1);
 
-    // tag pronta para colar
-    const iconTag = `<img src="${iconBase64}" alt="${alt}"
+        console.log('[PDF] passo 2 – gerar SVG');
+        console.time('[PDF] gerar-SVGs');
+        const svgMinified = getMapSvgString(talhoesParaPintar, dataFromJson, cultura);
+        console.timeEnd('[PDF] gerar-SVGs');
+        console.log('[PDF] SVG pronto, tamanho', svgMinified.length);
+
+        const culturaAtual = app.parcelas?.[0]?.cultura ?? undefined;
+        // procura no iconDict; se não achar, usa o “?” (último item)
+
+        console.log('[PDF] passo 2 – gerar Icons');
+        console.time('[PDF] gerar-Iconss');
+        const { base64: iconBase64, alt } =
+            iconDict.find(i => i.cultura === culturaAtual) ?? iconDict.at(-1);
+        console.timeEnd('[PDF] gerar-Iconss');
+        console.log('[PDF] Icons pronto, tamanho', iconBase64.length);
+
+        // tag pronta para colar
+        const iconTag = `<img src="${iconBase64}" alt="${alt}"
                     style="width:16px;height:16px;margin-right:4px;vertical-align:middle" />`;
-    
-    console.log('[PDF] ===== Início =====');
-    console.log('[PDF] apps:', data?.length, 'farm:', farm);
+
+        console.log('[PDF] ===== Início =====');
+        console.log('[PDF] apps:', data?.length, 'farm:', farm);
         const appsCards = app.parcelas.map((parcela) => {
 
             const areaAplicada = `<span><b>Aplicado:</b> ${formatNumber(parcela.areaAplicada)} há</span>`
@@ -103,7 +112,7 @@ export const createApplicationPdfMap = async (data, farm, plotMap) => {
         }).join('');
 
         const totalRealizado = app?.areaSolicitada - app?.saldoAreaAplicar
-        
+
         return `
         <div class="ap-container bordered">
             <div class="resumo-container bordered">
@@ -148,7 +157,7 @@ export const createApplicationPdfMap = async (data, farm, plotMap) => {
         `
     }).join('');
 
-    console.time('[PDF] html-build');
+    const start = Date.now();
     const htmlContent = `
     <html lang="en">
         <head>
@@ -487,7 +496,8 @@ export const createApplicationPdfMap = async (data, farm, plotMap) => {
 
         </html>
     `
-    console.timeEnd('[PDF] html-build');
+    const elapsed = Date.now() - start;
+    console.log(`[PDF] html-build took ${elapsed}ms`);
     console.log('[PDF] html length:', htmlContent.length);
     try {
         // Create a timestamp and formatted filename
