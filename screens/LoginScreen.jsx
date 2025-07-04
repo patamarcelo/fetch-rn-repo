@@ -33,7 +33,6 @@ const LoginScreen = ({ navigation }) => {
     const isDisabled = loading || !email || !password;
     const isDisabledRecover = loading || !email;
 
-    const passwordRef = useRef(null);
 
     const fadeAnim = useRef(new Animated.Value(1)).current; // opacity: starts visible
     const slideAnim = useRef(new Animated.Value(0)).current; // translateY
@@ -150,7 +149,6 @@ const LoginScreen = ({ navigation }) => {
                             onBlur={handleBlur} // Clear errors when the input loses focus
 
                             returnKeyType="next"
-                            onSubmitEditing={() => passwordRef.current?.focus()}
                         />
                         <View style={styles.iconCointainer}>
                             <TextInput
@@ -162,7 +160,7 @@ const LoginScreen = ({ navigation }) => {
                                 secureTextEntry={showPassword}
                                 onBlur={handleBlur} // Clear errors when the input loses focus
 
-                                ref={passwordRef}
+                                
                                 returnKeyType="go"
                                 onSubmitEditing={handleLogin}
                             />

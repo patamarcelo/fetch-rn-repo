@@ -150,10 +150,7 @@ const FilterModalApps = (props) => {
                 .filter(aps => selectedApps.includes(aps.idAp));
 
             // 👉 timeout opcional para não travar pra sempre
-            await promiseWithTimeout(
-                createApplicationPdfMap(dataFiltered, farm, plotMap),
-                30000,                                // 30 s
-            );
+            await createApplicationPdfMap(dataFiltered, farm, plotMap),
 
             navigation.goBack();
             dispatch(resetExportState());
