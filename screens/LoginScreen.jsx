@@ -1,6 +1,6 @@
 import React, { useLayoutEffect, useState, useRef, useEffect } from 'react';
 import { View, Text, TextInput, Button, StyleSheet, Alert, TouchableOpacity, Image, Platform } from 'react-native';
-import { Animated } from 'react-native';
+
 
 import { KeyboardAvoidingView, TouchableWithoutFeedback, Keyboard } from 'react-native';
 
@@ -34,47 +34,22 @@ const LoginScreen = ({ navigation }) => {
     const isDisabledRecover = loading || !email;
 
 
-    const fadeAnim = useRef(new Animated.Value(1)).current; // opacity: starts visible
-    const slideAnim = useRef(new Animated.Value(0)).current; // translateY
+    const [keyboardVisible, setKeyboardVisible] = useState(false);
+
 
     useEffect(() => {
-        const keyboardShow = Keyboard.addListener("keyboardDidShow", () => {
-            Animated.parallel([
-                Animated.timing(fadeAnim, {
-                    toValue: 0,
-                    duration: 200,
-                    useNativeDriver: true,
-                }),
-                Animated.timing(slideAnim, {
-                    toValue: 20, // slide down a bit
-                    duration: 200,
-                    useNativeDriver: true,
-                }),
-            ]).start();
+        const keyboardDidShow = Keyboard.addListener('keyboardDidShow', () => {
+            setKeyboardVisible(true);
         });
-
-        const keyboardHide = Keyboard.addListener("keyboardDidHide", () => {
-            Animated.parallel([
-                Animated.timing(fadeAnim, {
-                    toValue: 1,
-                    duration: 200,
-                    useNativeDriver: true,
-                }),
-                Animated.timing(slideAnim, {
-                    toValue: 0,
-                    duration: 200,
-                    useNativeDriver: true,
-                }),
-            ]).start();
+        const keyboardDidHide = Keyboard.addListener('keyboardDidHide', () => {
+            setKeyboardVisible(false);
         });
 
         return () => {
-            keyboardShow.remove();
-            keyboardHide.remove();
+            keyboardDidShow.remove();
+            keyboardDidHide.remove();
         };
     }, []);
-
-
     const handleLogin = async () => {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy)
         if (!email || !password) {
@@ -160,7 +135,7 @@ const LoginScreen = ({ navigation }) => {
                                 secureTextEntry={showPassword}
                                 onBlur={handleBlur} // Clear errors when the input loses focus
 
-                                
+
                                 returnKeyType="go"
                                 onSubmitEditing={handleLogin}
                             />
@@ -191,31 +166,19 @@ const LoginScreen = ({ navigation }) => {
                         >
                             <Text style={styles.forgetPassText}>Esqueci a Senha</Text>
                         </TouchableOpacity>
-                        <Animated.View
-                            style={[
-                                styles.footer,
-                                {
-                                    opacity: fadeAnim,
-                                    transform: [{ translateY: slideAnim }],
-                                },
-                            ]}
-                        >
-                            <View style={styles.shadowContainer}>
-                                <Image
-                                    source={require("../assets/diamond.png")}
-                                    style={styles.image}
-                                />
+                        {!keyboardVisible && (
+                            <View style={[styles.footer]}>
+                                <View style={styles.shadowContainer}>
+                                    <Image
+                                        source={require("../assets/diamond.png")}
+                                        style={styles.image}
+                                    />
+                                </View>
+                                <Text style={{ color: "grey", opacity: 0.5, fontWeight: 'bold' }}>
+                                    {expo.version}
+                                </Text>
                             </View>
-                            <Text
-                                style={{
-                                    color: "grey",
-                                    opacity: 0.5,
-                                    fontWeight: 'bold'
-                                }}
-                            >
-                                {expo.version}
-                            </Text>
-                        </Animated.View>
+                        )}
                     </View>
                 </ScrollView>
             </TouchableWithoutFeedback>
@@ -226,7 +189,7 @@ const LoginScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
     footer: {
         position: 'absolute',
-        bottom: Platform.OS === 'ios' ?  35 : 20,
+        bottom: Platform.OS === 'ios' ? 35 : 20,
         left: 0,
         right: 0,
         alignItems: 'center',

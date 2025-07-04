@@ -3,20 +3,15 @@ import expo.modules.splashscreen.SplashScreenManager
 
 import android.os.Build
 import android.os.Bundle
-
 import com.facebook.react.ReactActivity
 import com.facebook.react.ReactActivityDelegate
 import com.facebook.react.defaults.DefaultNewArchitectureEntryPoint.fabricEnabled
 import com.facebook.react.defaults.DefaultReactActivityDelegate
-
 import expo.modules.ReactActivityDelegateWrapper
-
-import androidx.annotation.Nullable // ✅ novo import
 
 class MainActivity : ReactActivity() {
 
   override fun onCreate(savedInstanceState: Bundle?) {
-    // setTheme(R.style.AppTheme) // opcional para splash
     SplashScreenManager.registerOnActivity(this)
     super.onCreate(null)
   }
@@ -35,11 +30,10 @@ class MainActivity : ReactActivity() {
     )
   }
 
-  // ✅ Corrige bug do NPE ao focar janela
+  /** ⚠️ NÃO chame o delegate aqui: ele pode não estar pronto em release */
   override fun onWindowFocusChanged(hasFocus: Boolean) {
     super.onWindowFocusChanged(hasFocus)
-    @Nullable val delegate = reactDelegate
-    delegate?.onWindowFocusChanged(hasFocus)
+    // simplesmente não repassamos nada
   }
 
   override fun invokeDefaultOnBackPressed() {
