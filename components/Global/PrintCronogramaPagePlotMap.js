@@ -1,5 +1,5 @@
 import { Alert } from 'react-native';
-import { encode as btoa } from 'base-64';
+import base64 from 'react-native-base64'
 import * as FileSystem from 'expo-file-system';   // (continua se precisar em outro lugar)
 
 const SIZE = 640; // px
@@ -49,44 +49,41 @@ export function getMapSvgString(highlightIds, rawPolygons, culture) {
             if (isHighlight) {
                 const [cx, cy] = toXY(p.center);
                 label = `<text x="${cx}" y="${cy}" text-anchor="middle"
-                     font-size="12" font-weight="bold"
-                     fill="white" stroke="black" stroke-width="0.4">${p.id}</text>`;
+                   font-size="12" font-weight="bold"
+                   fill="white" stroke="black" stroke-width="0.4">${p.id}</text>`;
             }
             return `<polygon points="${points}" fill="${fill}" stroke="black" stroke-width="1"/>${label}`;
         }).join('');
 
         let svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${SIZE}" height="${SIZE}"
-                 viewBox="0 0 ${SIZE} ${SIZE}" preserveAspectRatio="xMidYMid meet"
-                 style="background:#fff">${svgBody}</svg>`;
+               viewBox="0 0 ${SIZE} ${SIZE}" preserveAspectRatio="xMidYMid meet"
+               style="background:#fff">${svgBody}</svg>`;
 
         svg = svg.replace(/\s{2,}/g, ' ').trim();
 
         console.timeEnd('[PDF] svg-build');
         console.log('[PDF] svg chars:', svg.length);
 
-        return svg;               // <- string SVG pura
+        return svg;
+
     } catch (err) {
         const msg = err?.message || String(err);
         console.error('[PDF] erro em getMapSvgString:', err);
 
-        // avisa visualmente (funciona no Release)
         Alert.alert('Erro ao construir mapa', msg);
 
-        // devolve SVG mínimo para não quebrar o fluxo
         return `<svg xmlns="http://www.w3.org/2000/svg" width="300" height="50">
-              <text x="0" y="20" fill="red">Erro ao gerar mapa</text>
-            </svg>`;
+            <text x="0" y="20" fill="red">Erro ao gerar mapa</text>
+          </svg>`;
     }
 }
 
-
-
-/** Converte a string SVG para data-URI */
+/** ✅ SVG → Base64 Data URI */
 export function svgToDataUri(svg) {
-    // encodeURIComponent → evita caracteres UTF-8 “quebrarem” o base64
+    // Mesma lógica, mas usando base64.encode diretamente
     const encoded = encodeURIComponent(svg).replace(/%([0-9A-F]{2})/g, (_m, p1) =>
-        String.fromCharCode('0x' + p1)
+        String.fromCharCode(parseInt(p1, 16))
     );
-    const base64 = btoa(encoded);
-    return `data:image/svg+xml;base64,${base64}`;
+    const dataUri = base64.encode(encoded);
+    return `data:image/svg+xml;base64,${dataUri}`;
 }
