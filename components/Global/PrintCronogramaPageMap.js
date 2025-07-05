@@ -3,13 +3,12 @@ import { shareAsync } from "expo-sharing";
 import * as FileSystem from 'expo-file-system';
 import { Platform } from "react-native";
 
-
 import { Asset } from 'expo-asset';
-import { getMapSvgString } from "./PrintCronogramaPagePlotMap.js";
-// import plotMap from './plot-map.json';   // caminho relativo ao arquivo
 
 import { iconDict } from "../../utils/assets/icon-dict.js";
-import { svgToDataUri } from "./PrintCronogramaPagePlotMap.js";
+
+
+import { getMapSvgString, svgToDataUri } from "../../utils/gerar-mapas.js";
 
 
 export const createApplicationPdfMap = async (data, farm, plotMap) => {
