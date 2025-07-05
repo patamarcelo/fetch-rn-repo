@@ -1,6 +1,4 @@
 import { Alert } from 'react-native';
-import base64 from 'react-native-base64'
-import * as FileSystem from 'expo-file-system';   // (continua se precisar em outro lugar)
 
 const SIZE = 640; // px
 
@@ -80,10 +78,7 @@ export function getMapSvgString(highlightIds, rawPolygons, culture) {
 
 /** ✅ SVG → Base64 Data URI */
 export function svgToDataUri(svg) {
-    // Mesma lógica, mas usando base64.encode diretamente
-    const encoded = encodeURIComponent(svg).replace(/%([0-9A-F]{2})/g, (_m, p1) =>
-        String.fromCharCode(parseInt(p1, 16))
-    );
-    const dataUri = base64.encode(encoded);
+    // A função 'btoa' é o padrão para codificar uma string em Base64 no ambiente JavaScript/React Native.
+    const dataUri = btoa(svg);
     return `data:image/svg+xml;base64,${dataUri}`;
 }
