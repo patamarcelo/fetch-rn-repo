@@ -13,6 +13,14 @@
         {
           "locationAlwaysAndWhenInUsePermission": "Permitir que o $(PRODUCT_NAME) use sua localização."
         }
+      ],
+      [
+        "@sentry/react-native/expo",
+        {
+          "url": "https://sentry.io/",
+          "project": "react-native",
+          "organization": "patamarcelo"
+        }
       ]
     ],
     "splash": {
@@ -26,8 +34,8 @@
     ],
     "ios": {
       "config": {
-        "googleMapsApiKey":  "process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY"
-        },
+        "googleMapsApiKey": "process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY"
+      },
       "supportsTablet": true,
       "bundleIdentifier": "com.patamarcelo.fetchapp",
       "infoPlist": {

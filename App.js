@@ -19,6 +19,23 @@ import { useEffect, useState } from "react";
 
 
 import { checkUserStatus } from "./store/firebase/logged-checked";
+import * as Sentry from '@sentry/react-native';
+
+Sentry.init({
+  dsn: 'https://8514e208ff9e055878bfce3d1ba6407d@o4509618825003008.ingest.us.sentry.io/4509618826379264',
+
+  // Adds more context data to events (IP address, cookies, user, etc.)
+  // For more information, visit: https://docs.sentry.io/platforms/react-native/data-management/data-collected/
+  sendDefaultPii: true,
+
+  // Configure Session Replay
+  replaysSessionSampleRate: 0.1,
+  replaysOnErrorSampleRate: 1,
+  integrations: [Sentry.mobileReplayIntegration(), Sentry.feedbackIntegration()],
+
+  // uncomment the line below to enable Spotlight (https://spotlightjs.com)
+  // spotlight: __DEV__,
+});
 
 
 
@@ -56,7 +73,7 @@ const Root = () => {
 	return <Navigation />;
 };
 
-export default function App() {
+export default Sentry.wrap(function App() {
 	const handleRefresh = () => {
 		console.log("atualizando");
 	};
@@ -75,7 +92,7 @@ export default function App() {
 			</Provider>
 		</>
 	);
-}
+});
 
 const styles = StyleSheet.create({
 	HeaderView: {
