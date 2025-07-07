@@ -1,5 +1,7 @@
 import { registerRootComponent } from 'expo';
+
 import 'array-flat-polyfill';
+import 'core-js/features/array/includes';
 
 import App from './App';
 

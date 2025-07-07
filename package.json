@@ -23,6 +23,7 @@
     "@rneui/themed": "^4.0.0-rc.8",
     "array-flat-polyfill": "^1.0.1",
     "base-64": "^1.0.0",
+    "core-js": "^3.44.0",
     "dotenv": "^16.4.5",
     "expo": "^53.0.9",
     "expo-haptics": "~14.1.4",

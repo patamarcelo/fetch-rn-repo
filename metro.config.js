@@ -8,5 +8,7 @@ const config = getDefaultConfig(__dirname);
 // Customize the config safely:
 config.resolver.sourceExts.push('cjs');
 config.resolver.unstable_enablePackageExports = false;
+config.transformer.unstable_removeUnusedImportExport = false;
+
 
 module.exports = config;
