@@ -21,6 +21,7 @@
     "@reduxjs/toolkit": "^2.1.0",
     "@rneui/base": "^4.0.0-rc.8",
     "@rneui/themed": "^4.0.0-rc.8",
+    "array-flat-polyfill": "^1.0.1",
     "base-64": "^1.0.0",
     "dotenv": "^16.4.5",
     "expo": "^53.0.9",

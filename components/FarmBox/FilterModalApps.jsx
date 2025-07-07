@@ -1,4 +1,4 @@
-import { StyleSheet, Text, View, StatusBar, ScrollView, Pressable, Platform, ActivityIndicator } from 'react-native'
+import { StyleSheet, Text, View, StatusBar, ScrollView, Pressable, Platform, ActivityIndicator, Alert } from 'react-native'
 import { useState, useEffect } from 'react';
 import Button from '../ui/Button'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -142,10 +142,21 @@ const FilterModalApps = (props) => {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy)
         setLoading(l => ({ ...l, pdfMap: true }));
         const dataFiltered = data.filter((farmName) => farmName.farmName === farm).filter((aps) => selectedApps.includes(aps.idAp))
-        await createApplicationPdfMap(dataFiltered, farm, plotMap)
-        setLoading(l => ({ ...l, pdfMap: false }));
-        navigation.goBack()
-        dispatch(resetExportState())
+        try {
+            // Gera o PDF
+            await createApplicationPdfMap(dataFiltered, farm, plotMap);
+        } catch (err) {
+            console.log('Erro ao criar os mapas', err);
+            Alert.alert(
+                'Erro ao renderizar o PDF',
+                err?.message ?? 'Error.'
+            );
+        } finally {
+            // Sempre executa, com ou sem erro
+            setLoading(l => ({ ...l, pdfMap: false }));
+            navigation.goBack();
+            dispatch(resetExportState());
+        }
     }
 
 
