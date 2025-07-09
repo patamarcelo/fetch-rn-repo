@@ -154,7 +154,7 @@ const PlantioScreen = () => {
                         Authorization: `Token ${EXPO_PUBLIC_REACT_APP_DJANGO_TOKEN}`,
                     },
                 });
-                // console.log('response : ', response)
+                console.log('response : ', response)
                 if (response.status === 200) {
                     // Alert.alert('Tudo Certo', 'Dados Atualizados com sucesso!!')
                     const data = await response.json();
@@ -167,7 +167,7 @@ const PlantioScreen = () => {
             } catch (error) {
                 console.error(error);
                 setIsLoadingData(false)
-                Alert.alert('Problema em atualizar o banco de dados', `Erro: ${error}`)
+                Alert.alert('Problema em atualizar o banco de dados here', `Erro: ${error}`)
             } finally {
                 setIsLoadingData(false)
             }
@@ -190,7 +190,7 @@ const PlantioScreen = () => {
                     Authorization: `Token ${EXPO_PUBLIC_REACT_APP_DJANGO_TOKEN}`,
                 },
             });
-            // console.log('response : ', response)
+            console.log('response : ', response)
             if (response.status === 200) {
                 Alert.alert('Tudo Certo', 'Dados Atualizados com sucesso!!')
                 const data = await response.json();
@@ -203,7 +203,7 @@ const PlantioScreen = () => {
         } catch (error) {
             console.error(error);
             setIsRefreshing(false)
-            Alert.alert('Problema em atualizar o banco de dados', `Erro: ${error}`)
+            Alert.alert('Problema em atualizar o banco de dados manualmente', `Erro: ${error}`)
         } finally {
             console.log('Finally block reached');  //
             setIsRefreshing(false)

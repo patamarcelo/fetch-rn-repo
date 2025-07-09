@@ -1,5 +1,4 @@
-import * as FileSystem from "expo-file-system";
-import { encode as btoa } from "base-64";   // expo install base-64
+import base64 from 'react-native-base64';
 
 const SIZE = 640; // px
 
@@ -17,6 +16,7 @@ const projector = (polys) => {
 };
 
 export function getMapSvgBase64(highlightIds, rawPolygons, culture) {
+    console.log('[PDF] gerando pdf dentro da funcao')
     const polygons = rawPolygons.map(t => ({
         id: t.talhao__id_talhao,
         center: {               // lat/lon of the label
@@ -76,5 +76,6 @@ export function getMapSvgBase64(highlightIds, rawPolygons, culture) {
       ${svgBody}
     </svg>`;
 
-    return btoa(svg);    // base-64 string ready for <img>, <iframe> …
+    const encodedString = base64.encode(svg);
+    return encodedString;
 }
