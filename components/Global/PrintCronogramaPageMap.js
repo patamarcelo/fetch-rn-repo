@@ -75,11 +75,20 @@ export const createApplicationPdfMap = async (data, farm, plotMap) => {
     
         const appsCards = app.parcelas.map((parcela) => {
 
+            console.log('[PDF] - pegando os icones com a funcao: iconBase64 ')
+            const { base64: iconBase64, alt } = iconDict.find(i => i.cultura === parcela.cultura) ?? iconDict[iconDict.length - 1];
+            
+            console.log('[PDF] - Finalizando os icones com a funcao: iconBase64 ')
+            console.log('iconBase: ', iconBase64)
+
+            const iconTagInside = `<img src="${iconBase64}" alt="${alt}"
+                        style="width:8px;height:8px;margin-left: 3px;padding-bottom: 2px;vertical-align:middle" />`;
+
             const areaAplicada = `<span><b>Aplicado:</b> ${formatNumber(parcela.areaAplicada)} há</span>`
             return `
                 <div class="parcela-detail-container bordered ${parcela.areaSolicitada == parcela.areaAplicada && 'finish-parcela'}">
                     <div class="detail-variedade-area">
-                        <b>${parcela.parcela}</b><span>${formatNumber(parcela.areaSolicitada)} há</span>
+                        <b>${parcela.parcela}${iconTagInside}</b><span>${formatNumber(parcela.areaSolicitada)} há</span>
                     </div>
                     <div class="detail-variedade-dap">
                         <span>${parcela.variedade || '?'}</span><span>${getDap(parcela.date)} dias</span>
@@ -91,11 +100,20 @@ export const createApplicationPdfMap = async (data, farm, plotMap) => {
             `
         }).join('');
 
-        const prodsCards = app.prods.filter((prodType) => prodType.type !== 'Operação').map((prod, i) => {
+        function withOpacity(rgb, alpha = 0.3) {
+            // aceita "rgb(69,133,255)" ou "rgba(69,133,255,1)"
+            const nums = rgb.match(/\d+(\.\d+)?/g);     // → ["69","133","255"]
+            if (!nums || nums.length < 3) return rgb;   // formato inesperado
+            const [r, g, b] = nums;
+            return `rgba(${r},${g},${b},${alpha})`;
+        }
+
+        const prodsCards = app.prods.filter((prodType) => prodType.type !== 'Operação').sort((a,b) => a.type.localeCompare(b.type)).map((prod, i) => {
 
             return `
-                <div class="grid-produtos detail-prod-container ${i === 0 && 'first-prod-here'} ${i % 2 !== 0 && 'even-row-prod'}">
+                <div class="grid-produtos detail-prod-container ${i === 0 && 'first-prod-here'} ${i % 2 !== 0 && 'even-row-prod'}" style="background-color: ${withOpacity(prod.colorChip)}">
                     <span>${formatDoseNumber(prod.doseSolicitada)}</span>
+                    <span>${prod.type.replace('/Vegetal', '')}</span>
                     <span>${prod.product}</span>
                     <span>${formatNumber(prod.quantidadeSolicitada)}</span>
                 </div>
@@ -134,6 +152,7 @@ export const createApplicationPdfMap = async (data, farm, plotMap) => {
                     <div class="prods-container-containing-map">
                         <div class="header-produto4 grid-produtos" style="border-bottom: 1px solid black;">
                             <b>Dose</b>
+                            <b>Tipo</b>
                             <b>Produto</b>
                             <b>Solicitado</b>
                         </div>
@@ -387,8 +406,8 @@ export const createApplicationPdfMap = async (data, farm, plotMap) => {
 
                 .grid-produtos {
                     display: grid;
-                    grid-template-columns: 25% 50% 25%;
-                    width: 60%;
+                    grid-template-columns: 10%  32% 33% 25%;
+                    width: 80%;
                     text-align: center;
                 }
 

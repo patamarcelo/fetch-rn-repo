@@ -9,7 +9,7 @@ if (typeof base64?.encode === 'function') {
     const encoded = base64.encode('anything');
     console.log('SVG em base-64:', encoded.slice(0, 5) + '…');
 } else {
-    console.warn('[Base64] encode não encontrado — caindo para alternativa');
+    console.log('[Base64] encode não encontrado — caindo para alternativa');
     // fallback: usar outro pacote, polyfill ou abortar
 }
 const projector = (polys) => {

@@ -53,6 +53,10 @@ const colorDict = [
 		color: "rgb(120,161,144)"
 	},
 	{
+		tipo: "Óleo Mineral/Vegetal",
+		color: "rgb(120,161,144)"
+	},
+	{
 		tipo: "micronutrientes",
 		color: "rgb(118,192,226)"
 	},
