@@ -1,7 +1,8 @@
 import { registerRootComponent } from 'expo';
 
-import 'array-flat-polyfill';
-import 'core-js/features/array/includes';
+import 'array-flat-polyfill';              // para flat e flatMap
+import 'core-js/features/array/includes';  // para includes
+import 'core-js/features/array/at';        // para at()
 
 import App from './App';
 

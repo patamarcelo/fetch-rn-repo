@@ -3,6 +3,7 @@ import base64 from 'react-native-base64';
 const SIZE = 640; // px
 
 /** faz min–max ➜ [0..SIZE] × [0..SIZE] */
+console.log('[FLATMAP-CHECK] typeof [].at →', typeof [].flatMap);
 const projector = (polys) => {
     const lats = polys.flatMap(p => p.coords.map(c => c.lat));
     const lons = polys.flatMap(p => p.coords.map(c => c.lon));
@@ -15,8 +16,12 @@ const projector = (polys) => {
     ];
 };
 
-export function getMapSvgBase64(highlightIds, rawPolygons, culture) {
-    console.log('[PDF] gerando pdf dentro da funcao')
+const dbg = (tag, v) => console.log(`[DBG] ${tag}:`, typeof v, v?.constructor?.name);
+export function getMapSvgBase64(highlightIds = [], rawPolygons = [], culture = '') {
+    dbg('flatMap', [].flatMap);
+    dbg('highlightIds', highlightIds);
+    dbg('rawPolygons', rawPolygons);
+    dbg('culture', culture);
     const polygons = rawPolygons.map(t => ({
         id: t.talhao__id_talhao,
         center: {               // lat/lon of the label
@@ -46,8 +51,8 @@ export function getMapSvgBase64(highlightIds, rawPolygons, culture) {
             .map(toXY)
             .map(([x, y]) => `${x},${y}`)
             .join(' ');
-
-        const isHighlight = highlightIds.includes(p.id);
+        dbg('ids.includes?', highlightIds?.includes);
+        const isHighlight = highlightIds?.includes(p.id);
         const fill = isHighlight ? getColor(culture) : 'none';
 
         /* label only for highlighted polygons */

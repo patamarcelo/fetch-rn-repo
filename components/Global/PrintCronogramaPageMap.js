@@ -8,7 +8,7 @@ import { getMapSvgBase64 } from "./PrintCronogramaPagePlotMap.jsx";
 
 import { iconDict } from "../../utils/assets/icon-dict.js";
 
-
+console.log('typeof [].at →', typeof [].at);
 export const createApplicationPdfMap = async (data, farm, plotMap) => {
 
 
@@ -53,20 +53,25 @@ export const createApplicationPdfMap = async (data, farm, plotMap) => {
     const totalAplicar = data.filter((op) => !op.operation.toLowerCase().includes('colheita')).reduce((acc, curr) => acc += curr.saldoAreaAplicar, 0)
     const apCotainer = data.filter((op) => !op.operation.toLowerCase().includes('colheita')).map((app) => {
 
-    const talhoesParaPintar = app.parcelas.map((parcela) => parcela.parcela)
-    const cultura = app.parcelas?.[0]?.cultura ?? 'unknown';
-    console.time('map-base64');
-    const base64Image = getMapSvgBase64(talhoesParaPintar, dataFromJson, cultura);
-    console.timeEnd('map-base64');
+        const talhoesParaPintar = app.parcelas.map((parcela) => parcela.parcela)
+        const cultura = app.parcelas?.[0]?.cultura ?? 'unknown';
+        
+        console.log('[PDF] - gerando os mapas com a funcao getMapSvgBase64: ')
+        const base64Image = getMapSvgBase64(talhoesParaPintar, dataFromJson, cultura);
+        console.log('[PDF] - Finalizado os mapas com a funcao... ')
 
-    const culturaAtual = app.parcelas?.[0]?.cultura ?? undefined;
-    // procura no iconDict; se não achar, usa o “?” (último item)
-    const { base64: iconBase64, alt } =
-    iconDict.find(i => i.cultura === culturaAtual) ?? iconDict.at(-1);
+        const culturaAtual = app.parcelas?.[0]?.cultura ?? undefined;
+        // procura no iconDict; se não achar, usa o “?” (último item)
+        console.log('[PDF] - pegando os icones com a funcao: iconBase64 ')
+        const { base64: iconBase64, alt } =
+        iconDict.find(i => i.cultura === culturaAtual) ?? iconDict[iconDict.length - 1];
+        
+        console.log('[PDF] - Finalizando os icones com a funcao: iconBase64 ')
+        console.log('iconBase: ', iconBase64)
 
-    // tag pronta para colar
-    const iconTag = `<img src="${iconBase64}" alt="${alt}"
-                    style="width:16px;height:16px;margin-right:4px;vertical-align:middle" />`;
+        // tag pronta para colar
+        const iconTag = `<img src="${iconBase64}" alt="${alt}"
+                        style="width:16px;height:16px;margin-right:4px;vertical-align:middle" />`;
     
         const appsCards = app.parcelas.map((parcela) => {
 
