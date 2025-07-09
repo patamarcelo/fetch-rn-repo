@@ -4,6 +4,14 @@ const SIZE = 640; // px
 
 /** faz min–max ➜ [0..SIZE] × [0..SIZE] */
 console.log('[FLATMAP-CHECK] typeof [].at →', typeof [].flatMap);
+if (typeof base64?.encode === 'function') {
+    // ✅ está presente — pode usar
+    const encoded = base64.encode('anything');
+    console.log('SVG em base-64:', encoded.slice(0, 5) + '…');
+} else {
+    console.warn('[Base64] encode não encontrado — caindo para alternativa');
+    // fallback: usar outro pacote, polyfill ou abortar
+}
 const projector = (polys) => {
     const lats = polys.flatMap(p => p.coords.map(c => c.lat));
     const lons = polys.flatMap(p => p.coords.map(c => c.lon));
