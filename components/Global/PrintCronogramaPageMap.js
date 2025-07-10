@@ -112,10 +112,10 @@ export const createApplicationPdfMap = async (data, farm, plotMap) => {
 
             return `
                 <div class="grid-produtos detail-prod-container ${i === 0 && 'first-prod-here'} ${i % 2 !== 0 && 'even-row-prod'}" style="background-color: ${withOpacity(prod.colorChip)}">
-                    <span>${formatDoseNumber(prod.doseSolicitada)}</span>
+                    <span style="margin-left: 0px; padding-left: 2px;justify-self: start">${formatDoseNumber(prod.doseSolicitada).toString().trim()} <small style="margin-left: 3px; color: #777777">${prod?.unit}</small></span>
                     <span>${prod.type.replace('/Vegetal', '')}</span>
                     <span>${prod.product}</span>
-                    <span>${formatNumber(prod.quantidadeSolicitada)}</span>
+                    <span style="justify-self: end; padding-right: 1px;">${formatNumber(prod.quantidadeSolicitada)}</span>
                 </div>
             `
         }).join('');
@@ -151,10 +151,10 @@ export const createApplicationPdfMap = async (data, farm, plotMap) => {
                 <div class="bordered-left produtos-conatiner">
                     <div class="prods-container-containing-map">
                         <div class="header-produto4 grid-produtos" style="border-bottom: 1px solid black;">
-                            <b>Dose</b>
+                            <b style="justify-self: start">Dose</b>
                             <b>Tipo</b>
                             <b>Produto</b>
-                            <b>Solicitado</b>
+                            <b style="justify-self: end;">Solicitado</b>
                         </div>
                         ${prodsCards}
                         <div style="width:95%; height:100%; margin-top:10px;">
@@ -406,13 +406,14 @@ export const createApplicationPdfMap = async (data, farm, plotMap) => {
 
                 .grid-produtos {
                     display: grid;
-                    grid-template-columns: 10%  32% 33% 25%;
+                    grid-template-columns: 20%  30% 30% 20%;
                     width: 80%;
                     text-align: center;
                 }
 
                 .detail-prod-container {
                     margin-bottom: 1px;
+                    justify-content: space-between;
                 }
 
                 .even-row-prod{
@@ -439,7 +440,7 @@ export const createApplicationPdfMap = async (data, farm, plotMap) => {
                 }
 
                 .first-prod-here {
-                    margin-top: 10px
+                    margin-top: 1px
                 }
 
                 .prods-container-containing-map {

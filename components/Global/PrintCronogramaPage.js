@@ -88,10 +88,10 @@ export const createApplicationPdf = async (data, farm) => {
 
             return `
                 <div class="grid-produtos detail-prod-container ${i === 0 && 'first-prod-here'} ${i % 2 !== 0 && 'even-row-prod'}" style="background-color: ${withOpacity(prod.colorChip)}">
-                    <span>${formatDoseNumber(prod.doseSolicitada)}</span>
+                    <span style="margin-left: 0px; padding-left: 2px;justify-self: start">${formatDoseNumber(prod.doseSolicitada).toString().trim()} <small style="margin-left: 3px; color: #777777">${prod?.unit}</small></span>
                     <span>${prod.type.replace('/Vegetal', '')}</span>
                     <span>${prod.product}</span>
-                    <span>${formatNumber(prod.quantidadeSolicitada)}</span>
+                    <span style="justify-self: end; padding-right: 1px;">${formatNumber(prod.quantidadeSolicitada)}</span>
                 </div>
             `
         }).join('');
@@ -126,10 +126,10 @@ export const createApplicationPdf = async (data, farm) => {
                 </div>
                 <div class="bordered-left produtos-conatiner">
                     <div class="header-produtos grid-produtos">
-                        <span>Dose</span>
-                        <span>Tipo</span>
-                        <span>Produto</span>
-                        <span>Solicitado</span>
+                        <b style="justify-self: start">Dose</b>
+                        <b>Tipo</b>
+                        <b>Produto</b>
+                        <b style="justify-self: end;">Solicitado</b>
                     </div>
                     ${prodsCards}
                 </div>
@@ -339,13 +339,14 @@ export const createApplicationPdf = async (data, farm) => {
 
                 .grid-produtos {
                     display: grid;
-                    grid-template-columns: 10%  32% 33% 25%;
-                    width: 100%;
+                    grid-template-columns: 20%  30% 30% 20%;
+                    width: 98%;
                     text-align: center;
                 }
 
                 .detail-prod-container {
                     margin-bottom: 1px;
+                    justify-content: space-between;
                 }
 
                 .even-row-prod{
@@ -372,7 +373,7 @@ export const createApplicationPdf = async (data, farm) => {
                 }
 
                 .first-prod-here {
-                    margin-top: 10px
+                    margin-top: 5px
                 }
             
             </style>
