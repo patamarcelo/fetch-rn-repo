@@ -1,6 +1,8 @@
 import * as Print from "expo-print";
 import { shareAsync } from "expo-sharing";
 import * as FileSystem from 'expo-file-system';
+import { iconDict } from "../../utils/assets/icon-dict";
+
 
 const createAndPrintPDF = async (data, farmName, filterEndDate) => {
 
@@ -45,10 +47,14 @@ const formatDoseNumber = number => number?.toLocaleString("pt-br", {
       </div>
       `
     )).join('');
-    const parcelasDiv = item.app.sort((a,b) => a.dataPrevAp.localeCompare(b.dataPrevAp)).map((parcela) =>(
-      `
+    const parcelasDiv = item.app.sort((a,b) => a.dataPrevAp.localeCompare(b.dataPrevAp)).map((parcela) =>{
+      const { base64: iconBase64, alt } =
+        iconDict.find(i => i.cultura === parcela.cultura) ?? iconDict[iconDict.length - 1];
+        const iconTag = `<img src="${iconBase64}" alt="${alt}"
+                        style="width:16px;height:16px;margin-right:2px;vertical-align:middle" />`;
+      return `
       <tr>
-        <td>${parcela.parcela}</td>
+        <td>${iconTag} ${parcela.parcela}</td>
         <td>${parcela.dataPlantio.split('-').reverse().join('/')}</td>
         <td>${parcela.dap}</td>
         <td>${parcela.cultura}</td>
@@ -58,7 +64,7 @@ const formatDoseNumber = number => number?.toLocaleString("pt-br", {
         <td>${formatNumber(parcela.area)}</td>
       </tr>
       `
-    )).join('');
+  }).join('');
     
 
     return `

@@ -45,11 +45,19 @@ const colorDict = [
 		color: "rgb(166,166,54)"
 	},
 	{
+		tipo: "acaricida",
+		color: "rgb(136,171,172)"
+	},
+	{
 		tipo: "adjuvante",
 		color: "rgb(136,171,172)"
 	},
 	{
 		tipo: "oleo_mineral",
+		color: "rgb(120,161,144)"
+	},
+	{
+		tipo: "oleo_mineral_vegetal",
 		color: "rgb(120,161,144)"
 	},
 	{
@@ -305,7 +313,7 @@ const CardListApp = (props) => {
 						return (
 							<View style={styles.detailProdView} key={index}>
 								<Text style={{ textAlign: 'left', width: 50, fontSize: 10, marginBottom: 2 }}>{formatNumber(prods.dose, 3)}</Text>
-								<View style={{ backgroundColor: getColorChip(prods.tipo), borderRadius: 6, padding: 3, paddingLeft: 5, marginBottom: 2 }}>
+								<View style={{ backgroundColor: getColorChip(prods.tipo), borderRadius: 3, padding: 3, paddingLeft: 5, marginBottom: 2 }}>
 									<Text style={{ textAlign: 'left', width: 150, fontWeight: 'bold', fontSize: 10, color: 'whitesmoke' }} numberOfLines={1}>{prods.produto}</Text>
 								</View>
 								<Text style={{ textAlign: 'right', width: 50, fontSize: 10, marginBottom: 2 }}>{formatNumber(prods.totalApp, 2)}</Text>
@@ -456,7 +464,7 @@ const styles = StyleSheet.create({
 	},
 	programHeader: {
 		backgroundColor: Colors.primary500,
-		borderRadius: 12,
+		borderRadius: 4,
 		paddingHorizontal: 6,
 		paddingVertical: 10,
 		width: '90%',
