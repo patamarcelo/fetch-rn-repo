@@ -7,6 +7,7 @@ import { getMapSvgBase64 } from "./PrintCronogramaPagePlotMap.jsx";
 // import plotMap from './plot-map.json';   // caminho relativo ao arquivo
 
 import { iconDict } from "../../utils/assets/icon-dict.js";
+import { Platform } from "react-native";
 
 console.log('typeof [].at →', typeof [].at);
 export const createApplicationPdfMap = async (data, farm, plotMap) => {
@@ -86,14 +87,14 @@ export const createApplicationPdfMap = async (data, farm, plotMap) => {
 
             const areaAplicada = `<span><b>Aplicado:</b> ${formatNumber(parcela.areaAplicada)} há</span>`
             return `
-                <div class="parcela-detail-container bordered ${parcela.areaSolicitada == parcela.areaAplicada && 'finish-parcela'}">
-                    <div class="detail-variedade-area">
+                <div class="${Platform.OS === 'ios' ? 'parcela-detail-container' : 'parcela-detail-container-android' } bordered ${parcela.areaSolicitada == parcela.areaAplicada && 'finish-parcela'}">
+                    <div class="detail-variedade-area ${Platform.OS === 'android' && 'detail-variedade-area-android'}">
                         <b>${parcela.parcela}${iconTagInside}</b><span>${formatNumber(parcela.areaSolicitada)} há</span>
                     </div>
-                    <div class="detail-variedade-dap">
-                        <span>${parcela.variedade || '?'}</span><span>${getDap(parcela.date)} dias</span>
+                    <div class="detail-variedade-dap ${Platform.OS !== 'ios' ? 'font-mini' : ''}">
+                        <p>${parcela.variedade || '?'}</p><p>${getDap(parcela.date)} dias</p>
                     </div>
-                    <div class="detail-variedade-status">
+                    <div class="detail-variedade-status ${Platform.OS === 'android' && 'detail-variedade-status-android'}">
                         ${parcela.areaAplicada > 0 ? areaAplicada : ''}
                     </div>
                 </div>
@@ -149,7 +150,7 @@ export const createApplicationPdfMap = async (data, farm, plotMap) => {
             </div>
             <div class="bordered details-container">
                 <div class="left-side-container">
-                    <div class="parcelas-container">
+                    <div class="${Platform.OS === 'ios' ? 'parcelas-container' : 'parcelas-container-android'}">
                         ${appsCards}
                     </div>
                     <div class="prods-container-containing-map-new-order">
@@ -232,7 +233,7 @@ export const createApplicationPdfMap = async (data, farm, plotMap) => {
                 .resumo-container {
                     width: 100%;
                     display: grid;
-                    grid-template-columns: 40% 30% 30%;
+                    grid-template-columns: ${Platform.OS === 'ios' ? '40% 30% 30%' : '40% 27% 33%'};
                     gap: 10px; /* opcional: espaço entre colunas */
                     padding: 2px 0px;
                     background-color: rgba(107, 107, 107, 0.2);
@@ -244,7 +245,7 @@ export const createApplicationPdfMap = async (data, farm, plotMap) => {
                     align-items: center;
                     gap: 20px;
                     display: flex;
-                    padding-right: 4px;
+                    padding-right: ${Platform.OS === 'ios' ? '4px' : '20px'};
                 }
                 
                 .resumo-container-app-date {
@@ -304,6 +305,18 @@ export const createApplicationPdfMap = async (data, farm, plotMap) => {
                     max-width: 95%;
                     min-width: 95%;
                     grid-template-columns: repeat(5, 1fr);
+                    gap: 2px;
+                    row-gap: 0px;
+                    padding: 2px ;
+                    padding-right: 20px;
+                }
+                
+                .parcelas-container-android {
+                    display: grid;
+                    width: 85%;
+                    max-width: 95%;
+                    min-width: 95%;
+                    grid-template-columns: repeat(4, 1fr);
                     gap: 2px;
                     row-gap: 0px;
                     padding: 2px ;
@@ -379,6 +392,31 @@ export const createApplicationPdfMap = async (data, farm, plotMap) => {
                 .detail-variedade-dap,
                 .detail-variedade-status {
                    font-size: 0.7em;           /* ajuste fino; menor que 1 = diminui */
+                }
+                
+
+                .parcela-detail-container-android {
+                    display: flex;
+                    flex-direction: column;
+                    justify-content: space-around;
+
+                    /* ➡️ LARGURA — reduza de 40 % para 30 % (ou o valor que preferir) */
+                    width: 80%;
+                    flex: 0 0 80%;   /* evita que cresça/encolha no flexbox */
+
+                    /* ➡️ PADDING — menos “folga” interna */
+                    padding: 2px 4px;
+
+                    /* ➡️ ALTURA — menor */
+                    max-height: 40px;
+                    min-height: 40px;
+
+                    /* ➡️ MARGEM — cartão mais juntinho dos outros */
+                    margin: 3px;
+
+                    border: 0.5px dotted black; /* se quiser manter a borda */
+                    border-radius: 4px;
+                    font-size: 0.50em;          /* fonte menor (opcional) */
                 }
 
                 .finish-parcela{
@@ -515,6 +553,14 @@ export const createApplicationPdfMap = async (data, farm, plotMap) => {
 
                 .header-produto4 {
                     border-bottom: 1px solid #0000
+                }
+                .detail-variedade-area-android,
+                .detail-variedade-dap-android,
+                .detail-variedade-status-android {
+                    font-size: 4px !important;          
+                }    
+                .detail-variedade-dap.font-mini p {
+                    font-size: 1px !important;
                 }
             </style>
         </head>
