@@ -123,6 +123,14 @@ export const createApplicationPdfMap = async (data, farm, plotMap) => {
         const totalRealizado = app?.areaSolicitada - app?.saldoAreaAplicar
         const imgTag = `<img src="data:image/svg+xml;base64,${base64Image}" style="width:90%;max-height:100vh"/>`;
         return `
+        <div class="resume-header-container">
+            <div>
+                <span><b>${farm.replace('Fazenda ', 'Projeto ')}</b></span>
+            </div>
+            <div>
+                <span><b>${app?.code.replace('AP', "AP ")}</b></span>
+            </div>
+        </div>
         <div class="ap-container bordered">
             <div class="resumo-container bordered">
                 <div class="resumo-container-app-number">
@@ -144,12 +152,7 @@ export const createApplicationPdfMap = async (data, farm, plotMap) => {
                     <div class="parcelas-container">
                         ${appsCards}
                     </div>
-                    <div class="obs-container">
-                        <span>Observações</span>
-                    </div>
-                </div>
-                <div class="bordered-left produtos-conatiner">
-                    <div class="prods-container-containing-map">
+                    <div class="prods-container-containing-map-new-order">
                         <div class="header-produto4 grid-produtos" style="border-bottom: 1px solid black;">
                             <b style="justify-self: start">Dose</b>
                             <b>Tipo</b>
@@ -157,8 +160,15 @@ export const createApplicationPdfMap = async (data, farm, plotMap) => {
                             <b style="justify-self: end;">Solicitado</b>
                         </div>
                         ${prodsCards}
+                    </div>
+                </div>
+                <div class="bordered-left produtos-conatiner">
+                    <div class="prods-container-containing-map">
                         <div style="width:95%; height:100%; margin-top:10px;">
-                            ${imgTag}
+                        ${imgTag}
+                        </div>
+                        <div class="obs-container">
+                            <span>Observações</span>
                         </div>
                     </div>
                 </div>
@@ -210,38 +220,58 @@ export const createApplicationPdfMap = async (data, farm, plotMap) => {
                     border: 0.5px solid black;
                 }
 
-                .resumo-container {
-                    width: 100%;
+                .resume-header-container {
                     display: flex;
                     flex-direction: row;
-                    justify-content: space-between;
+                    gap: 20px;
+                    align-items: flex-end;
+                    justify-content: flex-end;
+                    width: 100%;
+                }
+ 
+                .resumo-container {
+                    width: 100%;
+                    display: grid;
+                    grid-template-columns: 40% 30% 30%;
+                    gap: 10px; /* opcional: espaço entre colunas */
                     padding: 2px 0px;
-                    background-color: rgba(107,107,107,0.2);
+                    background-color: rgba(107, 107, 107, 0.2);
                     border: 0.5px solid black;
                 }
 
+
                 .resumo-container-app-area {
-                    align-self: center;
-                    gap: 30px;
+                    align-items: center;
+                    gap: 20px;
                     display: flex;
-                    /* margin-left: auto; */
-                    padding-right: 10px;
+                    padding-right: 4px;
                 }
                 
                 .resumo-container-app-date {
-                    align-self: center;
-                    gap: 30px;
+                    align-items: center;
+                    gap: 10px;
                     display: flex;
                     /* margin-left: auto; */
-                    padding-right: 30px;
+                    padding-left: 0px;
                 }
 
                 .resumo-container-app-number {
                     display: flex;
-                    justify-content: center; 
                     align-items: center;    
                     margin-left: 5px;
                     gap: 30px;
+                }
+
+                .resumo-container-app-number {
+                    text-align: left;
+                }
+
+                .resumo-container-app-date {
+                    text-align: center; /* opcional */
+                }
+
+                .resumo-container-app-area {
+                    text-align: right;
                 }
                 
                 .ap-container {
@@ -249,7 +279,7 @@ export const createApplicationPdfMap = async (data, farm, plotMap) => {
                     justify-content: space-between;
                     flex-direction: column;
                     width: 100%;
-                    margin: 5px 0 0;
+                    margin: 0px;
                     page-break-after: always;   /* 👈 quebra DEPOIS – deixa o 1º na 1ª página */
                     break-after: page;          /* fallback moderno */
                     box-decoration-break: clone;
@@ -283,13 +313,13 @@ export const createApplicationPdfMap = async (data, farm, plotMap) => {
                 .obs-container{
                     height: 90px;
                     border: 1px dotted black;
-                    border-radius: 4px;
-                    width: 92%;
-                    margin: 0px 0px 10px 5px;
+                    border-radius: 2px;
+                    width: 94%;
+                    margin: 10px 15px 0px 5px;
                 }
 
                 .obs-container {
-                    padding: 2px 5px 
+                    padding: 0px 5px 
                 }
 
                 .produtos-conatiner {
@@ -407,7 +437,7 @@ export const createApplicationPdfMap = async (data, farm, plotMap) => {
                 .grid-produtos {
                     display: grid;
                     grid-template-columns: 20%  30% 30% 20%;
-                    width: 80%;
+                    width: 96%;
                     text-align: center;
                 }
 
@@ -424,10 +454,10 @@ export const createApplicationPdfMap = async (data, farm, plotMap) => {
                     margin-bottom: 0px
                     margin-left: 30px;
                     display: flex;
+                    justify-content: flex-center;
+                    align-items: center;
                     flex-direction: column;
-                    gap: 10px;
                     width: 100%;
-                    height: 60px;
                 }
 
                 .header-title {
@@ -436,7 +466,8 @@ export const createApplicationPdfMap = async (data, farm, plotMap) => {
                     text-align: center;
                 }
                 .header-area {
-                    font-size: 1.2em
+                    font-size: 1.2em;
+                    margin-bottom: -20px;
                 }
 
                 .first-prod-here {
@@ -450,6 +481,14 @@ export const createApplicationPdfMap = async (data, farm, plotMap) => {
                     align-items: center;
                     height: 100%;
                     flex-grow: 1;
+                    padding: 5px;
+                }
+                
+                .prods-container-containing-map-new-order {
+                    display: flex;
+                    flex-direction: column;
+                    justify-content: center;
+                    align-items: center;
                     padding: 5px;
                 }
 
@@ -482,17 +521,14 @@ export const createApplicationPdfMap = async (data, farm, plotMap) => {
 
         <body>
             <div class="main-container">
-                <div>
-
                     <div class="header-container">
                         <div class="header-title">
                             ${farm.replace('Fazenda ', '')}
                         </div>
-                        <span class="header-area">
+                        <div>
                             <b>Área Total:</b> ${formatNumber(totalAplicar)} há
-                        </span>
+                        </div>
                     </div>
-                </div>
                 ${apCotainer}
             </div>
         </body>
