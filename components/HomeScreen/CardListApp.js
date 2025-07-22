@@ -120,7 +120,6 @@ const CardListApp = (props) => {
 	const {
 		data: { aplicacao, programa, app }
 	} = props;
-	console.log('data aqui:::', data)
 
 	const culturaIcon = app[0]['cultura']
 
@@ -277,18 +276,17 @@ const CardListApp = (props) => {
 					{app &&
 						app.length > 0 &&
 						app.sort((a, b) =>
-							filterByDate ? a.dataPrevAp.localeCompare(b.dataPrevAp) :
+							!filterByDate ? a.dataPrevAp.localeCompare(b.dataPrevAp) :
 								a.parcela.localeCompare(b.parcela)
 						).map((data, i) => {
-							console.log('data Here: ', data.cultura)
 							return (
 								// <View style={[styles.rowTable, {backgroundColor: i % 2 === 0 ? Colors.secondary[100] : Colors.primary[200]}]} key={i}>
 								<View style={[styles.rowTable]} key={i}>
-									<Text style={[styles.textData, { width: 30 }]}>{data.parcela}</Text>
+									<Text style={[styles.textData, { width: 30, textAlign: 'left', paddingLeft: 5, fontWeight: 'bold', color: data.parcelaDuplicada ? 'rgba(204, 174, 0, 0.9)' : '' }]}>{data.parcela}</Text>
 									<Text style={[styles.textData, { width: 60 }]}>{formatData(data.dataPlantio)}</Text>
 									<Text style={[styles.textData, { width: 20 }]}>{data.dap}</Text>
 									<Text style={[styles.textData, { width: 80 }]}>{data.variedade}</Text>
-									<Text style={[styles.textData, { width: 34 }]} numberOfLines={1}>
+									<Text style={[styles.textData, { width: 34, fontWeight: 'bold' }]} numberOfLines={1}>
 										{data.area.toLocaleString("pt-br", {
 											minimumFractionDigits: 2,
 											maximumFractionDigits: 2
@@ -467,7 +465,7 @@ const styles = StyleSheet.create({
 		borderRadius: 4,
 		paddingHorizontal: 6,
 		paddingVertical: 10,
-		width: '90%',
+		width: '95%',
 		elevation: 2, // For Android
 	},
 	headerStlTitle: {
