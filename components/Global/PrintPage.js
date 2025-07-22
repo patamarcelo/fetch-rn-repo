@@ -62,8 +62,8 @@ const formatDoseNumber = number => number?.toLocaleString("pt-br", {
     const parcelasDiv = item.app.sort((a,b) => a.dataPrevAp.localeCompare(b.dataPrevAp)).map((parcela) =>{
       const isDuplicate = parcelaCountGlobal[parcela.parcela] > 1;
       const rowStyle = isDuplicate
-        ? 'style="color: #ffff00; font-weight: bold;"'
-        : 'style="color: #000000; font-weight: bold;"';
+        ? 'style="color: #ffff00; font-weight: bold;text-align: left;"'
+        : 'style="color: #000000; font-weight: bold;text-align: left;"';
         
       const { base64: iconBase64, alt } =
         iconDict.find(i => i.cultura === parcela.cultura) ?? iconDict[iconDict.length - 1];
@@ -89,7 +89,7 @@ const formatDoseNumber = number => number?.toLocaleString("pt-br", {
       <div class="main-container-produtos">
           <b>${item.programa}</b>
           <span>${item.aplicacao}</span>
-          <span style="margin-bottom: 20px">Area total: ${formatNumber(totalArea)}</span>
+          <span style="margin-bottom: 20px">Área total: ${formatNumber(totalArea)}</span>
           ${prods}
       </div>
       <div class="main-container-parcelas">
@@ -214,8 +214,8 @@ const formatDoseNumber = number => number?.toLocaleString("pt-br", {
           justify-content: space-between;
           align-items: center;
           text-align: center;
-          padding: 20px 40px;
-          margin-top: 10px;
+          padding: 0px 15px;
+          margin-top: 5px;
           font-size: 8px;
         }
           </style>
@@ -223,12 +223,12 @@ const formatDoseNumber = number => number?.toLocaleString("pt-br", {
         <body>
         <div class="main-container-header">
           <div class="container-header">
-          <div>Até: ${filterEndDate ? filterEndDate.split('-').reverse().join('/') : endFinalDateHere.split('-').reverse().join('/')}</div>
+          <div style="font-weight: bold;">Até: ${filterEndDate ? filterEndDate.split('-').reverse().join('/') : endFinalDateHere.split('-').reverse().join('/')}</div>
           <div style="font-size: 15px"><b>${farmName.replace('Projeto ', '')}</b></div>
-          <div>Área Total: ${formatNumber(areaTotalGeral)}</div>
+          <div style="font-weight: bold;">Área Total: ${formatNumber(areaTotalGeral)}</div>
           </div>
         </div>
-        <div style="padding: 20px 10px;">
+        <div style="padding: 0px 10px;">
           ${prodsList}
         </div>
         </body>

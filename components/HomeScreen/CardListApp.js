@@ -120,7 +120,7 @@ const CardListApp = (props) => {
 	const {
 		data: { aplicacao, programa, app }
 	} = props;
-
+	console.log('data aqui:::', data)
 
 	const culturaIcon = app[0]['cultura']
 
