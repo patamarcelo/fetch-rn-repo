@@ -63,7 +63,7 @@ const formatDoseNumber = number => number?.toLocaleString("pt-br", {
       const isDuplicate = parcelaCountGlobal[parcela.parcela] > 1;
       const rowStyle = isDuplicate
         ? 'style="color: #ffff00; font-weight: bold;"'
-        : '';
+        : 'style="color: #000000; font-weight: bold;"';
         
       const { base64: iconBase64, alt } =
         iconDict.find(i => i.cultura === parcela.cultura) ?? iconDict[iconDict.length - 1];
