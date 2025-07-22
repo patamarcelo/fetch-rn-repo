@@ -29,6 +29,15 @@ const formatDoseNumber = number => number?.toLocaleString("pt-br", {
     maximumFractionDigits: 3
 });
   let areaTotalGeral = 0
+
+  const parcelaCountGlobal = {};
+
+  data?.forEach(item => {
+    item.app.forEach(parcela => {
+      parcelaCountGlobal[parcela.parcela] = (parcelaCountGlobal[parcela.parcela] || 0) + 1;
+    });
+  });
+
   const prodsList = data?.map((item, index) => {
     const totalArea = item.app.reduce((totalArea, item) => totalArea += item.area, 0)
     areaTotalGeral += totalArea
@@ -47,21 +56,29 @@ const formatDoseNumber = number => number?.toLocaleString("pt-br", {
       </div>
       `
     )).join('');
+
+    
+
     const parcelasDiv = item.app.sort((a,b) => a.dataPrevAp.localeCompare(b.dataPrevAp)).map((parcela) =>{
+      const isDuplicate = parcelaCountGlobal[parcela.parcela] > 1;
+      const rowStyle = isDuplicate
+        ? 'style="color: #ffff00; font-weight: bold;"'
+        : '';
+        
       const { base64: iconBase64, alt } =
         iconDict.find(i => i.cultura === parcela.cultura) ?? iconDict[iconDict.length - 1];
         const iconTag = `<img src="${iconBase64}" alt="${alt}"
                         style="width:16px;height:16px;margin-right:2px;vertical-align:middle" />`;
       return `
       <tr>
-        <td>${iconTag} ${parcela.parcela}</td>
+        <td ${rowStyle}>${iconTag} ${parcela.parcela}</td>
         <td>${parcela.dataPlantio.split('-').reverse().join('/')}</td>
         <td>${parcela.dap}</td>
         <td>${parcela.cultura}</td>
         <td>${parcela.variedade}</td>
         <td>${parcela.dataPrevAp.split('-').reverse().join('/')}</td>
         <td>${parcela.dapAp}</td>
-        <td>${formatNumber(parcela.area)}</td>
+        <td style="font-weight: bold;">${formatNumber(parcela.area)}</td>
       </tr>
       `
   }).join('');
@@ -86,7 +103,7 @@ const formatDoseNumber = number => number?.toLocaleString("pt-br", {
                       <th>Variedade</th>
                       <th>Prev.</th>
                       <th>DapAp</th>
-                      <th>Area</th>
+                      <th>Área</th>
                   </tr>
               </thead>
               <tbody>
@@ -221,7 +238,7 @@ const formatDoseNumber = number => number?.toLocaleString("pt-br", {
     try {
       // Create a timestamp and formatted filename
       const formattedDate = new Date().toLocaleDateString('en-GB').replace(/\//g, '-'); // Optional: DD-MM-YYYY format
-      const filename = `${farmName.replace('Projeto ', '')}_cronograma_${formattedDate}_app.pdf`;
+      const filename = `${farmName}.pdf`;
       const newUri = `${FileSystem.documentDirectory}${filename}`;
 
       // Create a PDF from HTML content

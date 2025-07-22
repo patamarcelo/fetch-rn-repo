@@ -16,7 +16,6 @@ const endFinalDateHere = finalDate.toISOString().split("T")[0]
 
 
 export default formatDataProgram = (data, filterFinalDate) => {
-    console.log('dataHere: ', data)
     let finalArray = []
     data.forEach((farmData) => {
         const area = farmData.dados.area_colheita;
