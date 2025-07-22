@@ -68,7 +68,7 @@ const formatDoseNumber = number => number?.toLocaleString("pt-br", {
       const { base64: iconBase64, alt } =
         iconDict.find(i => i.cultura === parcela.cultura) ?? iconDict[iconDict.length - 1];
         const iconTag = `<img src="${iconBase64}" alt="${alt}"
-                        style="width:16px;height:16px;margin-right:2px;vertical-align:middle" />`;
+                        style="width:12px;height:12px;margin-right:2px;vertical-align:middle" />`;
       return `
       <tr>
         <td ${rowStyle}>${iconTag} ${parcela.parcela}</td>
