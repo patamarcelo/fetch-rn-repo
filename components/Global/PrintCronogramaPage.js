@@ -41,8 +41,8 @@ export const createApplicationPdf = async (data, farm) => {
     }
 
 
-    const totalAplicar = data.filter((op) => !op.operation.toLowerCase().includes('colheita')).reduce((acc, curr) => acc += curr.saldoAreaAplicar, 0)
-    const apCotainer = data.filter((op) => !op.operation.toLowerCase().includes('colheita')).map((app) => {
+    const totalAplicar = data.filter((op) => !op.operation.toLowerCase().includes('Colheita de Grãos')).reduce((acc, curr) => acc += curr.saldoAreaAplicar, 0)
+    const apCotainer = data.filter((op) => !op.operation.toLowerCase().includes('Colheita de Grãos')).map((app) => {
 
         const culturaAtual = app.parcelas?.[0]?.cultura ?? 'unknown';
         const { base64: iconBase64, alt } = iconDict.find(i => i.cultura === culturaAtual) ?? iconDict[iconDict.length - 1];

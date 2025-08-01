@@ -12,7 +12,9 @@ import { Platform } from "react-native";
 console.log('typeof [].at →', typeof [].at);
 export const createApplicationPdfMap = async (data, farm, plotMap) => {
 
-
+    console.log('data: ', data)
+    console.log('farm: ', farm)
+    console.log('farm: ', plotMap)
     const dataFromJson = plotMap.data;               // já é objeto JS
 
 
@@ -51,8 +53,8 @@ export const createApplicationPdfMap = async (data, farm, plotMap) => {
 
 
 
-    const totalAplicar = data.filter((op) => !op.operation.toLowerCase().includes('colheita')).reduce((acc, curr) => acc += curr.saldoAreaAplicar, 0)
-    const apCotainer = data.filter((op) => !op.operation.toLowerCase().includes('colheita')).map((app) => {
+    const totalAplicar = data.filter((op) => !op.operation.toLowerCase().includes('Colheita de Grãos')).reduce((acc, curr) => acc += curr.saldoAreaAplicar, 0)
+    const apCotainer = data.filter((op) => !op.operation.toLowerCase().includes('Colheita de Grãos')).map((app) => {
 
         const talhoesParaPintar = app.parcelas.map((parcela) => parcela.parcela)
         const cultura = app.parcelas?.[0]?.cultura ?? 'unknown';

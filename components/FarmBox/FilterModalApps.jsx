@@ -144,6 +144,7 @@ const FilterModalApps = (props) => {
         const dataFiltered = data.filter((farmName) => farmName.farmName === farm).filter((aps) => selectedApps.includes(aps.idAp))
         try {
             // Gera o PDF
+            console.log("gerando mapa")
             await createApplicationPdfMap(dataFiltered, farm, plotMap);
         } catch (err) {
             console.log('Erro ao criar os mapas', err);
