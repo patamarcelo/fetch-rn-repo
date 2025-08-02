@@ -123,7 +123,7 @@ const CardListApp = (props) => {
 
 	const culturaIcon = app[0]['cultura']
 
-	const { data, filterByDate } = props
+	const { data, filterByDate, index } = props
 
 	const dapAp = data.dap
 
@@ -267,12 +267,21 @@ const CardListApp = (props) => {
 						<Text style={styles.textApp}>{aplicacao}</Text>
 						<View style={styles.shadowContainer}>
 							<Image source={getCultura(culturaIcon)}
-								style={{ width: 20, height: 20,  resizeMode: 'contain' }}
+								style={{ width: 20, height: 20, resizeMode: 'contain' }}
 							/>
 						</View>
 					</View>
 				</View>
 				<View style={styles.dataContainer}>
+					<View style={[styles.rowTable, { paddingVertical: 4, borderBottomWidth: 1, borderBottomColor: '#ccc' }]}>
+						<Text style={[styles.textData, { width: 50, fontWeight: 'bold', textAlign: 'left', paddingLeft: 5 }]}>Parcela</Text>
+						<Text style={[styles.textData, { width: 50, fontWeight: 'bold' }]}>Plantio</Text>
+						<Text style={[styles.textData, { width: 30, fontWeight: 'bold' }]}>DAP</Text>
+						<Text style={[styles.textData, { width: 90, fontWeight: 'bold' }]}>Variedade</Text>
+						<Text style={[styles.textData, { width: 45, fontWeight: 'bold' }]}>Área</Text>
+						<Text style={[styles.textData, { width: 50, fontWeight: 'bold' }]}>Data APP</Text>
+					</View>
+
 					{app &&
 						app.length > 0 &&
 						app.sort((a, b) =>
@@ -282,17 +291,17 @@ const CardListApp = (props) => {
 							return (
 								// <View style={[styles.rowTable, {backgroundColor: i % 2 === 0 ? Colors.secondary[100] : Colors.primary[200]}]} key={i}>
 								<View style={[styles.rowTable]} key={i}>
-									<Text style={[styles.textData, { width: 30, textAlign: 'left', paddingLeft: 5, fontWeight: 'bold', color: data.parcelaDuplicada ? 'rgba(204, 174, 0, 0.9)' : '' }]}>{data.parcela}</Text>
-									<Text style={[styles.textData, { width: 60 }]}>{formatData(data.dataPlantio)}</Text>
-									<Text style={[styles.textData, { width: 20 }]}>{data.dap}</Text>
-									<Text style={[styles.textData, { width: 80 }]}>{data.variedade}</Text>
-									<Text style={[styles.textData, { width: 34, fontWeight: 'bold' }]} numberOfLines={1}>
+									<Text style={[styles.textData, { width: 50, textAlign: 'left', paddingLeft: 5, fontWeight: 'bold', color: data.parcelaDuplicada ? 'rgba(204, 174, 0, 0.9)' : '' }]}>{data.parcela}</Text>
+									<Text style={[styles.textData, { width: 50 }]}>{formatData(data.dataPlantio)}</Text>
+									<Text style={[styles.textData, { width: 30 }]}>{data.dap}</Text>
+									<Text style={[styles.textData, { width: 90 }]}>{data.variedade}</Text>
+									<Text style={[styles.textData, { width: 45, fontWeight: 'bold' }]} numberOfLines={1}>
 										{data.area.toLocaleString("pt-br", {
 											minimumFractionDigits: 2,
 											maximumFractionDigits: 2
 										})}
 									</Text>
-									<Text style={[styles.textData, { width: 60 }]}>
+									<Text style={[styles.textData, { width: 50 }]}>
 										{formatData(data.dataPrevAp)}
 									</Text>
 								</View>
@@ -319,11 +328,28 @@ const CardListApp = (props) => {
 						)
 					})
 				}
-				<View>
+				<View style={{ position: 'relative' }}>
+					{/* Bottom-left index number */}
+					<View style={{
+						position: 'absolute',
+						bottom: 0,
+						left: 8,
+						backgroundColor: 'rgba(0,0,0,0.45)',
+						borderRadius: 4,
+						paddingHorizontal: 6,
+						paddingVertical: 2
+					}}>
+						<Text style={{ color: 'white', fontWeight: 'bold', fontSize: 12 }}>
+							{index}
+						</Text>
+					</View>
+
+					{/* Main content */}
 					<Pressable
 						style={({ pressed }) => [
 							styles.mapContainer,
-							pressed && styles.pressed]}
+							pressed && styles.pressed
+						]}
 						onPress={handleMapApi}
 					>
 						<FontAwesome5 name="map-marked-alt" size={24} color="black" />
@@ -371,9 +397,9 @@ const CardListApp = (props) => {
 						<Text style={styles.textApp}>{aplicacao}</Text>
 						<View style={styles.shadowContainer}>
 							<Image source={getCultura(culturaIcon)}
-								style={{ width: 20, height: 20,  resizeMode: 'contain' }}
+								style={{ width: 20, height: 20, resizeMode: 'contain' }}
 							/>
-							</View>
+						</View>
 					</View>
 				</SafeAreaView>
 				<ImageViewer
@@ -395,12 +421,12 @@ const CardListApp = (props) => {
 };
 const styles = StyleSheet.create({
 	shadowContainer: {
-        shadowColor: "#000",  // Shadow color
-        shadowOffset: { width: 3, height: 5 },  // Offset for drop shadow effect
-        shadowOpacity: 0.4,  // Opacity of shadow
-        shadowRadius: 4,  // Spread of shadow
-        elevation: 6,  // Required for Android
-    },
+		shadowColor: "#000",  // Shadow color
+		shadowOffset: { width: 3, height: 5 },  // Offset for drop shadow effect
+		shadowOpacity: 0.4,  // Opacity of shadow
+		shadowRadius: 4,  // Spread of shadow
+		elevation: 6,  // Required for Android
+	},
 	buttonContainer: {
 		position: 'absolute',
 		bottom: 30,
@@ -515,16 +541,17 @@ const styles = StyleSheet.create({
 	},
 	mainConatiner: {
 		backgroundColor: "#fff",
-		borderRadius: 8,
+		// borderRadius: 8,
 		// padding: 20,
 		marginBottom: 5,
 		elevation: 2, // For Android
 		shadowColor: "#000", // For iOS
-		shadowOpacity: 0.1, // For iOS
+		shadowOpacity: 0.4, // For iOS
 		shadowRadius: 5, // For iOS
 		shadowOffset: { width: 0, height: 2 }, // For iOS
-		marginHorizontal: 5,
-		paddingVertical: 20,
+		// marginHorizontal: 5,
+		paddingTop: 20,
+		paddingBottom: 10,
 
 		// 	flex: 1,
 		// flexDirection: "column",

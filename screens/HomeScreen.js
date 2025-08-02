@@ -37,14 +37,15 @@ import CardListApp from "../components/HomeScreen/CardListApp";
 import DateTimePicker from '@react-native-community/datetimepicker';
 import createAndPrintPDF from "../components/Global/PrintPage";
 import DateTimePickerModal from "react-native-modal-datetime-picker";
+import { formatNumberBr } from "../utils/format-helper";
 
 
 import * as Haptics from 'expo-haptics';
 
 
 
-const FarmList = (itemData, filterByDate) => {
-	return <CardListApp data={itemData.item} filterByDate={filterByDate} />;
+const FarmList = ({ item, filterByDate, index }) => {
+	return <CardListApp data={item} filterByDate={filterByDate} index={index} />;
 };
 
 const HomeScreen = ({ navigation }) => {
@@ -64,6 +65,7 @@ const HomeScreen = ({ navigation }) => {
 	const [open, setOpen] = useState(false)
 	const [mode, setMode] = useState('date');
 	const [filterEndDate, setfilterEndDate] = useState();
+	const [totalCalcArea, setTotalCalcArea] = useState(0);
 
 	const [filterByDate, setFilterByDate] = useState(false);
 
@@ -200,7 +202,19 @@ const HomeScreen = ({ navigation }) => {
 
 	useEffect(() => {
 		navigation.setOptions({
-			title: farmTitle.replace('Projeto ', ''),
+			headerTitle: () => (
+				<View style={{ alignItems: 'center' }}>
+					<Text style={{ fontSize: 16, fontWeight: 'bold', color: 'whitesmoke' }}>
+						{farmTitle.replace('Projeto ', '').replace('Benção ', 'B. ').replace('Campo ', 'C.')}
+					</Text>
+					{
+						selFarm &&
+						<Text style={{ fontSize: 9, color: Colors.secondary[200] }}>{/* Aqui o número abaixo */}
+							{formatNumberBr(totalCalcArea)} Há
+						</Text>
+					}
+				</View>
+			),
 			tabBarLabel: "Programações",
 			headerLeft: ({ tintColor }) => (
 				<View style={{ flexDirection: "row" }}>
@@ -280,7 +294,16 @@ const HomeScreen = ({ navigation }) => {
 				(data) => data.fazenda === selFarm
 			)
 			const result = formatDataServer(newArr, filterEndDate)
+			console.log('result::::', result[0])
 			setListToCardApp(result)
+			let totalArea = 0
+			result.forEach(element => {
+				element.app.forEach((appDetail) => {
+					totalArea += appDetail.area
+				})
+			});
+			setTotalCalcArea(totalArea)
+
 		}
 	}, [selFarm, dataPlantioServer, filterEndDate, filterByDate]);
 
@@ -417,12 +440,16 @@ const HomeScreen = ({ navigation }) => {
 						<View
 							style={[
 								styles.dataContainer,
-								{ marginTop: 3, paddingBottom: tabBarHeight + 5 }
+								{ marginTop: 3}
 							]}
 						>
 							{/* <PrintPage /> */}
 							{listToCardApp.length > 0 ? (
 								<FlatList
+									contentContainerStyle={{
+										paddingBottom: tabBarHeight + 20,
+										paddingTop: 5
+									}}
 									// scrollEnabled={false}
 									ref={ref}
 									data={listToCardApp}
@@ -430,7 +457,15 @@ const HomeScreen = ({ navigation }) => {
 									// 	(data) => data.fazenda === selFarm
 									// )}
 									keyExtractor={(item, i) => i}
-									renderItem={(item) => FarmList(item, filterByDate)}
+									renderItem={({ item, index }) => {
+										const reverseIndex = listToCardApp.length - index; // e.g., 5 - 0 = 5
+
+										return (
+											<View style={{ marginTop: reverseIndex === listToCardApp.length ? 5 : 0 }}>
+												{FarmList({ item, filterByDate, index: reverseIndex })}
+											</View>
+										);
+									}}
 									ItemSeparatorComponent={() => (
 										<View style={{ height: 12 }} />
 									)}
@@ -463,7 +498,7 @@ const styles = StyleSheet.create({
 		alignItems: "center"
 	},
 	mainContainer: {
-		backgroundColor: "whitesmoke",
+		backgroundColor: "transparent",
 		flex: 1,
 		justifyContent: "space-around",
 		alignItems: "center"
@@ -474,7 +509,7 @@ const styles = StyleSheet.create({
 	},
 	dataContainer: {
 		flex: 1,
-		backgroundColor: "whitesmoke",
+		backgroundColor: "transparent",
 		width: "100%",
 		alignItems: "center"
 	}
