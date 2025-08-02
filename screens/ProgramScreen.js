@@ -11,9 +11,12 @@ import {
 	Pressable,
 	ScrollView,
 	Alert,
-	SafeAreaView
+	// SafeAreaView
 } from "react-native";
 import Button from "../components/ui/Button";
+import { SafeAreaView } from "react-native-safe-area-context"; // e não da RN padrão
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
 
 import { EXPO_PUBLIC_REACT_APP_DJANGO_TOKEN } from "@env";
 import { Colors } from "../constants/styles";
@@ -44,7 +47,9 @@ const ProgramScreen = ({ navigation }) => {
 	const sheetRef = useRef(null);
 	const [isLoading, setIsLoading] = useState();
 	const ref = useRef(null);
-	const tabBarHeight = useBottomTabBarHeight(); 
+	const tabBarHeight = useBottomTabBarHeight();
+	const insets = useSafeAreaInsets();
+
 
 
 	const dispatch = useDispatch();
@@ -232,7 +237,10 @@ const ProgramScreen = ({ navigation }) => {
 				</View>
 			)}
 			{programSelected !== null && (
-				<SafeAreaView style={{flex: 1, marginBottom: tabBarHeight}}>
+				<SafeAreaView
+					style={{ flex: 1, marginTop: -10 }}
+					edges={['left', 'right']} // 👈 IGNORA o 'bottom'
+				>
 					<ProgramList
 						innerRef={ref}
 						refresh={handlerRefresh}

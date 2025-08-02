@@ -59,7 +59,7 @@ const FarmBoxScreen = (props) => {
     // const navigation = useNavigation();
     const { navigation } = props
     const route = useRoute();
-    
+
 
 
 
@@ -134,11 +134,11 @@ const FarmBoxScreen = (props) => {
         setShowFarm(null)
     }
 
-    
+
     useLayoutEffect(() => {
         const unsubscribeFocus = navigation.addListener("focus", () => {
             const currentStack = navigation.getState();
-            const stackName =  currentStack.routes[0]['name']
+            const stackName = currentStack.routes[0]['name']
 
             stackNavigator.setOptions({
                 title: stackName === 'FarmBoxStack' ? 'FarmBox' : selectedFarm?.replace('Fazenda ', ''),
@@ -295,7 +295,7 @@ const FarmBoxScreen = (props) => {
         // const data = farmData.filter((farmName) => farmName.farmName === farms)
         setSelectedFarm(farms)
         // navigation.navigate('FarmBoxFarms', { data, farm: farms, showSearch });
-        navigation.navigate('FarmBoxFarms', {farm: farms, showSearch });
+        navigation.navigate('FarmBoxFarms', { farm: farms, showSearch });
         if (showFarm === farms) {
             setShowFarm(null)
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy)
@@ -350,16 +350,20 @@ const FarmBoxScreen = (props) => {
     return (
         <View style={styles.mainContainer}>
             {showSearch && (
-                <SearchBar 
+                <SearchBar
                     placeholder="Selecione um produto ou operação..."
                     value={searchQuery}
                     onChangeText={(e) => dispatch(setFarmboxSearchQuery(e))}
                 />
             )}
-            <ScrollView 
-            contentInsetAdjustmentBehavior='automatic'
-            ref={ref}
-            style={[styles.mainContainer, { marginBottom: tabBarHeight }]}
+            <ScrollView
+                contentInsetAdjustmentBehavior='automatic'
+                ref={ref}
+                contentContainerStyle={{
+                    paddingBottom: tabBarHeight,
+                    // paddingTop: 10
+                }}
+                // style={[styles.mainContainer]}
                 horizontal={false}
                 refreshControl={
                     <RefreshControl

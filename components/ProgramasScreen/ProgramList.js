@@ -66,7 +66,7 @@ const ProgramList = ({ refresh, isLoading, innerRef, setPrintableData }) => {
 		setPrintableData(prev => objToAdd);
 	}, [programa, estagios]);
 
-	
+
 	// Function to filter applications based on the search query
 	function removeAccents(str) {
 		return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
@@ -89,7 +89,7 @@ const ProgramList = ({ refresh, isLoading, innerRef, setPrintableData }) => {
 	}
 
 	return (
-		<View style={styles.container}>
+		<View style={[styles.container]}>
 
 			{showSearch && (
 				<TextInput
@@ -105,7 +105,11 @@ const ProgramList = ({ refresh, isLoading, innerRef, setPrintableData }) => {
 			{/* Main ScrollView */}
 			<ScrollView
 				ref={innerRef}
-				style={[styles.mainContainer, { marginBottom: 0 }]}
+				style={[styles.mainContainer]}
+				contentContainerStyle={{
+					paddingBottom: tabBarHeight,
+					paddingTop: 10
+				}}
 				refreshControl={
 					<RefreshControl
 						refreshing={isLoading}
@@ -142,7 +146,7 @@ const ProgramList = ({ refresh, isLoading, innerRef, setPrintableData }) => {
 					})}
 			</ScrollView>
 			{/* Floating Action Button */}
-			<View style={styles.fabContainer}>
+			<View style={[styles.fabContainer,{bottom: tabBarHeight + 20}]}>
 				<FAB
 					style={styles.fab}
 					icon={showSearch ? "close" : "magnify"}
@@ -157,7 +161,7 @@ const ProgramList = ({ refresh, isLoading, innerRef, setPrintableData }) => {
 const styles = StyleSheet.create({
 	container: {
 		flex: 1,
-		backgroundColor: "#fff"
+		backgroundColor: "#fff",
 	},
 	mainContainer: {
 		flex: 1,
@@ -182,7 +186,6 @@ const styles = StyleSheet.create({
 	fabContainer: {
 		position: "absolute",
 		right: 20,
-		bottom: 20,
 	},
 	fab: {
 		position: "absolute",
