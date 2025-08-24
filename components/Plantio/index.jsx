@@ -9,6 +9,7 @@ import { useNavigation } from '@react-navigation/native';
 
 import * as Haptics from 'expo-haptics';
 import { Divider } from 'react-native-paper';
+import { useEffect } from 'react';
 
 const iconDict = [
     { cultura: "Feijão", icon: require('../../utils/assets/icons/beans2.png'), alt: "feijao" },
@@ -43,7 +44,7 @@ const formatNumberScs = number => {
     })
 }
 const FarmsPlantioScreen = (props) => {
-    const { data } = props;
+    const { data, newData } = props;
     const navigation = useNavigation()
 
     const handlePress = () => {
@@ -54,14 +55,20 @@ const FarmsPlantioScreen = (props) => {
 
     let totalAreaHere = 0
     let totalParcialHere = 0
-    data.variedades.forEach((item) => {
-        totalAreaHere += item.colheita;
-        totalParcialHere += item.parcial
+    data.culturas.forEach((cultura, i) => {
+        data.variedades?.filter((vari) => vari.cultura === cultura.cultura).forEach((item) => {
+            console.log('vari', item)
+            totalAreaHere += item.colheita;
+            totalParcialHere += item.parcial
+        })
     })
 
+    
+    const newPeso = newData?.length > 0 ? newData?.reduce((acc, curr) => acc += curr?.total_peso_liquido, 0) : 0
+    console.log('newdata', newData)
     const totalPercent = parseInt((totalParcialHere / totalAreaHere) * 100) <= 100 ? parseInt((totalParcialHere / totalAreaHere) * 100) : 100
-    const totalScs = data?.peso_liquido > 0 ? data?.peso_liquido / 60 : 0
-    const totalAv = (totalParcialHere > 0 && data?.peso_liquido > 0) ? totalScs / totalParcialHere : 0
+    const totalScs = newPeso > 0 ? newPeso / 60 : 0
+    const totalAv = (totalParcialHere > 0 && newPeso > 0) ? totalScs / totalParcialHere : 0
 
     return (
         <Pressable
@@ -105,7 +112,7 @@ const FarmsPlantioScreen = (props) => {
                                     const saldo = plantado - colhido
                                     return (
                                         <View key={i}>
-                                        {i > 0 && (
+                                            {i > 0 && (
                                                 <Divider style={{ backgroundColor: 'gray', height: 1, marginVertical: 5, width: '100%' }} />
                                             )}
                                             <View style={styles.containerCulture}>

@@ -85,13 +85,15 @@ const PlantioScreen = () => {
                 });
             });
 
-            
+
             setTotalArea(totalAreaHere)
             setTotalAreaColhida(totalParcialHere)
 
             let totalGeral = 0
             colheitaData.data.forEach((data) => {
-                if (data?.cargas?.length > 0) {
+                const matchCulture = !cultureFilter || cultureFilter.includes(data.variedade__cultura__cultura);
+                const matchVariety = !varietyFilter || varietyFilter.includes(data.variedade__nome_fantasia);
+                if (data?.cargas?.length > 0 && matchCulture && matchVariety) {
                     const newTotal = data?.cargas[0].total_peso_liquido
                     totalGeral += newTotal
                 }
@@ -129,11 +131,20 @@ const PlantioScreen = () => {
 
             let totalGeral = 0;
             colheitaData.data?.forEach(data => {
-                const peso = data?.cargas?.[0]?.total_peso_liquido;
-                if (peso) totalGeral += peso;
+                // console.log('data inside here: ', data )
+                console.log('data inside here: ', data.variedade__cultura__cultura)
+                console.log('data culture filter:: ', cultureFilter)
+                const matchCulture = !cultureFilter || cultureFilter.includes(data.variedade__cultura__cultura);
+                const matchVariety = !varietyFilter || varietyFilter.includes(data.variedade__nome_fantasia);
+                console.log('matchCulture', matchCulture)
+                console.log('matchVariety', matchVariety)
+                if (matchCulture && matchVariety) {
+                    const peso = data?.cargas?.[0]?.total_peso_liquido;
+                    if (peso) totalGeral += peso;
+                }
             });
-
             const totalScs = totalGeral > 0 ? (totalGeral / 60) : 0;
+            console.log('total GEral sacs:  ', totalScs)
             setTotalScsColhidos(totalScs);
 
             const media = totalParcialHere > 0 ? totalScs / totalParcialHere : 0;
@@ -259,8 +270,12 @@ const PlantioScreen = () => {
                             />
                             {
                                 colheitaData?.grouped_data?.map((data, i) => {
+                                    const newArr = colheitaData.data.filter(cargasArr =>
+                                        cargasArr.talhao__fazenda__nome === data.farm
+                                    );
+                                    const onlyCargas = newArr.flatMap(data => data.cargas || []);
                                     return (
-                                        <FarmsPlantioScreen data={data} key={i} />
+                                        <FarmsPlantioScreen data={data} key={i} newData={onlyCargas} />
                                     )
                                 })
                             }
