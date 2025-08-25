@@ -130,17 +130,17 @@ const FarmsPlantioScreen = (props) => {
                                                 <View style={{ flexDirection: 'column', gap: 2, justifyContent: 'center', alignItems: 'center' }}>
                                                     <View style={styles.headerContainer}>
                                                         <Text style={styles.titleCultureArea}>Plantado</Text>
-                                                        <Text style={styles.labelNumber}>{formatNumber(plantado)} Há</Text>
+                                                        <Text style={styles.labelNumber}>{formatNumber(plantado)} ha</Text>
                                                     </View>
 
                                                     <View style={styles.headerContainer}>
                                                         <Text style={styles.titleCultureColheita}>Colheita</Text>
-                                                        <Text style={styles.labelNumber}>{cultura.parcial > 0 ? formatNumber(colhido) + " Há" : '-'}</Text>
+                                                        <Text style={styles.labelNumber}>{cultura.parcial > 0 ? formatNumber(colhido) + " ha" : '-'}</Text>
                                                     </View>
 
                                                     <View style={styles.headerContainer}>
                                                         <Text style={styles.titleCultureSaldo}>Saldo</Text>
-                                                        <Text style={styles.labelNumber}>{saldo > 0 ? formatNumber(saldo) + ' Ha' : '-'}</Text>
+                                                        <Text style={styles.labelNumber}>{saldo > 0 ? formatNumber(saldo) + ' ha' : '-'}</Text>
                                                     </View>
                                                 </View>
                                                 <View style={styles.infoContainer}>
