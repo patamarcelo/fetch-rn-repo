@@ -38,7 +38,6 @@ const ProgressCircleCard = ({
                         width={15}
                         fill={percentage}
                         tintColor="#00e0ff"
-                        onAnimationComplete={() => console.log('onAnimationComplete')}
                         backgroundColor="#3d5875"
                     />
                     <Text style={styles.text}>{`${percentage.toFixed(0)}%`}</Text>

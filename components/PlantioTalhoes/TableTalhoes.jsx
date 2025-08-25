@@ -27,10 +27,9 @@ const formatDate = (dateString) => {
 const formatString = (str) => {
     return str.replace(/(\D+)(\d+)/, '$1-$2');
 }
-4852,67
-4254,55
+4852, 67
+4254, 55
 const TabelaTalhoesScreen = ({ data }) => {
-    console.log('data verde:::: ', data[0])
     const totalVerde = data.reduce((acc, curr) => acc += ((curr.peso_bruto - curr.peso_tara) / 60), 0)
     const totalSeco = data.reduce((acc, curr) => acc += ((curr.peso_liquido) / 60), 0)
     const variacao = ((totalSeco - totalVerde) / totalVerde) * 100;
@@ -40,9 +39,9 @@ const TabelaTalhoesScreen = ({ data }) => {
             <View style={{ marginTop: 10 }}>
                 <Divider style={{ marginBottom: 10 }} />
                 <View style={{ justifyContent: 'space-between', flex: 1, alignItems: 'flex-start', paddingBottom: 5, flexDirection: 'row' }}>
-                    <View style={{flexDirection: 'row', gap: 2, alignItems: 'flex-end'}}>
-                    <Text style={{ fontSize: 12, fontWeight: 'bold'}}>{data?.length}</Text>
-                    <Icon name={'truck'} size={14} color={Colors.succes[500]} />
+                    <View style={{ flexDirection: 'row', gap: 2, alignItems: 'flex-end' }}>
+                        <Text style={{ fontSize: 12, fontWeight: 'bold' }}>{data?.length}</Text>
+                        <Icon name={'truck'} size={14} color={Colors.succes[500]} />
                     </View>
                     <Text style={{ fontSize: 12, fontWeight: 'bold', color: Colors.succes[600] }}>{formatNumberZero(totalVerde)} Scs</Text>
                     <Text style={{ fontSize: 12, fontWeight: 'bold', color: Colors.error[600] }}>{formatNumberZero(totalDescontos / 60)} Scs</Text>
@@ -50,22 +49,25 @@ const TabelaTalhoesScreen = ({ data }) => {
                 <View style={stylesTable.titleWrapper}>
                     <DataTable>
                         <View style={stylesTable.header}>
-                            <View style={[stylesTable.title, { width: 50 }]}>
+                            <View style={[stylesTable.title, { width: 68 }]}>
                                 <Text style={stylesTable.titleText}>Data</Text>
                             </View>
-                            <View style={[stylesTable.title, { width: 60 }]}>
+                            <View style={[stylesTable.title, { width: 42 }]}>
+                                <Text style={stylesTable.titleText}>Ticket</Text>
+                            </View>
+                            <View style={[stylesTable.title, { width: 60, alignItems: 'center' }]}>
                                 <Text style={stylesTable.titleText}>Placa</Text>
                             </View>
-                            <View style={stylesTable.title}>
+                            <View style={[stylesTable.title, { width: 50, alignItems: 'flex-end', paddingRight: 10 }]}>
                                 <Text style={stylesTable.titleText}>Scs</Text>
                             </View>
-                            <View style={stylesTable.title}>
+                            <View style={[stylesTable.title, { width: 50, marginLeft: 10 }]}>
                                 <Text style={stylesTable.titleText}>Umidade</Text>
                             </View>
-                            <View style={stylesTable.title}>
+                            <View style={[stylesTable.title, { flex: 1 }]}>
                                 <Text style={stylesTable.titleText}>Impureza</Text>
                             </View>
-                            <View style={stylesTable.title}>
+                            <View style={[stylesTable.title, {alignItems: 'center' }]}>
                                 <Text style={stylesTable.titleText}>Scs</Text>
                             </View>
                         </View>
@@ -76,22 +78,25 @@ const TabelaTalhoesScreen = ({ data }) => {
                                 exiting={FadeOutUp.duration(20)} // Root-level animation for disappearance
                                 layout={Layout.springify()}    // Layout animation for dynamic resizing
                                 key={index} style={[stylesTable.row, { backgroundColor: index % 2 === 0 && 'whitesmoke' }]}>
-                                <View style={stylesTable.cell}>
+                                <View style={[stylesTable.cell, { width: 70 }]}>
                                     <Text style={stylesTable.cellText}>{formatDate(item.data_colheita)}</Text>
                                 </View>
-                                <View style={stylesTable.cell}>
+                                <View style={[stylesTable.cell, { width: 50 }]}>
+                                    <Text style={stylesTable.cellText}>{item?.ticket ? item?.ticket?.slice(-5) : " - "}</Text>
+                                </View>
+                                <View style={[stylesTable.cell, { width: 60 }]}>
                                     <Text style={stylesTable.cellText}>{item?.placa ? formatString(item?.placa) : " - "}</Text>
                                 </View>
-                                <View style={stylesTable.cell}>
+                                <View style={[stylesTable.cell, { width: 50, alignItems: 'flex-end', paddingRight: 10 }]}>
                                     <Text style={stylesTable.cellText}>{formatNumber(((item.peso_bruto - item.peso_tara) / 60) || 0)}</Text>
                                 </View>
-                                <View style={stylesTable.cell}>
+                                <View style={[stylesTable.cell, { flex: 1, marginLeft: 10 }]}>
                                     <Text style={stylesTable.cellText}>{formatNumber(item.umidade || 0)}</Text>
                                 </View>
-                                <View style={stylesTable.cell}>
+                                <View style={[stylesTable.cell, { flex: 1, alignItems: 'flex-end' }]}>
                                     <Text style={stylesTable.cellText}>{formatNumber(item.impureza || 0)}</Text>
                                 </View>
-                                <View style={stylesTable.cell}>
+                                <View style={[stylesTable.cell, { width: 50, alignItems: 'flex-end' }]}>
                                     <Text style={stylesTable.cellText}>{formatNumber(item.peso_scs_liquido || 0)}</Text>
                                 </View>
                             </Animated.View>
@@ -99,8 +104,8 @@ const TabelaTalhoesScreen = ({ data }) => {
                     </DataTable>
                 </View>
             </View>
-            <View style={{marginBottom: -30, paddingTop: 15, paddingLeft: 10}}>
-                <Text style={{fontSize: 12, fontWeight: 'bold', color: Colors.primary[600]}}>{formatNumber(variacao)} %</Text>
+            <View style={{ marginBottom: -30, paddingTop: 15, paddingLeft: 10 }}>
+                <Text style={{ fontSize: 12, fontWeight: 'bold', color: Colors.primary[600] }}>{formatNumber(variacao)} %</Text>
             </View>
         </>
     );
@@ -141,14 +146,13 @@ const stylesTable = StyleSheet.create({
         borderBottomWidth: 1,
         borderBottomColor: '#ddd',
         flexDirection: 'row',
-        justifyContent: 'space-between',
+        // justifyContent: 'space-between',
         paddingVertical: 8,
         paddingHorizontal: 5
     },
     cell: {
         paddingVertical: 2,
         marginHorizontal: 0,
-        justifyContent: 'space-between', // Align text properly
     },
     cellText: {  // Add this
         fontSize: 10,

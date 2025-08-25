@@ -23,6 +23,7 @@ import { EXPO_PUBLIC_REACT_APP_DJANGO_TOKEN } from "@env";
 import dayjs from 'dayjs';
 import { FAB } from "react-native-paper"; // Floating Action Button
 import * as Haptics from 'expo-haptics';
+import { useMemo } from 'react';
 
 
 
@@ -123,6 +124,16 @@ const PlantioTalhoesDescription = ({ navigation }) => {
         setFilteredNotLoading(!filteredNotLoading)
     }
 
+    const filteredData = useMemo(() => {
+        return data
+            .filter(plantio => plantio.talhao__fazenda__nome === farm)
+            .filter(plantio => filterdByLoad ? plantio.area_parcial > 0 : true)
+            .filter(plantio => filteredNotLoading ? plantio.area_parcial === null : true)
+            .sort((a, b) => filterByDate
+                ? daysUntilFutureDate(a.data_plantio, a.variedade__dias_ciclo)
+                - daysUntilFutureDate(b.data_plantio, b.variedade__dias_ciclo)
+                : 0);
+    }, [data, farm, filterdByLoad, filteredNotLoading, filterByDate]);
     return (
         <>
 
@@ -139,22 +150,21 @@ const PlantioTalhoesDescription = ({ navigation }) => {
                         contentInsetAdjustmentBehavior='automatic'
                         style={{
                             flex: 1,
-                            paddingTop: Platform.OS === 'android' && insets.top + 22
+                            paddingTop: Platform.OS === 'android' && insets.top + 22,
                         }}
+                        edges={['top']} // aplica safe area só no topo, ignora bottom
                     >
                         <FlatList
                             key={farm}
                             contentInsetAdjustmentBehavior='automatic'
                             // keyboardDismissMode='on-drag'
+                            initialNumToRender={5}      // renderiza apenas 5 cards inicialmente
+                            maxToRenderPerBatch={5}     // renderiza 5 por batch
+                            windowSize={7}
+                            removeClippedSubviews={true}
                             scrollEnabled={true}
-                            contentContainerStyle={{ paddingBottom: tabBarHeight+ 50, paddingTop: 10 }}
-                            data={
-                                data
-                                .filter((plantio) => plantio.talhao__fazenda__nome === farm)
-                                .filter((plantio) => filterdByLoad ? plantio.area_parcial > 0 : true)
-                                .filter((plantio) => filteredNotLoading ? plantio.area_parcial === null : true)
-                                .sort((a, b) => filterByDate ? daysUntilFutureDate(a.data_plantio, a.variedade__dias_ciclo) - daysUntilFutureDate(b.data_plantio, b.variedade__dias_ciclo) : 0)
-                            }
+                            contentContainerStyle={{ paddingBottom: tabBarHeight + 50, paddingTop: 10 }}
+                            data={filteredData}
                             keyExtractor={(item, i) => item.id.toString()}
                             renderItem={PlantioTalhoesCardScreen}
                             ItemSeparatorComponent={() => <View style={{ height: 13 }} />}
@@ -173,7 +183,7 @@ const PlantioTalhoesDescription = ({ navigation }) => {
                         <FilterPlantioComponent />
                         <SaveView style={styles.fabContainer}>
                             <FAB
-                                style={[styles.fab, {marginBottom: tabBarHeight}]}
+                                style={[styles.fab, { marginBottom: tabBarHeight }]}
                                 icon={filterByDate ? "calendar" : "sort-alphabetical-variant"}
                                 color="black" // Icon color
                                 onPress={handleFilterPlant}
@@ -181,7 +191,7 @@ const PlantioTalhoesDescription = ({ navigation }) => {
                         </SaveView>
                         <SaveView style={styles.fabContainer2}>
                             <FAB
-                                style={[styles.fab, {marginBottom: tabBarHeight, backgroundColor: filterdByLoad ? 'rgba(153,204,153,0.4)' : 'rgba(200, 200, 200, 0.3)'}]}
+                                style={[styles.fab, { marginBottom: tabBarHeight, backgroundColor: filterdByLoad ? 'rgba(153,204,153,0.4)' : 'rgba(200, 200, 200, 0.3)' }]}
                                 icon={"truck"}
                                 color="black" // Icon color
                                 onPress={handleFilterLoad}
@@ -190,7 +200,7 @@ const PlantioTalhoesDescription = ({ navigation }) => {
                         </SaveView>
                         <SaveView style={styles.fabContainer3}>
                             <FAB
-                                style={[styles.fab, {marginBottom: tabBarHeight, backgroundColor: filteredNotLoading ? 'rgba(255,102,102,0.4)' : 'rgba(200, 200, 200, 0.3)'}]}
+                                style={[styles.fab, { marginBottom: tabBarHeight, backgroundColor: filteredNotLoading ? 'rgba(255,102,102,0.4)' : 'rgba(200, 200, 200, 0.3)' }]}
                                 icon={"truck-remove"}
                                 color="black" // Icon color
                                 onPress={handleFilterNotLoad}

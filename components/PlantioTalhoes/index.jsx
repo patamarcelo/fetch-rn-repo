@@ -281,7 +281,6 @@ const PlantioTalhoesCard = (props) => {
                                 width={5}
                                 fill={percentage}
                                 tintColor={percentage < 99 ? "#00e0ff" : Colors.succes[300]}
-                                onAnimationComplete={() => console.log('onAnimationComplete')}
                                 backgroundColor={"#3d5875"}
                             />
                             <Text style={styles.text}>{`${percentage.toFixed(0)}%`}</Text>

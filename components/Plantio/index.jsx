@@ -33,14 +33,21 @@ const getCultura = (dataCult) => filteredIcon(dataCult)
 
 const formatNumber = number => {
     return number?.toLocaleString("pt-br", {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0
     })
 }
 const formatNumberScs = number => {
     return number?.toLocaleString("pt-br", {
         minimumFractionDigits: 0,
         maximumFractionDigits: 0
+    })
+}
+
+const formatNumberAvg = number => {
+    return number?.toLocaleString("pt-br", {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
     })
 }
 const FarmsPlantioScreen = (props) => {
@@ -57,18 +64,13 @@ const FarmsPlantioScreen = (props) => {
     let totalParcialHere = 0
     data.culturas.forEach((cultura, i) => {
         data.variedades?.filter((vari) => vari.cultura === cultura.cultura).forEach((item) => {
-            console.log('vari', item)
             totalAreaHere += item.colheita;
             totalParcialHere += item.parcial
         })
     })
 
+    const totalPercent = Math.min(100, Math.round((totalParcialHere / totalAreaHere) * 100));
     
-    const newPeso = newData?.length > 0 ? newData?.reduce((acc, curr) => acc += curr?.total_peso_liquido, 0) : 0
-    console.log('newdata', newData)
-    const totalPercent = parseInt((totalParcialHere / totalAreaHere) * 100) <= 100 ? parseInt((totalParcialHere / totalAreaHere) * 100) : 100
-    const totalScs = newPeso > 0 ? newPeso / 60 : 0
-    const totalAv = (totalParcialHere > 0 && newPeso > 0) ? totalScs / totalParcialHere : 0
 
     return (
         <Pressable
@@ -110,6 +112,8 @@ const FarmsPlantioScreen = (props) => {
                                     });
 
                                     const saldo = plantado - colhido
+                                    const totalScs = newData?.length > 0 ? newData?.filter((data) => data.variedade__cultura__cultura === cultura.cultura).reduce((acc, curr) => acc += curr?.total_peso_liquido, 0) : 0
+                                    const totalAvNew = (colhido > 0 && totalScs > 0) ? (totalScs / 60) / colhido : 0
                                     return (
                                         <View key={i}>
                                             {i > 0 && (
@@ -126,17 +130,27 @@ const FarmsPlantioScreen = (props) => {
                                                 <View style={{ flexDirection: 'column', gap: 2, justifyContent: 'center', alignItems: 'center' }}>
                                                     <View style={styles.headerContainer}>
                                                         <Text style={styles.titleCultureArea}>Plantado</Text>
-                                                        <Text style={styles.labelNumber}>{formatNumber(plantado)}</Text>
+                                                        <Text style={styles.labelNumber}>{formatNumber(plantado)} Há</Text>
                                                     </View>
 
                                                     <View style={styles.headerContainer}>
                                                         <Text style={styles.titleCultureColheita}>Colheita</Text>
-                                                        <Text style={styles.labelNumber}>{cultura.parcial > 0 ? formatNumber(colhido) : '-'}</Text>
+                                                        <Text style={styles.labelNumber}>{cultura.parcial > 0 ? formatNumber(colhido) + " Há" : '-'}</Text>
                                                     </View>
 
                                                     <View style={styles.headerContainer}>
                                                         <Text style={styles.titleCultureSaldo}>Saldo</Text>
-                                                        <Text style={styles.labelNumber}>{saldo > 0 ? formatNumber(saldo) : '-'}</Text>
+                                                        <Text style={styles.labelNumber}>{saldo > 0 ? formatNumber(saldo) + ' Ha' : '-'}</Text>
+                                                    </View>
+                                                </View>
+                                                <View style={styles.infoContainer}>
+                                                    <View>
+                                                        <Text style={styles.infoContainerScsTitle}>Scs</Text>
+                                                        <Text style={styles.infoContainerScsNumber}>{totalScs > 0 ? formatNumberScs(totalScs / 60) : ' - '}</Text>
+                                                    </View>
+                                                    <View>
+                                                        <Text style={styles.infoContainerTitle}>Média</Text>
+                                                        <Text style={styles.infoContainerNumber}>{totalAvNew > 0 ? formatNumberAvg(totalAvNew) : ' - '}</Text>
                                                     </View>
                                                 </View>
                                             </View >
@@ -144,16 +158,6 @@ const FarmsPlantioScreen = (props) => {
                                     )
                                 })
                             }
-                        </View>
-                    </View>
-                    <View style={styles.infoContainer}>
-                        <View>
-                            <Text style={styles.infoContainerScsTitle}>Scs</Text>
-                            <Text style={styles.infoContainerScsNumber}>{totalScs > 0 ? formatNumberScs(totalScs) : ' - '}</Text>
-                        </View>
-                        <View>
-                            <Text style={styles.infoContainerTitle}>Média</Text>
-                            <Text style={styles.infoContainerNumber}>{totalAv > 0 ? formatNumber(totalAv) : ' - '}</Text>
                         </View>
                     </View>
                     <Animated.View
@@ -189,21 +193,25 @@ const styles = StyleSheet.create({
         elevation: 6,  // Required for Android
     },
     infoContainerNumber: {
+        textAlign: 'right',
         fontWeight: 'bold',
         fontSize: 11,
         color: Colors.secondary[500]
     },
     infoContainerTitle: {
+        textAlign: 'right',
         fontWeight: 'bold',
         fontSize: 12,
         color: Colors.succes[500]
     },
     infoContainerScsTitle: {
+        textAlign: 'right',
         fontWeight: 'bold',
         fontSize: 12,
         color: Colors.secondary[400]
     },
     infoContainerScsNumber: {
+        textAlign: 'right',
         fontWeight: 'bold',
         fontSize: 11,
         color: Colors.secondary[500]
@@ -211,9 +219,8 @@ const styles = StyleSheet.create({
     infoContainer: {
         flexDirection: 'column',
         justifyContent: 'center',
-        alignItems: 'flex-start',
-        // backgroundColor: 'red',
-        alignSelf: 'flex-end',
+        alignItems: 'flex-end',
+        marginLeft: 40,
         gap: 5
         // flex: 1,
         // height: '100%'
@@ -222,7 +229,7 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        width: 120,
+        width: 110,
         // gap: 10
     },
     titleCultureArea: {
@@ -294,9 +301,9 @@ const styles = StyleSheet.create({
         marginRight: 10, // Space between circle and arrow
     },
     circle: {
-        width: 40,
-        height: 40,
-        borderRadius: 20, // Perfect circle
+        width: 60,
+        height: 60,
+        borderRadius: "50%", // Perfect circle
         backgroundColor: 'rgba(52,152,219,1.0)',
         justifyContent: 'center',
         alignItems: 'center',
@@ -309,7 +316,7 @@ const styles = StyleSheet.create({
         elevation: 3, // Android shadow
     },
     percentText: {
-        fontSize: 8,
+        fontSize: 16,
         fontWeight: 'bold',
         color: '#fff', // White color for text
     },
