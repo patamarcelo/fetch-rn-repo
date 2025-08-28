@@ -26,6 +26,7 @@ import {
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 
 import * as Haptics from 'expo-haptics';
+import { SafeAreaView } from "react-native-safe-area-context";
 
 
 
@@ -45,7 +46,9 @@ const ProgramList = ({ refresh, isLoading, innerRef, setPrintableData }) => {
 
 	useEffect(() => {
 		// console.log('estagios', estagios);
-		const ts_programas = estagios.find((data) => data.estagio.toLowerCase().includes('tratamento'))
+		const estagiosFilteredTs = estagios.filter((data) => data.programa__nome === programa.nome)
+		const ts_programas = estagiosFilteredTs.find((data) => data.estagio.toLowerCase().includes('tratamento')) || null
+		console.log('ts_programas', ts_programas)
 		// console.log('ts_programas',ts_programas);
 		const estagiosFiltered = estagios
 			.filter(
@@ -54,7 +57,7 @@ const ProgramList = ({ refresh, isLoading, innerRef, setPrintableData }) => {
 			)
 			.sort((a, b) => a.prazo_dap - b.prazo_dap);
 		// console.log(estagios);
-		const newArray = [ts_programas, ...estagiosFiltered]
+		const newArray = [ts_programas, ...estagiosFiltered].filter(Boolean)
 		setFilteredEstagios(newArray);
 		const programName = programa.nome;
 		const produtosFilter = dataProgram.filter((prods) => prods.operacao__programa__nome === programName)
@@ -89,7 +92,7 @@ const ProgramList = ({ refresh, isLoading, innerRef, setPrintableData }) => {
 	}
 
 	return (
-		<View style={[styles.container]}>
+		<SafeAreaView style={[styles.container]} edges={[""]}>
 
 			{showSearch && (
 				<TextInput
@@ -154,7 +157,7 @@ const ProgramList = ({ refresh, isLoading, innerRef, setPrintableData }) => {
 					onPress={handleFilterProps}
 				/>
 			</View>
-		</View>
+		</SafeAreaView>
 	);
 };
 
@@ -165,7 +168,8 @@ const styles = StyleSheet.create({
 	},
 	mainContainer: {
 		flex: 1,
-		width: "100%"
+		width: "100%",
+		// backgroundColor: 'red',
 	},
 	searchBar: {
 		height: 40,

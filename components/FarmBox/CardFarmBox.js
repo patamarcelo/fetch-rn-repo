@@ -1,5 +1,6 @@
-import { Pressable, View, Text, StyleSheet, Image, Easing, ScrollView, SafeAreaView, TouchableOpacity, RefreshControl, Alert, Platform } from "react-native"
+import { Pressable, View, Text, StyleSheet, Image, Easing, ScrollView, TouchableOpacity, RefreshControl, Alert, Platform } from "react-native"
 import { Colors } from "../../constants/styles";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 import { useState, useRef, useEffect, useLayoutEffect } from "react";
 
@@ -308,7 +309,7 @@ const CardFarmBox = ({ route, navigation }) => {
 
     return (
         <>
-            <SafeAreaView style={{ flex: 1 }}>
+            <SafeAreaView style={{ flex: 1}} edges={['']}>
                 {showSearch && (
                     <SearchBar
                         placeholder="Selecione um produto ou operação..."
@@ -331,7 +332,8 @@ const CardFarmBox = ({ route, navigation }) => {
                     ref={ref}
                     contentContainerStyle={{
                         paddingBottom: tabBarHeight + (showSearch ? 40 : -15), // Adjust this value based on your bottom tab height
-                    }}>
+                    }}
+                    >
                     {
                         farmData && farmData.map((data, i) => {
                             return (

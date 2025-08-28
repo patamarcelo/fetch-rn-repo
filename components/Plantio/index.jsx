@@ -70,7 +70,7 @@ const FarmsPlantioScreen = (props) => {
     })
 
     const totalPercent = Math.min(100, Math.round((totalParcialHere / totalAreaHere) * 100));
-    
+
 
     return (
         <Pressable
@@ -167,7 +167,22 @@ const FarmsPlantioScreen = (props) => {
                         style={styles.rowContainer}
                     >
                         <View style={styles.containerPercent}>
-                            <View style={[styles.circle, { backgroundColor: totalPercent === 0 ? 'rgba(52,152,219,0.2)' : 'rgba(52,152,219,1.0)' }]}>
+                            <View
+                                // style={[styles.circle, { backgroundColor: totalPercent === 0 ? 'rgba(52,152,219,0.2)' : 'rgba(52,152,219,1.0)' }]}
+                                style={[
+                                    styles.circle,
+                                    {
+                                        backgroundColor:
+                                            totalPercent === 0
+                                                ? 'rgba(52,152,219,0.2)' // mantém o que está no 0
+                                                : totalPercent <= 20
+                                                    ? 'rgba(204, 153, 0, 0.6)' // até 20 amarelo
+                                                    : totalPercent <= 90
+                                                        ? 'rgba(52,152,219,1.0)' // entre 20 e 90 azul que já tem
+                                                        : 'rgba(46, 204, 113, 0.9)', // maior que 90 verde
+                                    },
+                                ]}
+                            >
                                 <Text style={[styles.percentText, { color: totalPercent === 0 ? 'black' : 'white' }]}>{totalPercent}%</Text>
                             </View>
                         </View>

@@ -164,7 +164,8 @@ const FilterModalApps = (props) => {
     return (
         <>
             <StatusBar backgroundColor="transparent" translucent />
-            <SafeAreaView style={{ flex: 1, backgroundColor: Colors.secondary[100], paddingHorizontal: 3 }}>
+            <SafeAreaView style={{ flex: 1, backgroundColor: Colors.secondary[100], paddingHorizontal: 3 }}
+            >
                 <Pressable
                     style={({ pressed }) => [
                         pressed && styles.pressed,

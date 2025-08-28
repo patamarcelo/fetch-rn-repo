@@ -31,7 +31,7 @@ const CardList = (props) => {
 						<DataTable.Row
 							key={i}
 							style={{
-								backgroundColor: i % 2 == 0 && "lightgrey",
+								backgroundColor: i % 2 == 0 ? "lightgrey" : 'whitesmoke',
 								minHeight: 30
 							}}
 						>
@@ -56,6 +56,12 @@ const CardList = (props) => {
 						</DataTable.Row>
 					);
 				})}
+				{
+					applications.length === 0 &&
+					<View style={{justifyContent: 'center', alignItems: 'center', paddingVertical: 5, backgroundColor: 'lightgrey'}}>
+						<Text> - </Text>
+					</View>
+				}
 		</DataTable>
 	);
 };
