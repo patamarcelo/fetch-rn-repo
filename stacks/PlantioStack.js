@@ -66,6 +66,8 @@ const PlantioStack = () => {
                 component={FilterPlantioScreen}
                 options={({ navigation }) => ({
                     title: 'Filtros',
+                    // headerShown: false,
+                    headerLargeTitle: false,
                     headerLeft: () => (
                         <IconButton
                             icon="close"

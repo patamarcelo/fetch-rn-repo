@@ -1,3 +1,5 @@
+import 'react-native-gesture-handler';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
@@ -30,16 +32,16 @@ const Navigation = () => {
 	const isAuthenticated = useSelector((state) => state.auth.isAuthenticated);
 
 	const dispatch = useDispatch();
-    const user = useSelector((state) => state.auth.user); // Get user from Redux
+	const user = useSelector((state) => state.auth.user); // Get user from Redux
 
 
 	useEffect(() => {
-        const initializeApp = async () => {
-            await checkUserStatus(dispatch, user);
-        };
+		const initializeApp = async () => {
+			await checkUserStatus(dispatch, user);
+		};
 
-        initializeApp();
-    }, []);
+		initializeApp();
+	}, []);
 
 	return (
 		<NavigationContainer>
@@ -63,16 +65,18 @@ export default function App() {
 
 	return (
 		<>
-			<StatusBar style="light" />
+			<GestureHandlerRootView style={{ flex: 1 }}>
+				<StatusBar style="light" />
 
-			<Provider store={store}>
-				<PersistGate
-					loading={<Text>Loading...</Text>}
-					persistor={persistor}
-				>
-					<Root />
-				</PersistGate>
-			</Provider>
+				<Provider store={store}>
+					<PersistGate
+						loading={<Text>Loading...</Text>}
+						persistor={persistor}
+					>
+						<Root />
+					</PersistGate>
+				</Provider>
+			</GestureHandlerRootView>
 		</>
 	);
 }

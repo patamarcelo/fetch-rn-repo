@@ -1,7 +1,10 @@
 import { StyleSheet, Text, View, Pressable, Image } from 'react-native'
 import React from 'react'
 import { Colors } from '../../constants/styles';
-import Icon from 'react-native-vector-icons/MaterialIcons'; // You can also use FontAwesome, Ionicons, etc.
+import { MaterialCommunityIcons as Icon } from '@expo/vector-icons';
+
+
+
 
 import Animated, { FadeInRight, FadeOut, Layout, BounceIn, BounceOut } from 'react-native-reanimated';
 
@@ -186,7 +189,7 @@ const FarmsPlantioScreen = (props) => {
                                 <Text style={[styles.percentText, { color: totalPercent === 0 ? 'black' : 'white' }]}>{totalPercent}%</Text>
                             </View>
                         </View>
-                        <Icon name="arrow-forward" size={24} color="#000" />
+                        <Icon name="arrow-right" size={24} color="#000" />
 
                     </Animated.View>
                 </View>

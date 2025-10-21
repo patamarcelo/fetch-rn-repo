@@ -1,14 +1,17 @@
 // metro.config.js
+const { getDefaultConfig } = require('expo/metro-config');
 
-const { getDefaultConfig } = require('@expo/metro-config');
+module.exports = (() => {
+    const config = getDefaultConfig(__dirname);
 
-/** @type {import('expo/metro-config').MetroConfig} */
-const config = getDefaultConfig(__dirname);
+    // garante suporte a .cjs só se você realmente usa
+    if (Array.isArray(config.resolver?.sourceExts) && !config.resolver.sourceExts.includes('cjs')) {
+        config.resolver.sourceExts.push('cjs');
+    }
 
-// Customize the config safely:
-config.resolver.sourceExts.push('cjs');
-config.resolver.unstable_enablePackageExports = false;
-config.transformer.unstable_removeUnusedImportExport = false;
+    // remova flags instáveis que quebram o parse do Node
+    if (config.resolver) delete config.resolver.unstable_enablePackageExports;
+    if (config.transformer) delete config.transformer.unstable_removeUnusedImportExport;
 
-
-module.exports = config;
+    return config;
+})();

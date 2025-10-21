@@ -1,7 +1,8 @@
-import { View, FlatList, Text, Platform, StatusBar, RefreshControl, Alert, StyleSheet, SafeAreaView as SaveView } from 'react-native'
+import { View, FlatList, Text, Platform, StatusBar, RefreshControl, Alert, StyleSheet} from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { SafeAreaView as SaveView } from 'react-native-safe-area-context';
 
 
 import { useRoute } from '@react-navigation/native';
@@ -181,7 +182,7 @@ const PlantioTalhoesDescription = ({ navigation }) => {
                             }
                         />
                         <FilterPlantioComponent />
-                        <SaveView style={styles.fabContainer}>
+                        <SaveView style={styles.fabContainer} edges={[]}>
                             <FAB
                                 style={[styles.fab, { marginBottom: tabBarHeight }]}
                                 icon={filterByDate ? "calendar" : "sort-alphabetical-variant"}

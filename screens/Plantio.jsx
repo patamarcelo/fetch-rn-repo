@@ -1,4 +1,4 @@
-import { StyleSheet, Platform, Pressable, View, Alert, ActivityIndicator, SafeAreaView, RefreshControl, ScrollView, Text } from 'react-native'
+import { StyleSheet, Platform, Pressable, View, Alert, ActivityIndicator, RefreshControl, ScrollView, Text } from 'react-native'
 import { useEffect, useState } from 'react'
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 

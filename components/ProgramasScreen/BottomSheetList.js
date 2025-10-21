@@ -45,7 +45,8 @@ const styles = StyleSheet.create({
 	mainContainer: {
 		width: "100%",
 		padding: 10,
-		borderRadius: 12
+		borderRadius: 12,
+		zIndex: 999
 		// margin: 5
 	},
 	pressed: {

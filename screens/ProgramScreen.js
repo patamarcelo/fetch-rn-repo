@@ -1,5 +1,7 @@
-import { useRef, useEffect, useState, useLayoutEffect } from "react";
-import BottomSheet, { BottomSheetMethods } from "@devvie/bottom-sheet";
+import { useRef, useEffect, useState, useLayoutEffect, useMemo } from "react";
+
+import BottomSheet from "@gorhom/bottom-sheet";
+import { BottomSheetScrollView } from "@gorhom/bottom-sheet";
 
 import IconButton from "../components/ui/IconButton";
 
@@ -49,6 +51,8 @@ const ProgramScreen = ({ navigation }) => {
 	const ref = useRef(null);
 	const tabBarHeight = useBottomTabBarHeight();
 	const insets = useSafeAreaInsets();
+	const [isSheetOpen, setIsSheetOpen] = useState(false);
+
 
 
 
@@ -69,13 +73,19 @@ const ProgramScreen = ({ navigation }) => {
 
 	const handleSelectProgram = () => {
 		console.log("selecionar um programa");
-		sheetRef.current?.open();
+		sheetRef.current?.snapToIndex(0)
+		setIsSheetOpen(true)
 		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy)
 	};
 
 	const handleClose = () => {
 		sheetRef.current?.close();
+		setIsSheetOpen(false)
 	};
+
+	useEffect(() => {
+		console.log('sheetref', sheetRef.current)
+	}, [sheetRef]);
 
 	useEffect(() => {
 		dispatch(setSelectedProgram(null));
@@ -210,6 +220,7 @@ const ProgramScreen = ({ navigation }) => {
 		getData();
 	};
 
+	const snapPoints = useMemo(() => ["50%", "70%"], []);
 
 
 
@@ -249,11 +260,27 @@ const ProgramScreen = ({ navigation }) => {
 					/>
 				</SafeAreaView>
 			)}
-			<BottomSheet ref={sheetRef} style={styles.bottomSheetStl}>
-				<ScrollView>
-					<BottomSheetList onClose={handleClose} />
-				</ScrollView>
+			<BottomSheet
+				ref={sheetRef}
+				index={-1} // fechado inicialmente
+				snapPoints={snapPoints}
+				// enablePanDownToClose
+				backgroundStyle={{ backgroundColor: Colors.primary800 }}
+				handleIndicatorStyle={{ backgroundColor: "#fff" }}
+			>
+				<SafeAreaView style={{ flex: 1 }}>
+					<BottomSheetScrollView
+						keyboardShouldPersistTaps="handled"
+						showsVerticalScrollIndicator={false}
+						contentContainerStyle={{ paddingBottom: 50, backgroundColor: Colors.primary800 }}
+					>
+						<BottomSheetList onClose={handleClose} />
+					</BottomSheetScrollView>
+				</SafeAreaView>
 			</BottomSheet>
+
+
+
 		</>
 	);
 };

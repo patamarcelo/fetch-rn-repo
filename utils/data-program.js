@@ -15,7 +15,7 @@ finalDate.setDate(finalDate.getDate() + 6);
 const endFinalDateHere = finalDate.toISOString().split("T")[0]
 
 
-export default formatDataProgram = (data, filterFinalDate) => {
+const formatDataProgram = (data, filterFinalDate) => {
     let finalArray = [];
 
     data.forEach((farmData) => {
@@ -86,3 +86,6 @@ export default formatDataProgram = (data, filterFinalDate) => {
 
     return sortedDataFinal;
 };
+
+
+export default formatDataProgram

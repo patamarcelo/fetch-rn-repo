@@ -68,7 +68,7 @@ const PlantioTalhoesCard = (props) => {
             maximumFractionDigits: 2
         })
     }
-    
+
     const formatNumberZero = number => {
         return number?.toLocaleString("pt-br", {
             minimumFractionDigits: 0,
@@ -169,10 +169,10 @@ const PlantioTalhoesCard = (props) => {
     const daysUntilFutureDate = (dateStr, daysToAdd) => {
         // Parse the given date
         const futureDate = dayjs(dateStr).add(daysToAdd, "day");
-    
+
         // Get today's date
         const today = dayjs().startOf("day");
-    
+
         // Calculate the difference in days
         return futureDate.diff(today, "day");
     };
@@ -180,37 +180,37 @@ const PlantioTalhoesCard = (props) => {
     const diasToThere = daysUntilFutureDate(data.data_plantio, data.variedade__dias_ciclo)
 
     const getPosition = () => {
-        if(data.finalizado_colheita){
+        if (data.finalizado_colheita) {
             return <Icon name={'check-all'} size={14} color={!data.finalizado_colheita ? Colors.gold[600] : Colors.succes[700]} />
         }
-        if(data?.cargas){
+        if (data?.cargas) {
             return 'Colhendo'
         }
-        if(diasToThere >= 0 ){
+        if (diasToThere >= 0) {
             return `${diasToThere} dias`
         }
-        if(diasToThere < 0){
+        if (diasToThere < 0) {
             return `${diasToThere} dias`
         }
         return 'teste'
     }
 
     const getColorDays = () => {
-        if(data.finalizado_colheita){
+        if (data.finalizado_colheita) {
             return Colors.succes[700]
         }
-        if(data?.cargas){
+        if (data?.cargas) {
             return Colors.gold[800]
         }
-        if(diasToThere < 0 ){
+        if (diasToThere < 0) {
             return Colors.error[600]
         }
-        if(diasToThere >= 0 ){
+        if (diasToThere >= 0) {
             return Colors.primary500
         }
         return Colors.secondary[500]
     }
-    
+
 
     const getTotalW = data?.cargas?.find(Boolean) ? data?.cargas?.find(Boolean).total_peso_liquido / 60 : null
     const totalProd = getTotalW ? getTotalW / parcialArea : 0
@@ -291,7 +291,7 @@ const PlantioTalhoesCard = (props) => {
                         entering={FadeInRight.duration(300)} // Root-level animation for appearance
                         exiting={FadeOut.duration(300)} // Root-level animation for disappearance
                         layout={Layout.springify()}    // Layout animation for dynamic resizing
-                        style={{ alignItems: 'flex-end' ,alignSelf: (showTruckData?.length > 0 || isLoadingData) ? 'flex-end' : 'center' }}>
+                        style={{ alignItems: 'flex-end', alignSelf: (showTruckData?.length > 0 || isLoadingData) ? 'flex-end' : 'center' }}>
                         <View style={{ marginBottom: 3 }}>
                             <Text style={{ fontSize: 8, fontWeight: 'bold', color: getColorDays() }}>{getPosition()}</Text>
                         </View>

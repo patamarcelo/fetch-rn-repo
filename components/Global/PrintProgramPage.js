@@ -1,6 +1,6 @@
 import * as Print from "expo-print";
 import { shareAsync } from "expo-sharing";
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 
 const PrintProgramPage = async (program, product, estagio, areaTotal) => {
 

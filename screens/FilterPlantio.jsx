@@ -1,4 +1,5 @@
-import { StyleSheet, Text, View, Pressable, ScrollView, SafeAreaView, Animated as RealAnimated, TouchableOpacity } from 'react-native'
+import { StyleSheet, Text, View, Pressable, ScrollView, Animated as RealAnimated, TouchableOpacity } from 'react-native'
+import { SafeAreaView } from 'react-native-safe-area-context'
 import { useDispatch, useSelector } from 'react-redux'
 import { selectColheitaDataFilter, selectColheitaDataToggle, selectCurrentFilterSelected } from '../store/redux/selector'
 import { Colors } from '../constants/styles'
@@ -111,7 +112,7 @@ const FilterPlantioScreen = ({ navigation }) => {
     const hasFilters = filters?.farm?.length > 0 || filters?.proj?.length > 0 || filters?.variety?.length > 0 || filters?.culture?.length > 0
     const getIndexOf = { 'fazenda': '0%', 'projeto': '25%', 'cultura': '50%', 'variedade': '75%' }
     return (
-        <SafeAreaView style={styles.mainContaier}>
+        <SafeAreaView style={styles.mainContaier} edges={[""]}>
             <View style={styles.headerContainer}>
                 <Animated.View
                     entering={FadeInRight.duration(300)} // Root-level animation for appearance
