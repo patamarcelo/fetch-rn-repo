@@ -10,7 +10,7 @@ import ProgramScreen from "../screens/ProgramScreen";
 import IconButton from "../components/ui/IconButton";
 import Ionicons from "@expo/vector-icons/Ionicons";
 
-import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons";
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 
 import { useNavigation } from "@react-navigation/native";
