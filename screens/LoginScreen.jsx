@@ -12,7 +12,7 @@ import { Colors } from '../constants/styles';
 
 import * as Haptics from "expo-haptics";
 
-import { expo } from "../app.json";
+import Constants from 'expo-constants';
 import { ScrollView } from 'react-native-gesture-handler';
 
 
@@ -147,7 +147,7 @@ const LoginScreen = ({ navigation }) => {
                                 fontWeight: 'bold'
                             }}
                         >
-                            {expo.version}
+                            {Constants.expoConfig.version}
                         </Text>
                     </View>
                 </View>
