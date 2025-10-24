@@ -12,11 +12,15 @@ const req = (key) => {
     return v;
 };
 
+const APP_VERSION = '1.0.42'; // escolha a sua
+
+
 export default {
     expo: {
         name: 'Farm Aplicações',
         slug: 'fetch-app',
-        version: '1.0.41',
+        version: APP_VERSION,
+        runtimeVersion: APP_VERSION,
         orientation: 'portrait',
         icon: './assets/icon.png',
         // userInterfaceStyle: 'automatic',
@@ -42,6 +46,7 @@ export default {
         assetBundlePatterns: ['assets/*', 'assets/**/*'],
 
         ios: {
+            buildNumber: APP_VERSION,
             supportsTablet: true,
             bundleIdentifier: 'com.patamarcelo.fetchapp',
             infoPlist: {
@@ -86,8 +91,6 @@ export default {
              * Ex.: apiUrl: process.env.EXPO_PUBLIC_API_URL
              */
         },
-
-        runtimeVersion: { policy: 'appVersion' },
 
         updates: {
             url: 'https://u.expo.dev/6f296023-01ce-4d08-ae54-437fdd9cb693',
