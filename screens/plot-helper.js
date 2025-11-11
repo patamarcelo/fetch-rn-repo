@@ -11,7 +11,8 @@ export const newMapArr = (mapPlot) => {
             talhao: data?.talhao__id_talhao,
             farmCenterGeo: data?.talhao__fazenda__map_centro_id,
             farmName: data?.talhao__fazenda__nome,
-            coords: newArr
+            coords: newArr,
+            ciclo: data?.ciclo__ciclo
         };
     });
 

@@ -26,6 +26,8 @@ import { selectMapDataPlot } from "../store/redux/selector";
 import Legend from "../components/MapComp/Legends";
 
 
+import { CommonActions } from '@react-navigation/native';
+
 
 
 
@@ -92,7 +94,27 @@ const MapScreen = ({ navigation, route }) => {
 	useEffect(() => {
 		if (mapPlotData.length > 0 && farmName) {
 			const dataFromMap = newMapArr(mapPlotData)
-			const filteredFarm = dataFromMap.filter((data) => data.farmName == farmName.replace('Fazenda', 'Projeto').replace('Cacique', 'Cacíque'))
+			console.log('datafromMap: ', dataFromMap[0])
+			console.log('datahere', data)
+			const filteredFarm = dataFromMap.filter((dataParcela) => Number(data?.ciclo) === Number(dataParcela.ciclo)).filter((data) => data.farmName == farmName.replace('Fazenda', 'Projeto').replace('Cacique', 'Cacíque'))
+			// console.log('dataFromMap', dataFromMap)
+			if (filteredFarm.length === 0) {
+				Alert.alert(
+					'Problema para plotar o mapa',
+					'Não existem talhões ativos na consulta.',
+					[
+						{
+							text: 'OK',
+							onPress: () => {
+								// 1) SIMPLES: navegar para uma tela específica
+								navigation.goBack(); // <- troque pelo nome da sua tela
+							},
+						},
+					],
+					{ cancelable: false }
+				);
+				return; // evita continuar o efeito
+			}
 			const onlyCoords = filteredFarm.map((data) => data.coords)
 			// console.log('onlyCoords: ', onlyCoords)
 
@@ -129,7 +151,7 @@ const MapScreen = ({ navigation, route }) => {
 
 			setfilteredFarmArr(filteredFarm)
 		}
-	}, [farmName]);
+	}, [farmName, data, mapPlotData]);
 
 	useEffect(() => {
 		if (data) {
@@ -243,26 +265,26 @@ const MapScreen = ({ navigation, route }) => {
 	}
 
 	const getColor = (cultura, variedadeInside, colorInside = 'green') => {
-			if(cultura === 'Arroz'){
-				return "rgba(251,191,112,1)"
-			}
-			if(cultura === 'Soja'){
-				return colorInside
-			}
-			if (variedadeInside === 'Mungo Preto') {
-				return 'rgba(170,88,57,1.0)'
-			}
-			if (variedadeInside === 'Mungo Verde') {
-				return '#82202B'
-			}
-			if (variedadeInside === 'Caupi') {
-				return '#3F4B7D'
-			}
-			// if (!variedadeInside) {
-			// 	return '#f0f0f0'
-			// }
-			return "rgba(245,245,245,0.6)"
+		if (cultura === 'Arroz') {
+			return "rgba(251,191,112,1)"
 		}
+		if (cultura === 'Soja') {
+			return colorInside
+		}
+		if (variedadeInside === 'Mungo Preto') {
+			return 'rgba(170,88,57,1.0)'
+		}
+		if (variedadeInside === 'Mungo Verde') {
+			return '#82202B'
+		}
+		if (variedadeInside === 'Caupi') {
+			return '#3F4B7D'
+		}
+		// if (!variedadeInside) {
+		// 	return '#f0f0f0'
+		// }
+		return "rgba(245,245,245,0.6)"
+	}
 
 	if (mapCoordsInit.latitude !== null) {
 
@@ -434,7 +456,7 @@ const MapScreen = ({ navigation, route }) => {
 						borderRadius: 50
 					}}
 				>
-					<Legend 
+					<Legend
 						aplicado={data?.areaAplicada || 0}
 						solicitado={data?.areaSolicitada || 0}
 					/>

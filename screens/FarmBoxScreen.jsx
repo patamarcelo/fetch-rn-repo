@@ -342,7 +342,7 @@ const FarmBoxScreen = (props) => {
     if (isloadingDbFarm) {
         return (
             <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-                <ActivityIndicator size="large" color={Colors.primary800} />
+                <ActivityIndicator size="large" color={Colors.primary[500]} />
             </View>
         )
     }

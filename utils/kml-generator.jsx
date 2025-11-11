@@ -1,10 +1,24 @@
-import { Alert } from "react-native";
+import { Alert, Platform } from "react-native";
 import * as FileSystem from "expo-file-system/legacy";
 import * as Sharing from "expo-sharing";
 import { newMapArr } from "../screens/plot-helper";
 
+let sharingInProgress = false; // <-- evita share duplicado simultâneo
+const SHARE_TIMEOUT = 20000;   // 20s
+
 export const exportPolygonsAsKML = async (data, mapPlotData, selectedParcelas) => {
+  // Se já estiver compartilhando → ignora toque repetido
+  if (sharingInProgress) return;
+
+  // Inicia o timeout global
+  let timeoutId = setTimeout(() => {
+    sharingInProgress = false;
+    Alert.alert("Tempo excedido", "O compartilhamento demorou muito e foi cancelado.");
+  }, SHARE_TIMEOUT);
+
   try {
+    sharingInProgress = true;
+
     const filteredParcelas =
       (selectedParcelas?.length ?? 0) > 0
         ? selectedParcelas.map(p => p.parcela)
@@ -22,6 +36,8 @@ export const exportPolygonsAsKML = async (data, mapPlotData, selectedParcelas) =
       .filter(parc => filteredParcelas.includes(parc.talhao));
 
     if (!filteredFarmArr.length) {
+      clearTimeout(timeoutId);
+      sharingInProgress = false;
       Alert.alert("Atenção", "Não há polígonos para exportar.");
       return;
     }
@@ -41,7 +57,7 @@ export const exportPolygonsAsKML = async (data, mapPlotData, selectedParcelas) =
 
         const coordinatesString = [
           ...coords.map(p => `${p.longitude},${p.latitude}`),
-          `${coords[0].longitude},${coords[0].latitude}`, // fecha o polígono
+          `${coords[0].longitude},${coords[0].latitude}`,
         ].join(" ");
 
         const centerLat = coordArr?.talhaoCenterGeo?.lat ?? 0;
@@ -79,7 +95,7 @@ export const exportPolygonsAsKML = async (data, mapPlotData, selectedParcelas) =
         <width>2</width>
       </LineStyle>
       <PolyStyle>
-        <color>80ffffff</color>
+        <color>40ffffff</color>
       </PolyStyle>
       <IconStyle>
         <scale>0</scale>
@@ -93,22 +109,40 @@ export const exportPolygonsAsKML = async (data, mapPlotData, selectedParcelas) =
       .replace(/^Fazenda\s+/i, "")
       .replace(/[^a-zA-Z0-9-_]/g, "_");
 
-    const fileName = `${sanitizedFarmName}_${data?.code ?? "map"}.kml`;
+    const fileName = `${sanitizedFarmName}_${data?.code ?? "map"}.kml`.toLowerCase();
     const filePath = `${FileSystem.documentDirectory}${fileName}`;
 
-    // ✅ Removido 'encoding: FileSystem.EncodingType.UTF8' (já é o padrão)
-    await FileSystem.writeAsStringAsync(filePath, kmlString /*, { encoding: 'utf8' } */);
+    await FileSystem.writeAsStringAsync(filePath, kmlString);
+
+    // ✅ Evita .BIN no Android → MIME alternativo que todos apps reconhecem
+    const mimeType =
+      Platform.OS === "android"
+        ? "application/xml" // ou "text/xml" se quiser abrir no Google Earth/Maps nativo
+        : "application/vnd.google-earth.kml+xml";
 
     if (await Sharing.isAvailableAsync()) {
-      await Sharing.shareAsync(filePath, {
-        mimeType: "application/vnd.google-earth.kml+xml",
-        dialogTitle: "Compartilhar arquivo KML",
-      });
+      try {
+        await Sharing.shareAsync(filePath, {
+          mimeType,
+          UTI: "com.google.earth.kml+xml", // iOS fica certinho no Maps/Earth
+          dialogTitle: "Compartilhar arquivo KML",
+        });
+      } catch (error) {
+        if (error?.code === "ERR_SHARING_IN_PROGRESS") {
+          Alert.alert("Aguarde", "Já existe um compartilhamento em andamento.");
+        } else {
+          throw error;
+        }
+      }
     } else {
       Alert.alert("Exportado!", `Arquivo salvo em: ${filePath}`);
     }
+
   } catch (error) {
     console.error("Error exporting KML:", error);
     Alert.alert("Erro", "Não foi possível exportar o KML.");
+  } finally {
+    clearTimeout(timeoutId);
+    sharingInProgress = false;
   }
 };

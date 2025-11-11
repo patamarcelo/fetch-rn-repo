@@ -1,6 +1,7 @@
-import { Pressable, View, Text, StyleSheet, Image, Easing, ScrollView, TouchableOpacity, RefreshControl, Alert, Platform } from "react-native"
+import { Pressable, View, Text, StyleSheet, Image, Easing, ScrollView, TouchableOpacity, RefreshControl, Alert, Platform, ActivityIndicator } from "react-native"
 import { Colors } from "../../constants/styles";
 import { SafeAreaView } from "react-native-safe-area-context";
+
 
 import { useState, useRef, useEffect, useLayoutEffect } from "react";
 
@@ -71,6 +72,9 @@ const CardFarmBox = ({ route, navigation }) => {
 
     const [isLoading, setIsLoading] = useState(false);
 
+    const [isSharing, setIsSharing] = useState(false);
+
+    const backgroundColorCard = Platform.OS === 'ios' ? 'whitesmoke' : 'white'
 
     const handleExprotData = () => {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy)
@@ -173,6 +177,7 @@ const CardFarmBox = ({ route, navigation }) => {
     }
 
     const handleSelected = (parcela) => {
+        console.log('parcela sleec: ', parcela)
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy)
         setSelectedParcelas((prev) => {
             // Check if the object exists in the array by comparing a unique property (e.g., parcelaId)
@@ -213,12 +218,18 @@ const CardFarmBox = ({ route, navigation }) => {
 
     }
 
-    const handleKmlGenerator = (data, mapPlotData) => {
-        console.log('handle kml')
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy)
-        exportPolygonsAsKML(data, mapPlotData, selectedParcelas)
+    const handleKmlGenerator = async (data, mapPlotData) => {
+        if (isSharing) return; // Evita toque duplo
+        setIsSharing(true);
+        try {
+            console.log('handle kml');
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+            await exportPolygonsAsKML(data, mapPlotData, selectedParcelas);
+        } finally {
+            setIsSharing(false);
+        }
+    };
 
-    }
 
     useScrollToTop(ref);
 
@@ -309,7 +320,7 @@ const CardFarmBox = ({ route, navigation }) => {
 
     return (
         <>
-            <SafeAreaView style={{ flex: 1}} edges={['']}>
+            <SafeAreaView style={{ flex: 1 }} edges={['']}>
                 {showSearch && (
                     <SearchBar
                         placeholder="Selecione um produto ou operação..."
@@ -333,7 +344,7 @@ const CardFarmBox = ({ route, navigation }) => {
                     contentContainerStyle={{
                         paddingBottom: tabBarHeight + (showSearch ? 40 : -15), // Adjust this value based on your bottom tab height
                     }}
-                    >
+                >
                     {
                         farmData && farmData.map((data, i) => {
                             return (
@@ -348,7 +359,7 @@ const CardFarmBox = ({ route, navigation }) => {
                                             styles.mainContainerAll,
                                             // pressed && styles.pressed, 
                                             {
-                                                marginTop: i !== 0 && 10, backgroundColor: !showAps[data.code] ? 'whitesmoke' : Colors.secondary[200], opacity: !showAps[data.code] ? 0.8 : 1,
+                                                marginTop: i !== 0 && 10, backgroundColor: !showAps[data.code] ? backgroundColorCard : Colors.secondary[200], opacity: !showAps[data.code] ? 0.8 : 1,
                                                 marginBottom: i === farmData.length - 1 && 80
                                             }
                                         ]
@@ -444,12 +455,17 @@ const CardFarmBox = ({ route, navigation }) => {
                                                         </View>
                                                         <View style={styles.buttonContainer}>
                                                             <Pressable
+                                                                disabled={isSharing}
                                                                 style={({ pressed }) => [
                                                                     styles.mapContainer,
                                                                     pressed && styles.pressed]}
                                                                 onPress={handleKmlGenerator.bind(this, data, mapPlotData)}
                                                             >
-                                                                <FontAwesome5 name="plane" size={24} color={Colors.succes[600]} />
+                                                                {isSharing ? (
+                                                                    <ActivityIndicator size={22} color={Colors.primary[500]} />
+                                                                ) : (
+                                                                    <FontAwesome5 name="plane" size={24} color={Colors.succes[600]} />
+                                                                )}
                                                             </Pressable>
                                                             <Pressable
                                                                 style={({ pressed }) => [
