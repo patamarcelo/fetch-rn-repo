@@ -326,7 +326,6 @@ const HomeScreen = ({ navigation }) => {
 		}
 	}, [dataPlantioServer]);
 
-	console.log('expo token: ', EXPO_PUBLIC_REACT_APP_DJANGO_TOKEN)
 
 	const getData = async () => {
 		console.log("pegando os dados");
@@ -474,7 +473,7 @@ const HomeScreen = ({ navigation }) => {
 											refreshing={isLoading}
 											onRefresh={getData}
 											colors={["#9Bd35A", "#689F38"]}
-											tintColor={Colors.primary500}
+											tintColor={Colors.primary[400]}
 										/>
 									}
 								/>

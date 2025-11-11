@@ -370,7 +370,7 @@ const FarmBoxScreen = (props) => {
                         refreshing={isLoading}
                         onRefresh={getData}
                         colors={["#9Bd35A", "#689F38"]}
-                        tintColor={Colors.primary500}
+                        tintColor={Colors.primary[400]}
                     />
                 }
             >

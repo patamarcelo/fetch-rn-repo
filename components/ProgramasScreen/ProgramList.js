@@ -118,7 +118,7 @@ const ProgramList = ({ refresh, isLoading, innerRef, setPrintableData }) => {
 						refreshing={isLoading}
 						onRefresh={refresh}
 						colors={["#9Bd35A", "#689F38"]}
-						tintColor={Colors.primary500}
+						tintColor={Colors.primary[400]}
 					/>
 				}
 			>
