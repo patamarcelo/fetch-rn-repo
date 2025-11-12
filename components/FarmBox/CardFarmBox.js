@@ -45,6 +45,15 @@ import { NODELINK } from "../../utils/api";
 
 import { exportPdf } from "../../store/redux/authSlice";
 
+import * as FileSystem from "expo-file-system/legacy";
+import * as Sharing from 'expo-sharing';
+
+import { postKmlMerge } from "../../services/generatekml";
+import { newMapArr } from "../../screens/plot-helper";
+import { LINK } from "../../utils/api";
+
+
+
 const CardFarmBox = ({ route, navigation }) => {
     // const { data, indexParent, showMapPlot } = props
     const { indexParent, farm } = route.params; // Extract route parameters
@@ -73,6 +82,7 @@ const CardFarmBox = ({ route, navigation }) => {
     const [isLoading, setIsLoading] = useState(false);
 
     const [isSharing, setIsSharing] = useState(false);
+    const [isSharingUnique, setIsSharingUnique] = useState(false);
 
     const backgroundColorCard = Platform.OS === 'ios' ? 'whitesmoke' : 'white'
 
@@ -230,6 +240,119 @@ const CardFarmBox = ({ route, navigation }) => {
         }
     };
 
+    const escapeFarmName = (s = '') =>
+        s.replace('Fazenda', 'Projeto').replace('Cacique', 'Cacíque');
+
+
+    const buildParcelasPayload = (data, mapPlotData) => {
+
+        const filteredParcelas =
+            (selectedParcelas?.length ?? 0) > 0
+                ? selectedParcelas.map(p => p.parcela)
+                : (data?.parcelas ?? []).map(p => p.parcela);
+
+        const farmName = data?.farmName ?? '';
+        const dataFromMap = newMapArr(mapPlotData ?? []);
+        const filteredFarmArr = dataFromMap
+            .filter(d =>
+                (d?.farmName ?? '').replace('Fazenda', 'Projeto').replace('Cacique', 'Cacíque') ===
+                escapeFarmName(farmName)
+            )
+            .filter(parc => filteredParcelas.includes(parc.talhao));
+
+        // Empacotar como o backend espera: [{ talhao, coords: [{latitude, longitude}] }]
+        const parcelas = filteredFarmArr.map(item => {
+            const coords = (item?.coords ?? []).map(p => ({
+                latitude: Number(p.latitude),
+                longitude: Number(p.longitude),
+            }));
+            return {
+                talhao: item?.talhao ?? 'Sem nome',
+                coords,
+            };
+        });
+
+        return { parcelas };
+    };
+
+    // helper simples p/ tirar acentos e espaços
+    const slugify = (s = "") =>
+        s
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")  // remove diacríticos
+            .replace(/\s+/g, "_")
+            .replace(/[^\w.-]/g, "")          // só letras, números, _ . -
+            .replace(/_+/g, "_")
+            .replace(/^_+|_+$/g, "");
+
+
+    const handleKmlGeneratorUnique = async (
+        data,
+        mapPlotData,
+        selectedParcelas,
+        { tol_m = 35.0, corridor_width_m = 1.0 } = {}
+    ) => {
+        if (isSharingUnique) return;
+        setIsSharingUnique(true);
+        try {
+            await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+
+            const { parcelas } = buildParcelasPayload(data, mapPlotData, selectedParcelas);
+            if (!parcelas?.length) {
+                Alert.alert("Atenção", "Não há polígonos para exportar.");
+                return;
+            }
+
+            const body = {
+                farmName: data?.farmName ?? "",
+                parcelas,
+                tol_m,
+                corridor_width_m,
+            };
+
+            const kmlText = await postKmlMerge(LINK, EXPO_PUBLIC_REACT_APP_DJANGO_TOKEN, body);
+
+            // caminho e nome do arquivo
+            const basePath = FileSystem.cacheDirectory || FileSystem.documentDirectory; // já termina com "/"
+            const farmName = (data?.farmName || "fazenda").replace("Fazenda ", "Projeto ");
+            const farmSlug = slugify(farmName);
+            const codeSlug = slugify(String(data?.code || ""));
+            const filename = codeSlug ? `${farmSlug}_${codeSlug}.kml` : `${farmSlug}.kml`;
+            const filePath = `${basePath}${filename}`;
+
+            // grava o arquivo
+            await FileSystem.writeAsStringAsync(filePath, kmlText, { encoding: FileSystem.EncodingType.UTF8 });
+
+            // ✅ evita .BIN no Android forçando MIME "genérico" de XML
+            const mimeType =
+                Platform.OS === "android"
+                    ? "application/xml" // (ou "text/xml") → geralmente abre direto no Earth/Maps/GDrive
+                    : "application/vnd.google-earth.kml+xml";
+
+            if (await Sharing.isAvailableAsync()) {
+                try {
+                    await Sharing.shareAsync(filePath, {
+                        mimeType,
+                        UTI: "com.google.earth.kml+xml", // iOS
+                        dialogTitle: "Compartilhar arquivo KML",
+                    });
+                } catch (error) {
+                    if (error?.code === "ERR_SHARING_IN_PROGRESS") {
+                        Alert.alert("Aguarde", "Já existe um compartilhamento em andamento.");
+                    } else {
+                        throw error;
+                    }
+                }
+            } else {
+                Alert.alert("KML gerado", `Arquivo salvo em: ${filePath}`);
+            }
+        } catch (err) {
+            console.log("KML merge error:", err);
+            Alert.alert("Erro", String(err?.message || err));
+        } finally {
+            setIsSharingUnique(false);
+        }
+    };
 
     useScrollToTop(ref);
 
@@ -455,6 +578,19 @@ const CardFarmBox = ({ route, navigation }) => {
                                                         </View>
                                                         <View style={styles.buttonContainer}>
                                                             <Pressable
+                                                                disabled={isSharingUnique}
+                                                                style={({ pressed }) => [
+                                                                    styles.mapContainer,
+                                                                    pressed && styles.pressed]}
+                                                                onPress={handleKmlGeneratorUnique.bind(this, data, mapPlotData)}
+                                                            >
+                                                                {isSharingUnique ? (
+                                                                    <ActivityIndicator size={22} color={Colors.primary[500]} />
+                                                                ) : (
+                                                                    <FontAwesome5 name="layer-group" size={24} color={Colors.primary[500]} />
+                                                                )}
+                                                            </Pressable>
+                                                            <Pressable
                                                                 disabled={isSharing}
                                                                 style={({ pressed }) => [
                                                                     styles.mapContainer,
@@ -464,7 +600,7 @@ const CardFarmBox = ({ route, navigation }) => {
                                                                 {isSharing ? (
                                                                     <ActivityIndicator size={22} color={Colors.primary[500]} />
                                                                 ) : (
-                                                                    <FontAwesome5 name="plane" size={24} color={Colors.succes[600]} />
+                                                                    <FontAwesome5 name="object-ungroup" size={24} color={Colors.succes[600]} />
                                                                 )}
                                                             </Pressable>
                                                             <Pressable
@@ -560,7 +696,7 @@ const styles = StyleSheet.create({
     buttonContainer: {
         flexDirection: 'row',
         justifyContent: 'flex-end',
-        gap: 0,
+        gap: 5,
         marginRight: -5,
         marginTop: 10
     },

@@ -65,8 +65,6 @@ const MapScreen = ({ navigation, route }) => {
 	const { data } = route?.params
 
 
-	console.log('data here:::', data)
-
 
 	const [zoomLevel, setZoomLevel] = useState(0);
 	const [mapRegion, setMapRegion] = useState(null);
@@ -94,8 +92,8 @@ const MapScreen = ({ navigation, route }) => {
 	useEffect(() => {
 		if (mapPlotData.length > 0 && farmName) {
 			const dataFromMap = newMapArr(mapPlotData)
-			console.log('datafromMap: ', dataFromMap[0])
-			console.log('datahere', data)
+			// console.log('datafromMap: ', dataFromMap[0])
+			// console.log('datahere', data)
 			const filteredFarm = dataFromMap.filter((dataParcela) => Number(data?.ciclo) === Number(dataParcela.ciclo)).filter((data) => data.farmName == farmName.replace('Fazenda', 'Projeto').replace('Cacique', 'Cacíque'))
 			// console.log('dataFromMap', dataFromMap)
 			if (filteredFarm.length === 0) {
