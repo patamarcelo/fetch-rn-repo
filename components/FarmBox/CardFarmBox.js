@@ -232,9 +232,10 @@ const CardFarmBox = ({ route, navigation }) => {
         if (isSharing) return; // Evita toque duplo
         setIsSharing(true);
         try {
-            console.log('handle kml');
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-            await exportPolygonsAsKML(data, mapPlotData, selectedParcelas);
+            const ciclo = data?.ciclo
+            const filteredMapPlotData = mapPlotData.filter((data) => Number(data.ciclo__ciclo) === Number(ciclo))
+            await exportPolygonsAsKML(data, filteredMapPlotData, selectedParcelas);
         } finally {
             setIsSharing(false);
         }
@@ -555,7 +556,7 @@ const CardFarmBox = ({ route, navigation }) => {
                                                         {
                                                             data?.prods?.filter((pro) => pro.type !== 'Operação').map((produto, index) => {
                                                                 const uniKey = data.cultura + data.idAp + produto.product
-                                                                console.log('parcela Color backgrounc: ', produto.colorChip)
+                                                                // console.log('parcela Color backgrounc: ', produto.colorChip)
                                                                 return (
                                                                     <Animated.View
                                                                         entering={FadeInRight.duration(200 + (index * 50))} // Root-level animation for appearance

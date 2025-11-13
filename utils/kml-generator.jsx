@@ -6,6 +6,17 @@ import { newMapArr } from "../screens/plot-helper";
 let sharingInProgress = false; // <-- evita share duplicado simultâneo
 const SHARE_TIMEOUT = 20000;   // 20s
 
+
+const slugify = (s = "") =>
+        s
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")  // remove diacríticos
+            .replace(/\s+/g, "_")
+            .replace(/[^\w.-]/g, "")          // só letras, números, _ . -
+            .replace(/_+/g, "_")
+            .replace(/^_+|_+$/g, "");
+
+
 export const exportPolygonsAsKML = async (data, mapPlotData, selectedParcelas) => {
   // Se já estiver compartilhando → ignora toque repetido
   if (sharingInProgress) return;
@@ -105,10 +116,7 @@ export const exportPolygonsAsKML = async (data, mapPlotData, selectedParcelas) =
   </Document>
 </kml>`;
 
-    const sanitizedFarmName = (data?.farmName ?? "")
-      .replace(/^Fazenda\s+/i, "")
-      .replace(/[^a-zA-Z0-9-_]/g, "_");
-
+    const sanitizedFarmName = slugify(data?.farmName ?? "")
     const fileName = `${sanitizedFarmName}_${data?.code ?? "map"}.kml`.toLowerCase();
     const filePath = `${FileSystem.documentDirectory}${fileName}`;
 
