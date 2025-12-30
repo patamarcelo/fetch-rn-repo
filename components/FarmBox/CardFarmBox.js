@@ -74,8 +74,13 @@ const CardFarmBox = ({ route, navigation }) => {
 
     const [showAps, setShowAps] = useState({});
 
-    const [selectedParcelas, setSelectedParcelas] = useState([]);
+    // por isto:
+    const [selectedParcelasByCode, setSelectedParcelasByCode] = useState({});
+    const [activeCode, setActiveCode] = useState(null);
     const [totalSelected, setTotalSelected] = useState(0);
+
+    // helpers
+    const getSelectedFor = (code) => selectedParcelasByCode[code] || [];
 
     const [farmData, setfarmData] = useState([]);
 
@@ -145,18 +150,7 @@ const CardFarmBox = ({ route, navigation }) => {
     }, [navigation, route, farmData]);
 
 
-    useEffect(() => {
-        setSelectedParcelas([])
-    }, []);
 
-    useEffect(() => {
-        if (selectedParcelas?.length > 0) {
-            const total = selectedParcelas.reduce((acc, curr) => acc += (curr.areaSolicitada - curr.areaAplicada), 0)
-            setTotalSelected(total)
-        } else {
-            setTotalSelected(0)
-        }
-    }, [selectedParcelas]);
 
 
     const formatNumber = number => {
@@ -174,34 +168,59 @@ const CardFarmBox = ({ route, navigation }) => {
 
     const handleOpen = (code) => {
         setShowAps((prev) => {
-            const newDict = { ...prev };
-            if (newDict[code]) {
-                delete newDict[code]
-            } else {
-                newDict[code] = true
-            }
-            return newDict
-        })
-        setSelectedParcelas([])
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy)
-    }
+            const next = { ...prev };
+            const isOpen = !!next[code];
 
-    const handleSelected = (parcela) => {
-        console.log('parcela sleec: ', parcela)
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy)
-        setSelectedParcelas((prev) => {
-            // Check if the object exists in the array by comparing a unique property (e.g., parcelaId)
-            const exists = prev.some((item) => item.parcelaId === parcela.parcelaId);
-
-            if (exists) {
-                // If it exists, remove it
-                return prev.filter((item) => item.parcelaId !== parcela.parcelaId);
+            if (isOpen) {
+                delete next[code];
+                // se fechou o card ativo, limpa activeCode
+                if (activeCode === code) setActiveCode(null);
             } else {
-                // If it doesn't exist, add it
-                return [...prev, parcela];
+                next[code] = true;
+                setActiveCode(code);
             }
+            return next;
         });
-    }
+
+        // REMOVER: isso é o que reseta tudo ao abrir outro card
+        // setSelectedParcelas([])
+
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+    };
+
+
+    const handleSelected = (code, parcela) => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+
+        setSelectedParcelasByCode((prev) => {
+            const current = prev[code] || [];
+            const exists = current.some((item) => item.parcelaId === parcela.parcelaId);
+
+            const nextArr = exists
+                ? current.filter((item) => item.parcelaId !== parcela.parcelaId)
+                : [...current, parcela];
+
+            return { ...prev, [code]: nextArr };
+        });
+    };
+
+    // totalSelected passa a ser do card ativo
+    useEffect(() => {
+        if (!activeCode) {
+            setTotalSelected(0);
+            return;
+        }
+
+        const selected = getSelectedFor(activeCode);
+        const total =
+            selected.length > 0
+                ? selected.reduce((acc, curr) => acc + (curr.areaSolicitada - curr.areaAplicada), 0)
+                : 0;
+
+        setTotalSelected(total);
+    }, [activeCode, selectedParcelasByCode]);
+
+
 
     const iconDict = [
         { cultura: "Feijão", icon: require('../../utils/assets/icons/beans2.png'), alt: "feijao" },
@@ -222,53 +241,71 @@ const CardFarmBox = ({ route, navigation }) => {
     const getCultura = (dataCult) => filteredIcon(dataCult.cultura)
 
     const handleMapApi = (data) => {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy)
-        // console.log('handle MAP FArmbox', data)
-        navigation.navigate('MapsCreenStack', { data })
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
 
-    }
+        const selected = getSelectedFor(data.code); // seleção do card
+        navigation.navigate("MapsCreenStack", {
+            data,
+            selectedParcelas: getSelectedFor(data.code),
+        });
+    };
+
 
     const handleKmlGenerator = async (data, mapPlotData) => {
-        if (isSharing) return; // Evita toque duplo
+        if (isSharing) return;
         setIsSharing(true);
+
         try {
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-            const ciclo = data?.ciclo
-            const filteredMapPlotData = mapPlotData.filter((data) => Number(data.ciclo__ciclo) === Number(ciclo))
-            await exportPolygonsAsKML(data, filteredMapPlotData, selectedParcelas);
+            await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+
+            const ciclo = data?.ciclo;
+            const filteredMapPlotData = mapPlotData.filter(
+                (p) => Number(p.ciclo__ciclo) === Number(ciclo)
+            );
+
+            const selected = getSelectedFor(data.code); // <-- pega a seleção do card
+
+            await exportPolygonsAsKML(data, filteredMapPlotData, selected);
         } finally {
             setIsSharing(false);
         }
     };
 
+
     const escapeFarmName = (s = '') =>
         s.replace('Fazenda', 'Projeto').replace('Cacique', 'Cacíque');
 
 
-    const buildParcelasPayload = (data, mapPlotData) => {
+    const buildParcelasPayload = (data, mapPlotData, selectedParcelasParam = []) => {
+        const selected = Array.isArray(selectedParcelasParam) ? selectedParcelasParam : [];
 
+        // Se selecionou algo, exporta só as selecionadas. Se não, exporta todas do card.
         const filteredParcelas =
-            (selectedParcelas?.length ?? 0) > 0
-                ? selectedParcelas.map(p => p.parcela)
-                : (data?.parcelas ?? []).map(p => p.parcela);
+            selected.length > 0
+                ? selected.map((p) => p.parcela)
+                : (data?.parcelas ?? []).map((p) => p.parcela);
 
-        const farmName = data?.farmName ?? '';
+        const farmName = data?.farmName ?? "";
         const dataFromMap = newMapArr(mapPlotData ?? []);
-        const filteredFarmArr = dataFromMap
-            .filter(d =>
-                (d?.farmName ?? '').replace('Fazenda', 'Projeto').replace('Cacique', 'Cacíque') ===
-                escapeFarmName(farmName)
-            )
-            .filter(parc => filteredParcelas.includes(parc.talhao));
 
-        // Empacotar como o backend espera: [{ talhao, coords: [{latitude, longitude}] }]
-        const parcelas = filteredFarmArr.map(item => {
-            const coords = (item?.coords ?? []).map(p => ({
+        const filteredFarmArr = dataFromMap
+            .filter(
+                (d) =>
+                    (d?.farmName ?? "")
+                        .replace("Fazenda", "Projeto")
+                        .replace("Cacique", "Cacíque") ===
+                    escapeFarmName(farmName)
+            )
+            .filter((parc) => filteredParcelas.includes(parc.talhao));
+
+        const parcelas = filteredFarmArr.map((item) => {
+            const coords = (item?.coords ?? []).map((p) => ({
                 latitude: Number(p.latitude),
                 longitude: Number(p.longitude),
             }));
+
             return {
-                talhao: item?.talhao ?? 'Sem nome',
+                talhao: item?.talhao ?? "Sem nome",
                 coords,
             };
         });
@@ -276,29 +313,26 @@ const CardFarmBox = ({ route, navigation }) => {
         return { parcelas };
     };
 
-    // helper simples p/ tirar acentos e espaços
-    const slugify = (s = "") =>
-        s
-            .normalize("NFD")
-            .replace(/[\u0300-\u036f]/g, "")  // remove diacríticos
-            .replace(/\s+/g, "_")
-            .replace(/[^\w.-]/g, "")          // só letras, números, _ . -
-            .replace(/_+/g, "_")
-            .replace(/^_+|_+$/g, "");
-
-
     const handleKmlGeneratorUnique = async (
         data,
         mapPlotData,
-        selectedParcelas,
+        selectedParcelasParam,
         { tol_m = 35.0, corridor_width_m = 1.0 } = {}
     ) => {
         if (isSharingUnique) return;
         setIsSharingUnique(true);
+
         try {
             await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
 
-            const { parcelas } = buildParcelasPayload(data, mapPlotData, selectedParcelas);
+            // Se não vier seleção, usa a seleção do card (por code)
+            const selected =
+                Array.isArray(selectedParcelasParam) && selectedParcelasParam.length >= 0
+                    ? selectedParcelasParam
+                    : getSelectedFor(data.code);
+
+            const { parcelas } = buildParcelasPayload(data, mapPlotData, selected);
+
             if (!parcelas?.length) {
                 Alert.alert("Atenção", "Não há polígonos para exportar.");
                 return;
@@ -313,28 +347,25 @@ const CardFarmBox = ({ route, navigation }) => {
 
             const kmlText = await postKmlMerge(LINK, EXPO_PUBLIC_REACT_APP_DJANGO_TOKEN, body);
 
-            // caminho e nome do arquivo
-            const basePath = FileSystem.cacheDirectory || FileSystem.documentDirectory; // já termina com "/"
+            const basePath = FileSystem.cacheDirectory || FileSystem.documentDirectory;
             const farmName = (data?.farmName || "fazenda").replace("Fazenda ", "Projeto ");
             const farmSlug = slugify(farmName);
             const codeSlug = slugify(String(data?.code || ""));
             const filename = codeSlug ? `${farmSlug}_${codeSlug}.kml` : `${farmSlug}.kml`;
             const filePath = `${basePath}${filename}`;
 
-            // grava o arquivo
-            await FileSystem.writeAsStringAsync(filePath, kmlText, { encoding: FileSystem.EncodingType.UTF8 });
+            await FileSystem.writeAsStringAsync(filePath, kmlText, {
+                encoding: FileSystem.EncodingType.UTF8,
+            });
 
-            // ✅ evita .BIN no Android forçando MIME "genérico" de XML
             const mimeType =
-                Platform.OS === "android"
-                    ? "application/xml" // (ou "text/xml") → geralmente abre direto no Earth/Maps/GDrive
-                    : "application/vnd.google-earth.kml+xml";
+                Platform.OS === "android" ? "application/xml" : "application/vnd.google-earth.kml+xml";
 
             if (await Sharing.isAvailableAsync()) {
                 try {
                     await Sharing.shareAsync(filePath, {
                         mimeType,
-                        UTI: "com.google.earth.kml+xml", // iOS
+                        UTI: "com.google.earth.kml+xml",
                         dialogTitle: "Compartilhar arquivo KML",
                     });
                 } catch (error) {
@@ -354,6 +385,21 @@ const CardFarmBox = ({ route, navigation }) => {
             setIsSharingUnique(false);
         }
     };
+
+
+
+    // helper simples p/ tirar acentos e espaços
+    const slugify = (s = "") =>
+        s
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")  // remove diacríticos
+            .replace(/\s+/g, "_")
+            .replace(/[^\w.-]/g, "")          // só letras, números, _ . -
+            .replace(/_+/g, "_")
+            .replace(/^_+|_+$/g, "");
+
+
+
 
     useScrollToTop(ref);
 
@@ -471,6 +517,25 @@ const CardFarmBox = ({ route, navigation }) => {
                 >
                     {
                         farmData && farmData.map((data, i) => {
+
+                            const selectedHere = getSelectedFor(data.code);
+
+                            const totals = selectedHere.reduce(
+                                (acc, curr) => {
+                                    const solic = Number(curr.areaSolicitada || 0);
+                                    const apl = Number(curr.areaAplicada || 0);
+
+                                    acc.total += solic;
+                                    acc.aplicado += apl;
+                                    acc.aberto += Math.max(solic - apl, 0); // garante que não fica negativo
+                                    return acc;
+                                },
+                                { aberto: 0, aplicado: 0, total: 0 }
+                            );
+
+                            const abertoHere = totals.aberto;
+                            const aplicadoHere = totals.aplicado;
+                            const totalHere = totals.total;
                             return (
                                 <Animated.View
                                     entering={FadeInRight.duration(300)} // Root-level animation for appearance
@@ -536,13 +601,17 @@ const CardFarmBox = ({ route, navigation }) => {
                                                         {
                                                             data?.parcelas?.map((parcela) => {
                                                                 const uniKey = data.idAp + parcela.parcela
-                                                                const isSelected = selectedParcelas.find((filt) => filt.parcelaId === parcela.parcelaId)
+
+                                                                const selectedHere = getSelectedFor(data.code);
+                                                                const isSelected = selectedHere.some((f) => f.parcelaId === parcela.parcelaId);
                                                                 return (
                                                                     <Pressable
                                                                         key={uniKey}
                                                                         style={[styles.parcelasView, isSelected && styles.selectedParcelas, { backgroundColor: parcela.fillColorParce }]}
-                                                                        onPress={handleSelected.bind(this, parcela)}
+                                                                        onPress={() => handleSelected(data.code, parcela)}
                                                                     >
+                                                                        {isSelected && <View style={styles.selectedOverlay} pointerEvents="none" />}
+
                                                                         <Text style={{ color: parcela.fillColorParce === '#E4D00A' ? 'black' : 'whitesmoke', fontWeight: 'bold' }}>{parcela.parcela}</Text>
                                                                         <Text style={{ color: parcela.fillColorParce === '#E4D00A' ? 'black' : 'whitesmoke' }}>-</Text>
                                                                         <Text style={{ color: parcela.fillColorParce === '#E4D00A' ? 'black' : 'whitesmoke', fontWeight: 'bold' }}>{formatNumber(parcela.areaSolicitada)}</Text>
@@ -557,6 +626,15 @@ const CardFarmBox = ({ route, navigation }) => {
                                                             data?.prods?.filter((pro) => pro.type !== 'Operação').map((produto, index) => {
                                                                 const uniKey = data.cultura + data.idAp + produto.product
                                                                 // console.log('parcela Color backgrounc: ', produto.colorChip)
+
+                                                                const abertoPadrao = Number(data?.saldoAreaAplicar ?? (Number(data?.areaSolicitada || 0) - Number(data?.areaAplicada || 0)));
+
+                                                                // área base para cálculo de quantidade
+                                                                const areaBase = selectedHere.length > 0 ? Number(abertoHere || 0) : abertoPadrao;
+
+                                                                // total do produto (dose * área)
+                                                                const totalProduto = Number(produto.doseSolicitada || 0) * areaBase;
+
                                                                 return (
                                                                     <Animated.View
                                                                         entering={FadeInRight.duration(200 + (index * 50))} // Root-level animation for appearance
@@ -567,23 +645,50 @@ const CardFarmBox = ({ route, navigation }) => {
                                                                     >
                                                                         <Text style={[styles.textProds, { color: produto.colorChip === 'rgb(255,255,255,0.1)' ? '#455d7a' : 'whitesmoke' }]}>{formatNumberProds(produto.doseSolicitada)}</Text>
                                                                         <Text style={[styles.textProdsName, { color: produto.colorChip === 'rgb(255,255,255,0.1)' ? '#455d7a' : 'whitesmoke' }]}>{produto.product}</Text>
-                                                                        <Text style={[styles.totalprods, { color: produto.colorChip === 'rgb(255,255,255,0.1)' ? '#455d7a' : 'whitesmoke' }]}>{formatNumber(produto.doseSolicitada * data.areaSolicitada)}</Text>
+                                                                        <Text style={[styles.totalprods, { color: produto.colorChip === 'rgb(255,255,255,0.1)' ? '#455d7a' : 'whitesmoke' }]}>
+                                                                            {formatNumber(totalProduto)}
+                                                                        </Text>
+
                                                                     </Animated.View>
                                                                 )
                                                             })
                                                         }
                                                     </View>
                                                     <View style={styles.footerContainer}>
-                                                        <View style={styles.totalSelected}>
-                                                            <Text style={styles.textTotalSelected}>{totalSelected > 0 ? formatNumber(totalSelected) : '-'}</Text>
-                                                        </View>
-                                                        <View style={styles.buttonContainer}>
+
+                                                        {/* KPIs só aparecem quando houver seleção */}
+                                                        {selectedHere.length > 0 && (
+                                                            <View style={styles.kpiRow}>
+                                                                <View style={[styles.kpiCard, styles.kpiOpen]}>
+                                                                    <Text style={styles.kpiLabel}>Aberto</Text>
+                                                                    <Text style={styles.kpiValue}>
+                                                                        {abertoHere > 0 ? `${formatNumber(abertoHere)} ha` : "-"}
+                                                                    </Text>
+                                                                </View>
+
+                                                                <View style={[styles.kpiCard, styles.kpiApplied]}>
+                                                                    <Text style={styles.kpiLabel}>Aplicado</Text>
+                                                                    <Text style={styles.kpiValue}>
+                                                                        {aplicadoHere > 0 ? `${formatNumber(aplicadoHere)} ha` : "-"}
+                                                                    </Text>
+                                                                </View>
+
+                                                                <View style={[styles.kpiCard, styles.kpiTotal]}>
+                                                                    <Text style={styles.kpiLabel}>Total</Text>
+                                                                    <Text style={styles.kpiValue}>
+                                                                        {totalHere > 0 ? `${formatNumber(totalHere)} ha` : "-"}
+                                                                    </Text>
+                                                                </View>
+                                                            </View>
+                                                        )}
+
+
+                                                        {/* Botões sempre aparecem, mas vão para a linha de baixo */}
+                                                        <View style={styles.buttonRow}>
                                                             <Pressable
                                                                 disabled={isSharingUnique}
-                                                                style={({ pressed }) => [
-                                                                    styles.mapContainer,
-                                                                    pressed && styles.pressed]}
-                                                                onPress={handleKmlGeneratorUnique.bind(this, data, mapPlotData)}
+                                                                style={({ pressed }) => [styles.mapBtn, pressed && styles.pressed]}
+                                                                onPress={() => handleKmlGeneratorUnique(data, mapPlotData, getSelectedFor(data.code))}
                                                             >
                                                                 {isSharingUnique ? (
                                                                     <ActivityIndicator size={22} color={Colors.primary[500]} />
@@ -591,11 +696,10 @@ const CardFarmBox = ({ route, navigation }) => {
                                                                     <FontAwesome5 name="layer-group" size={24} color={Colors.primary[500]} />
                                                                 )}
                                                             </Pressable>
+
                                                             <Pressable
                                                                 disabled={isSharing}
-                                                                style={({ pressed }) => [
-                                                                    styles.mapContainer,
-                                                                    pressed && styles.pressed]}
+                                                                style={({ pressed }) => [styles.mapBtn, pressed && styles.pressed]}
                                                                 onPress={handleKmlGenerator.bind(this, data, mapPlotData)}
                                                             >
                                                                 {isSharing ? (
@@ -604,10 +708,9 @@ const CardFarmBox = ({ route, navigation }) => {
                                                                     <FontAwesome5 name="object-ungroup" size={24} color={Colors.succes[600]} />
                                                                 )}
                                                             </Pressable>
+
                                                             <Pressable
-                                                                style={({ pressed }) => [
-                                                                    styles.mapContainer,
-                                                                    pressed && styles.pressed]}
+                                                                style={({ pressed }) => [styles.mapBtn, pressed && styles.pressed]}
                                                                 onPress={handleMapApi.bind(this, data)}
                                                             >
                                                                 <FontAwesome5 name="map-marked-alt" size={24} color={Colors.primary[600]} />
@@ -679,27 +782,17 @@ const styles = StyleSheet.create({
         elevation: 4
     },
     textTotalSelected: {
-        fontWeight: 'bold'
+        fontWeight: 'bold',
     },
-    totalSelected: {
-        marginLeft: 15
-    },
-    footerContainer: {
-        flexDirection: 'row',
-        alignItems: 'baseline',
-        justifyContent: 'space-between',
-        marginBottom: 10
-    },
+
     selectedParcelas: {
-        borderColor: 'white',
-        borderWidth: 2
-    },
-    buttonContainer: {
-        flexDirection: 'row',
-        justifyContent: 'flex-end',
-        gap: 5,
-        marginRight: -5,
-        marginTop: 10
+        borderWidth: 2,
+        borderColor: 'blue',      // navy escuro, não compete com o label branco
+        shadowColor: "#000",
+        shadowOpacity: 0.25,
+        shadowRadius: 5,
+        shadowOffset: { width: 0, height: 3 },
+        elevation: 6,
     },
     mainContainer: {
         backgroundColor: Colors.secondary[200],
@@ -804,12 +897,88 @@ const styles = StyleSheet.create({
         // backgroundColor: Colors.secondary[200],
 
     },
-    mapContainer: {
-        marginRight: 10,
-        paddingTop: 10,
-        paddingRight: 10,
-        justifyContent: 'flex-end',
-        alignItems: 'flex-end',
-        borderRadius: 8,
+
+    selectedOverlay: {
+        ...StyleSheet.absoluteFillObject,
+        backgroundColor: Colors.primary[902],  // rgba(3,22,51,0.6) -> se ficar forte, use 0.18 abaixo
+        opacity: 0.48,
+        borderRadius: 6, // mesmo radius do chip
     },
+
+
+    totalSelected: {
+        marginLeft: 15,
+        flex: 1,                    // importante: ocupar espaço da esquerda
+        marginRight: 8,
+    },
+
+
+
+    kpiLabel: {
+        fontSize: 11,
+        color: Colors.secondary[700],
+        fontWeight: "700",
+        marginBottom: 2,
+    },
+
+    kpiValue: {
+        fontSize: 13,
+        color: Colors.primary[900],
+        fontWeight: "800",
+    },
+
+    // Variantes visuais (consistentes com seu tema)
+    kpiOpen: {
+        backgroundColor: Colors.gold[100],
+        borderColor: Colors.gold[400],
+    },
+
+    kpiApplied: {
+        backgroundColor: Colors.succes[100],
+        borderColor: Colors.succes[400],
+    },
+
+    kpiTotal: {
+        backgroundColor: Colors.primary[100],
+        borderColor: Colors.primary[300],
+    },
+
+    footerContainer: {
+        flexDirection: "column",
+        gap: 10,
+        marginBottom: 10,
+    },
+
+    kpiRow: {
+        flexDirection: "row",
+        gap: 8,
+        paddingHorizontal: 12,
+        marginTop: 12,
+    },
+
+    kpiCard: {
+        flexGrow: 1,
+        flexBasis: 0,
+        borderRadius: 10,
+        paddingVertical: 8,
+        paddingHorizontal: 10,
+        borderWidth: 1,
+    },
+
+    buttonRow: {
+        flexDirection: "row",
+        justifyContent: "flex-end",
+        gap: 8,
+        paddingHorizontal: 8,
+        paddingBottom: 2,
+    },
+
+    mapBtn: {
+        paddingVertical: 10,
+        paddingHorizontal: 10,
+        borderRadius: 10,
+    },
+
+
+
 })

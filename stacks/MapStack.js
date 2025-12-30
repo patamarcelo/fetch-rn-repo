@@ -12,7 +12,9 @@ import { useRoute } from '@react-navigation/native';
 const MapStack = () => {
 
 	const route = useRoute();
-	const newData =  route.params.data
+	const { data, selectedParcelas = [] } = route?.params || {};
+
+	
 	return (
 		<Stack.Navigator
 			screenOptions={{
@@ -25,7 +27,7 @@ const MapStack = () => {
 			<Stack.Screen 
 			name="MapStackScreen"
 			component={MapScreen} 
-			initialParams={{ data: newData }}  // Pass data as initialParams
+			initialParams={{ data: data, selectedParcelas }}  // Pass data as initialParams
 			/>
 		</Stack.Navigator>
 	);
