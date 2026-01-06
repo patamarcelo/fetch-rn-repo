@@ -63,7 +63,7 @@ const MapScreen = ({ navigation, route }) => {
 	// Helpers de cores (mantém exatamente o espírito do seu original)
 	const getColor = (cultura, variedadeInside, colorInside = "green") => {
 		if (cultura === "Arroz") return "rgba(251,191,112,1)";
-		if (cultura === "Soja") return colorInside;
+		if (cultura === "Soja") return '#35B637';
 		if (variedadeInside === "Mungo Preto") return "rgba(170,88,57,1.0)";
 		if (variedadeInside === "Mungo Verde") return "#82202B";
 		if (variedadeInside === "Caupi") return "#3F4B7D";
