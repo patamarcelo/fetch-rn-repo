@@ -58,6 +58,7 @@ export const exportPdf = createAsyncThunk(
             }
 
             const data = await res.json();
+            console.log('data here:', data)
             return data;                             // vai para exportPdf.fulfilled
         } catch (err) {
             return thunkAPI.rejectWithValue(err.message);

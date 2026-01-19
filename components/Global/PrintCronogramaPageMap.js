@@ -12,11 +12,11 @@ import { Platform } from "react-native";
 console.log('typeof [].at →', typeof [].at);
 export const createApplicationPdfMap = async (data, farm, plotMap) => {
 
-    console.log('data: ', data)
-    console.log('farm: ', farm)
-    console.log('farm: ', plotMap)
+    // console.log('data: ', data)
+    // console.log('farm: ', farm)
+    // console.log('farm: ', plotMap)
     const dataFromJson = plotMap.data;               // já é objeto JS
-
+    console.log('data from json::::', dataFromJson[0])
 
 
 
@@ -51,6 +51,19 @@ export const createApplicationPdfMap = async (data, farm, plotMap) => {
     }
 
 
+    const pickMapForApp = (allPlots, app) => {
+        const safra = String(app?.safra ?? "");
+        const ciclo = String(app?.ciclo ?? "");
+
+        // Os campos vêm da API como "safra__safra" e "ciclo__ciclo"
+        return (allPlots ?? []).filter((p) => {
+            const pSafra = String(p?.["safra__safra"] ?? "");
+            const pCiclo = String(p?.["ciclo__ciclo"] ?? "");
+            return pSafra === safra && pCiclo === ciclo;
+        });
+    };
+
+
 
 
     const totalAplicar = data.filter((op) => !op.operation.toLowerCase().includes('Colheita de Grãos')).reduce((acc, curr) => acc += curr.saldoAreaAplicar, 0)
@@ -58,43 +71,51 @@ export const createApplicationPdfMap = async (data, farm, plotMap) => {
 
         const talhoesParaPintar = app.parcelas.map((parcela) => parcela.parcela)
         const cultura = app.parcelas?.[0]?.cultura ?? 'unknown';
-        
-        console.log('[PDF] - gerando os mapas com a funcao getMapSvgBase64: ')
-        const base64Image = getMapSvgBase64(talhoesParaPintar, dataFromJson, cultura);
-        console.log('[PDF] - Finalizado os mapas com a funcao... ')
+
+        // console.log('[PDF] - gerando os mapas com a funcao getMapSvgBase64: ')
+
+        const mapForThisApp = pickMapForApp(dataFromJson, app);
+
+        // console.log("[PDF] app:", app?.code, "safra:", app?.safra, "ciclo:", app?.ciclo, "plots:", mapForThisApp.length);
+
+        const base64Image = getMapSvgBase64(talhoesParaPintar, mapForThisApp, cultura);
+        // const base64Image = getMapSvgBase64(talhoesParaPintar, dataFromJson, cultura);
+        // console.log('[PDF] - Finalizado os mapas com a funcao... ')
 
         const culturaAtual = app.parcelas?.[0]?.cultura ?? undefined;
         // procura no iconDict; se não achar, usa o “?” (último item)
-        console.log('[PDF] - pegando os icones com a funcao: iconBase64 ')
+        // console.log('[PDF] - pegando os icones com a funcao: iconBase64 ')
         const { base64: iconBase64, alt } =
-        iconDict.find(i => i.cultura === culturaAtual) ?? iconDict[iconDict.length - 1];
-        
-        console.log('[PDF] - Finalizando os icones com a funcao: iconBase64 ')
-        console.log('iconBase: ', iconBase64)
+            iconDict.find(i => i.cultura === culturaAtual) ?? iconDict[iconDict.length - 1];
+
+        // console.log('[PDF] - Finalizando os icones com a funcao: iconBase64 ')
+        // console.log('iconBase: ', iconBase64)
 
         // tag pronta para colar
         const iconTag = `<img src="${iconBase64}" alt="${alt}"
                         style="width:16px;height:16px;margin-right:4px;vertical-align:middle" />`;
-    
+
         const appsCards = app.parcelas.map((parcela) => {
 
-            console.log('[PDF] - pegando os icones com a funcao: iconBase64 ')
+            // console.log('[PDF] - pegando os icones com a funcao: iconBase64 ')
             const { base64: iconBase64, alt } = iconDict.find(i => i.cultura === parcela.cultura) ?? iconDict[iconDict.length - 1];
-            
-            console.log('[PDF] - Finalizando os icones com a funcao: iconBase64 ')
-            console.log('iconBase: ', iconBase64)
+
+            // console.log('[PDF] - Finalizando os icones com a funcao: iconBase64 ')
+            // console.log('iconBase: ', iconBase64)
 
             const iconTagInside = `<img src="${iconBase64}" alt="${alt}"
                         style="width:8px;height:8px;margin-left: 3px;padding-bottom: 2px;vertical-align:middle" />`;
 
             const areaAplicada = `<span><b>Aplicado:</b> ${formatNumber(parcela.areaAplicada)} há</span>`
             return `
-                <div class="${Platform.OS === 'ios' ? 'parcela-detail-container' : 'parcela-detail-container-android' } bordered ${parcela.areaSolicitada == parcela.areaAplicada && 'finish-parcela'}">
+                <div class="${Platform.OS === 'ios' ? 'parcela-detail-container' : 'parcela-detail-container-android'} bordered ${parcela.areaSolicitada == parcela.areaAplicada && 'finish-parcela'}">
                     <div class="detail-variedade-area ${Platform.OS === 'android' && 'detail-variedade-area-android'}">
-                        <b>${parcela.parcela}${iconTagInside}</b><span>${formatNumber(parcela.areaSolicitada)} há</span>
+                        <b class="parcela-code">${parcela.parcela}${iconTagInside}</b>
+                        <span class="parcela-area">${formatNumber(parcela.areaSolicitada)} há</span>
                     </div>
                     <div class="detail-variedade-dap ${Platform.OS !== 'ios' ? 'font-mini' : ''}">
-                        <p>${parcela.variedade || '?'}</p><p>${getDap(parcela.date)} dias</p>
+                        <p class="variedade-text">${parcela.variedade || '?'}</p>
+                        <p class="dap-text">${getDap(parcela.date)} dias</p>
                     </div>
                     <div class="detail-variedade-status ${Platform.OS === 'android' && 'detail-variedade-status-android'}">
                         ${parcela.areaAplicada > 0 ? areaAplicada : ''}
@@ -111,7 +132,7 @@ export const createApplicationPdfMap = async (data, farm, plotMap) => {
             return `rgba(${r},${g},${b},${alpha})`;
         }
 
-        const prodsCards = app.prods.filter((prodType) => prodType.type !== 'Operação').sort((a,b) => a.type.localeCompare(b.type)).map((prod, i) => {
+        const prodsCards = app.prods.filter((prodType) => prodType.type !== 'Operação').sort((a, b) => a.type.localeCompare(b.type)).map((prod, i) => {
 
             return `
                 <div class="grid-produtos detail-prod-container ${i === 0 && 'first-prod-here'} ${i % 2 !== 0 && 'even-row-prod'}" style="background-color: ${withOpacity(prod.colorChip)}">
@@ -564,6 +585,92 @@ export const createApplicationPdfMap = async (data, farm, plotMap) => {
                 .detail-variedade-dap.font-mini p {
                     font-size: 1px !important;
                 }
+                    /* Impede overflow geral dentro do card */
+                .parcela-detail-container,
+                .parcela-detail-container-android {
+                box-sizing: border-box;
+                overflow: hidden;
+                }
+
+                .variedade-text,
+                .parcela-code {
+                max-width: 100%;
+                min-width: 0;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+                }
+
+                /* Linha 1: código + área em colunas fixas */
+                .detail-variedade-area {
+                display: grid;                 /* melhor que flex aqui */
+                grid-template-columns: minmax(0, 1fr) max-content;
+                align-items: center;
+                gap: 4px;                      /* menor que 10px */
+                width: 100%;
+                min-width: 0;                  /* essencial p/ não estourar */
+                border-bottom: 0.5px solid black;
+                }
+
+                .detail-variedade-area .parcela-code {
+                min-width: 0;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+                }
+
+                .detail-variedade-area .parcela-area {
+                white-space: nowrap;
+                font-variant-numeric: tabular-nums; /* números alinhados */
+                }
+
+                /* Linha 2: variedade + DAP */
+                .detail-variedade-dap {
+                display: grid;
+                grid-template-columns: minmax(0, 1fr) max-content;
+                gap: 4px;
+                align-items: center;
+                width: 100%;
+                min-width: 0;
+                }
+
+                .detail-variedade-dap .variedade-text {
+                margin: 0;
+                min-width: 0;
+                overflow: hidden;
+                text-overflow: ellipsis;  /* corta variedade grande */
+                white-space: nowrap;
+                }
+
+                .parcela-area,
+                .dap-text {
+                font-size: 0.95em;                /* ligeiramente menor */
+                letter-spacing: -0.2px;           /* comprime números */
+                font-variant-numeric: tabular-nums;
+                white-space: nowrap;
+                }
+
+                .detail-variedade-dap .dap-text {
+                margin: 0;
+                white-space: nowrap;
+                font-variant-numeric: tabular-nums;
+                }
+
+                /* Linha 3: status "Aplicado" não estoura */
+                .detail-variedade-status {
+                width: 100%;
+                min-width: 0;
+                overflow: hidden;
+                display: flex;
+                justify-content: flex-end;
+                }
+
+                .detail-variedade-status span {
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                }
+
             </style>
         </head>
 

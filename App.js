@@ -22,6 +22,7 @@ import { useEffect, useState } from "react";
 
 import { checkUserStatus } from "./store/firebase/logged-checked";
 
+import AppSplash from './components/Splash/AppSplash';
 
 
 
@@ -64,20 +65,15 @@ export default function App() {
 	};
 
 	return (
-		<>
-			<GestureHandlerRootView style={{ flex: 1 }}>
-				<StatusBar style="light" />
+		<GestureHandlerRootView style={{ flex: 1 }}>
+			<StatusBar style="light" />
 
-				<Provider store={store}>
-					<PersistGate
-						loading={<Text>Loading...</Text>}
-						persistor={persistor}
-					>
-						<Root />
-					</PersistGate>
-				</Provider>
-			</GestureHandlerRootView>
-		</>
+			<Provider store={store}>
+				<PersistGate loading={<AppSplash />} persistor={persistor}>
+					<Root />
+				</PersistGate>
+			</Provider>
+		</GestureHandlerRootView>
 	);
 }
 

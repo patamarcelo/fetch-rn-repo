@@ -95,12 +95,28 @@ const CardFarmBox = ({ route, navigation }) => {
     const handleExprotData = () => {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy)
         const allApps = data.filter((farmName) => farmName.farmName === farm)
-        const params = {
-            safra: allApps[0]?.safra,
-            ciclo: allApps[0]?.ciclo,
-            farm: allApps[0]?.farmId
+        console.log('AllApss', allApps[0]?.parcelas)
+        const apParcelasIndex = (allApps ?? []).map((ap) => ({
+            idAp: ap?.idAp,
+            parcelasIds: (ap?.parcelas ?? [])
+                .map((p) => p?.parcelaAppPlantationId)
+                .filter((id) => id != null),
+        }));
 
-        }
+        // flatten + unique
+        const onlyIds = Array.from(
+            new Set(
+                apParcelasIndex.flatMap((ap) => ap.parcelasIds)
+            )
+        );
+
+        console.log("onlyIds:", onlyIds);
+
+        const params = {
+            farm: allApps[0]?.farmId,
+            apParcelasIndex,
+            onlyIds,
+        };
         dispatch(exportPdf(params))
         navigation.navigate('FarmBoxFilterApps', { data: data, farm: farm })
     }
@@ -277,7 +293,7 @@ const CardFarmBox = ({ route, navigation }) => {
         s.replace('Fazenda', 'Projeto').replace('Cacique', 'Cacíque');
 
 
-    const buildParcelasPayload = (data, mapPlotData, selectedParcelasParam = []) => {
+    const buildParcelasPayload = (data, mapPlotData, selectedParcelasParam = [], ciclo) => {
         const selected = Array.isArray(selectedParcelasParam) ? selectedParcelasParam : [];
 
         // Se selecionou algo, exporta só as selecionadas. Se não, exporta todas do card.
@@ -297,7 +313,9 @@ const CardFarmBox = ({ route, navigation }) => {
                         .replace("Cacique", "Cacíque") ===
                     escapeFarmName(farmName)
             )
-            .filter((parc) => filteredParcelas.includes(parc.talhao));
+            .filter((parc) => parc?.ciclo === ciclo && filteredParcelas.includes(parc?.talhao));
+
+
 
         const parcelas = filteredFarmArr.map((item) => {
             const coords = (item?.coords ?? []).map((p) => ({
@@ -307,6 +325,7 @@ const CardFarmBox = ({ route, navigation }) => {
 
             return {
                 talhao: item?.talhao ?? "Sem nome",
+                ciclo: item?.ciclo ?? 'Sem Ciclo',
                 coords,
             };
         });
@@ -332,7 +351,10 @@ const CardFarmBox = ({ route, navigation }) => {
                     ? selectedParcelasParam
                     : getSelectedFor(data.code);
 
-            const { parcelas } = buildParcelasPayload(data, mapPlotData, selected);
+
+            const ciclo_selected = data?.ciclo
+            const { parcelas } = buildParcelasPayload(data, mapPlotData, selected, ciclo_selected);
+
 
             if (!parcelas?.length) {
                 Alert.alert("Atenção", "Não há polígonos para exportar.");
