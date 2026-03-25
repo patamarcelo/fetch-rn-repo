@@ -95,7 +95,7 @@ PODS:
     - ReactCommon/turbomodule/core
     - ReactNativeDependencies
     - Yoga
-  - ExpoSharing (14.0.7):
+  - ExpoSharing (14.0.8):
     - ExpoModulesCore
   - ExpoSplashScreen (31.0.10):
     - ExpoModulesCore
@@ -2536,7 +2536,7 @@ SPEC CHECKSUMS:
   ExpoNetwork: b87392dcc24d49a595f186ca25cdcf7293d30275
   ExpoPrint: 3fa0bd322ea8effa81893a099803c914e59ad46f
   ExpoScreenOrientation: ef9ab3fb85c8a8ff57d52aa169b750aca03f0f4c
-  ExpoSharing: 032c01bb034319e2374badf082ae935be866d2e9
+  ExpoSharing: 0d983394ed4a80334bab5a0d5384f75710feb7e8
   ExpoSplashScreen: cbb839de72110dea1851dd3e85080b7923af2540
   ExpoSystemUI: 2761aa6875849af83286364811d46e8ed8ea64c7
   EXStructuredHeaders: c951e77f2d936f88637421e9588c976da5827368
