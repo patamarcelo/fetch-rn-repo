@@ -42,7 +42,7 @@ function ActionCard({ title, subtitle, icon, iconLib = "ion", onPress }) {
 
 function StatCard({ label, value, icon, color, onPress }) {
 	return (
-		<Pressable style={styles.statCard} onPress={onPress}>
+		<Pressable style={styles.statCard} onPress={ value !== 0 ? onPress : () => console.log('sem nav')}>
 			<View>
 
 				<View style={[styles.statIconWrap, { backgroundColor: color }]}>
@@ -52,7 +52,7 @@ function StatCard({ label, value, icon, color, onPress }) {
 				<Text style={styles.statLabel}>{label}</Text>
 			</View>
 			{
-				onPress &&
+				onPress && value !== 0 &&
 				<View>
 					<Ionicons name="chevron-forward" size={20} color={Colors.primary500} />
 				</View>
@@ -141,6 +141,7 @@ const PolygonHomeScreen = () => {
 					value={polygonStats?.pending || 0}
 					icon="cloud-upload"
 					color="#F59E0B"
+					onPress={() => goToPolygonFlow("PolygonSyncScreen")}
 				/>
 				<StatCard
 					label="Sincronizados"
@@ -186,9 +187,9 @@ const PolygonHomeScreen = () => {
 
 				<ActionCard
 					title="Sincronização"
-					subtitle="Em breve: enviar pendentes para o backend quando houver internet."
+					subtitle="Enviar pendentes para o servidor , precisa de internet."
 					icon="cloud-upload-outline"
-					onPress={() => goToPolygonFlow("PolygonSavedListScreen")}
+					onPress={() => goToPolygonFlow("PolygonSyncScreen")}
 				/>
 			</View>
 		</ScrollView>

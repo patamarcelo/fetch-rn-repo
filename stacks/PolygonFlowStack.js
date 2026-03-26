@@ -7,6 +7,8 @@ import PolygonManualScreen from "../screens/polygon/PolygonManualScreen";
 import PolygonMapPickerScreen from "../screens/polygon/PolygonMapPickerScreen";
 import PolygonTrackingScreen from "../screens/polygon/PolygonTrackingScreen";
 import PolygonSavedListScreen from "../screens/polygon/PolygonSavedListScreen";
+import PolygonSyncScreen from "../screens/polygon/PolygonSyncScreen";
+import PolygonPreviewScreen from "../screens/polygon/PolygonPreviewScreen";
 
 const Stack = createNativeStackNavigator();
 
@@ -68,6 +70,22 @@ const PolygonFlowStack = () => {
 				component={PolygonSavedListScreen}
 				options={({ navigation }) => ({
 					title: "Polígonos salvos",
+					headerLeft: () => buildBackButton(navigation),
+				})}
+			/>
+			<Stack.Screen
+				name="PolygonSyncScreen"
+				component={PolygonSyncScreen}
+				options={({ navigation }) => ({
+					title: "Polígonos salvos",
+					headerLeft: () => buildBackButton(navigation),
+				})}
+			/>
+			<Stack.Screen
+				name="PolygonPreviewScreen"
+				component={PolygonPreviewScreen}
+				options={({ navigation }) => ({
+					title: "Visualização do polígono",
 					headerLeft: () => buildBackButton(navigation),
 				})}
 			/>

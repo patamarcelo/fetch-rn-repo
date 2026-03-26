@@ -281,19 +281,25 @@ const polygonSlice = createSlice({
 		},
 
 		markPolygonAsSynced: (state, action) => {
-			const polygonId = action.payload;
-			const index = state.items.findIndex((item) => item.id === polygonId);
+			const payload =
+				typeof action.payload === "string"
+					? { id: action.payload }
+					: action.payload || {};
 
-			if (index >= 0) {
-				state.items[index].status = "synced";
-				state.items[index].syncPending = false;
-				state.items[index].syncError = null;
-				state.items[index].updatedAt = new Date().toISOString();
+			const polygon = state.items.find((item) => item.id === payload.id);
+
+			if (polygon) {
+				polygon.syncPending = false;
+				polygon.syncError = null;
+				polygon.status = "synced";
+				polygon.updatedAt = new Date().toISOString();
+
+				if (payload.serverId !== undefined) {
+					polygon.serverId = payload.serverId;
+				}
 			}
 
-			state.syncQueue = state.syncQueue.filter((id) => id !== polygonId);
-			state.syncStatus = "succeeded";
-			state.syncError = null;
+			state.syncQueue = state.syncQueue.filter((id) => id !== payload.id);
 		},
 
 		markPolygonAsSyncError: (state, action) => {
