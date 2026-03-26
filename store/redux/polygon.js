@@ -1,0 +1,321 @@
+import { createSlice } from "@reduxjs/toolkit";
+import { logout } from "./authSlice";
+
+const initialState = {
+	draft: {
+		id: null,
+		name: "",
+		farmId: null,
+		farmName: "",
+		mode: null, // "manual" | "tracking"
+		points: [],
+		isRecording: false,
+		isPaused: false,
+		isClosed: false,
+		startedAt: null,
+		finishedAt: null,
+		currentAccuracy: null,
+		observation: "",
+	},
+	items: [],
+	selectedPolygonId: null,
+	syncQueue: [],
+	syncStatus: "idle", // idle | pending | succeeded | failed
+	syncError: null,
+};
+
+const buildDraft = (payload = {}) => ({
+	id: payload.id || `polygon_${Date.now()}`,
+	name: payload.name || "",
+	farmId: payload.farmId || null,
+	farmName: payload.farmName || "",
+	mode: payload.mode || null,
+	points: payload.points || [],
+	isRecording: false,
+	isPaused: false,
+	isClosed: false,
+	startedAt: payload.startedAt || null,
+	finishedAt: null,
+	currentAccuracy: null,
+	observation: payload.observation || "",
+});
+
+const polygonSlice = createSlice({
+	name: "polygon",
+	initialState,
+	reducers: {
+		resetPolygonState: () => initialState,
+
+		startPolygonDraft: (state, action) => {
+			state.draft = buildDraft(action.payload || {});
+		},
+
+		resetPolygonDraft: (state) => {
+			state.draft = buildDraft();
+		},
+
+		setPolygonMode: (state, action) => {
+			state.draft.mode = action.payload;
+		},
+
+		setPolygonMeta: (state, action) => {
+			const {
+				name,
+				farmId,
+				farmName,
+				observation,
+			} = action.payload || {};
+
+			if (name !== undefined) state.draft.name = name;
+			if (farmId !== undefined) state.draft.farmId = farmId;
+			if (farmName !== undefined) state.draft.farmName = farmName;
+			if (observation !== undefined) state.draft.observation = observation;
+		},
+
+		setDraftCurrentAccuracy: (state, action) => {
+			state.draft.currentAccuracy = action.payload;
+		},
+
+		addPointToDraft: (state, action) => {
+			const point = action.payload;
+
+			if (!point?.latitude || !point?.longitude) return;
+
+			state.draft.points.push({
+				latitude: point.latitude,
+				longitude: point.longitude,
+				accuracy: point.accuracy ?? null,
+				recordedAt: point.recordedAt || new Date().toISOString(),
+			});
+		},
+
+		addPointsToDraft: (state, action) => {
+			const points = Array.isArray(action.payload) ? action.payload : [];
+
+			points.forEach((point) => {
+				if (!point?.latitude || !point?.longitude) return;
+
+				state.draft.points.push({
+					latitude: point.latitude,
+					longitude: point.longitude,
+					accuracy: point.accuracy ?? null,
+					recordedAt: point.recordedAt || new Date().toISOString(),
+				});
+			});
+		},
+
+		removeLastDraftPoint: (state) => {
+			if (state.draft.points.length > 0) {
+				state.draft.points.pop();
+			}
+		},
+
+		clearDraftPoints: (state) => {
+			state.draft.points = [];
+		},
+
+		setDraftPoints: (state, action) => {
+			state.draft.points = Array.isArray(action.payload) ? action.payload : [];
+		},
+
+		updateDraftPointAtIndex: (state, action) => {
+			const { index, point } = action.payload || {};
+			if (typeof index !== "number" || index < 0) return;
+			if (!point?.latitude || !point?.longitude) return;
+			if (!state.draft.points[index]) return;
+
+			state.draft.points[index] = {
+				...state.draft.points[index],
+				latitude: point.latitude,
+				longitude: point.longitude,
+				accuracy: point.accuracy ?? state.draft.points[index]?.accuracy ?? null,
+				recordedAt:
+					point.recordedAt ||
+					state.draft.points[index]?.recordedAt ||
+					new Date().toISOString(),
+			};
+		},
+
+		removeDraftPointAtIndex: (state, action) => {
+			const index = action.payload;
+			if (typeof index !== "number" || index < 0) return;
+			if (!state.draft.points[index]) return;
+
+			state.draft.points.splice(index, 1);
+		},
+
+		setPolygonRecording: (state, action) => {
+			state.draft.isRecording = action.payload;
+		},
+
+		setPolygonPaused: (state, action) => {
+			state.draft.isPaused = action.payload;
+		},
+
+		startTrackingDraft: (state) => {
+			state.draft.isRecording = true;
+			state.draft.isPaused = false;
+			if (!state.draft.startedAt) {
+				state.draft.startedAt = new Date().toISOString();
+			}
+		},
+
+		pauseTrackingDraft: (state) => {
+			state.draft.isPaused = true;
+			state.draft.isRecording = false;
+		},
+
+		resumeTrackingDraft: (state) => {
+			state.draft.isPaused = false;
+			state.draft.isRecording = true;
+		},
+
+		finishPolygonDraft: (state, action) => {
+			const { isClosed = false } = action.payload || {};
+
+			state.draft.isClosed = isClosed;
+			state.draft.isRecording = false;
+			state.draft.isPaused = false;
+			state.draft.finishedAt = new Date().toISOString();
+		},
+
+		saveDraftAsPolygon: (state, action) => {
+			const extraData = action.payload || {};
+			const polygonId = state.draft.id || `polygon_${Date.now()}`;
+
+			const polygon = {
+				id: polygonId,
+				name: state.draft.name || "Polígono sem nome",
+				farmId: state.draft.farmId,
+				farmName: state.draft.farmName,
+				mode: state.draft.mode,
+				points: state.draft.points,
+				isClosed: state.draft.isClosed,
+				isRecording: false,
+				isPaused: false,
+				startedAt: state.draft.startedAt,
+				finishedAt: state.draft.finishedAt || new Date().toISOString(),
+				currentAccuracy: state.draft.currentAccuracy,
+				observation: state.draft.observation || "",
+				status: extraData.status || "saved", // saved | sync_pending | synced | sync_error
+				syncPending: extraData.syncPending ?? true,
+				syncError: null,
+				areaM2: extraData.areaM2 ?? null,
+				perimeterM: extraData.perimeterM ?? null,
+				createdAt: extraData.createdAt || new Date().toISOString(),
+				updatedAt: new Date().toISOString(),
+			};
+
+			const existingIndex = state.items.findIndex((item) => item.id === polygonId);
+
+			if (existingIndex >= 0) {
+				state.items[existingIndex] = polygon;
+			} else {
+				state.items.unshift(polygon);
+			}
+
+			if (!state.syncQueue.includes(polygonId)) {
+				state.syncQueue.push(polygonId);
+			}
+
+			state.selectedPolygonId = polygonId;
+		},
+
+		updatePolygon: (state, action) => {
+			const { id, data } = action.payload || {};
+			if (!id || !data) return;
+
+			const index = state.items.findIndex((item) => item.id === id);
+			if (index === -1) return;
+
+			state.items[index] = {
+				...state.items[index],
+				...data,
+				updatedAt: new Date().toISOString(),
+			};
+		},
+
+		deletePolygon: (state, action) => {
+			const polygonId = action.payload;
+
+			state.items = state.items.filter((item) => item.id !== polygonId);
+			state.syncQueue = state.syncQueue.filter((id) => id !== polygonId);
+
+			if (state.selectedPolygonId === polygonId) {
+				state.selectedPolygonId = null;
+			}
+		},
+
+		setSelectedPolygonId: (state, action) => {
+			state.selectedPolygonId = action.payload;
+		},
+
+		enqueuePolygonSync: (state, action) => {
+			const polygonId = action.payload;
+			if (!polygonId) return;
+
+			if (!state.syncQueue.includes(polygonId)) {
+				state.syncQueue.push(polygonId);
+			}
+
+			const index = state.items.findIndex((item) => item.id === polygonId);
+			if (index >= 0) {
+				state.items[index].status = "sync_pending";
+				state.items[index].syncPending = true;
+				state.items[index].updatedAt = new Date().toISOString();
+			}
+		},
+
+		dequeuePolygonSync: (state, action) => {
+			const polygonId = action.payload;
+			state.syncQueue = state.syncQueue.filter((id) => id !== polygonId);
+		},
+
+		setPolygonSyncStatus: (state, action) => {
+			state.syncStatus = action.payload;
+		},
+
+		setPolygonSyncError: (state, action) => {
+			state.syncError = action.payload;
+			state.syncStatus = "failed";
+		},
+
+		markPolygonAsSynced: (state, action) => {
+			const polygonId = action.payload;
+			const index = state.items.findIndex((item) => item.id === polygonId);
+
+			if (index >= 0) {
+				state.items[index].status = "synced";
+				state.items[index].syncPending = false;
+				state.items[index].syncError = null;
+				state.items[index].updatedAt = new Date().toISOString();
+			}
+
+			state.syncQueue = state.syncQueue.filter((id) => id !== polygonId);
+			state.syncStatus = "succeeded";
+			state.syncError = null;
+		},
+
+		markPolygonAsSyncError: (state, action) => {
+			const { id, error } = action.payload || {};
+			const index = state.items.findIndex((item) => item.id === id);
+
+			if (index >= 0) {
+				state.items[index].status = "sync_error";
+				state.items[index].syncPending = true;
+				state.items[index].syncError = error || "Erro ao sincronizar";
+				state.items[index].updatedAt = new Date().toISOString();
+			}
+
+			state.syncStatus = "failed";
+			state.syncError = error || "Erro ao sincronizar";
+		},
+	},
+	extraReducers: (builder) => {
+		builder.addCase(logout.fulfilled, () => initialState);
+	},
+});
+
+export const polygonActions = polygonSlice.actions;
+
+export default polygonSlice.reducer;

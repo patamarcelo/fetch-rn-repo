@@ -1,12 +1,12 @@
 import { configureStore } from "@reduxjs/toolkit";
 import { combineReducers } from "redux";
 import GeralReducer from "./geral";
-import authReducer from "./authSlice"
+import authReducer from "./authSlice";
+import polygonReducer from "./polygon";
 
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { persistStore, persistReducer } from "redux-persist";
 import thunk from "redux-thunk";
-
 
 const persistConfig = {
 	key: "root",
@@ -16,13 +16,13 @@ const persistConfig = {
 const reducer = combineReducers({
 	geral: GeralReducer,
 	auth: authReducer,
+	polygon: polygonReducer,
 });
 
 const persistedReducer = persistReducer(persistConfig, reducer);
 
 export const store = configureStore({
 	reducer: persistedReducer,
-	// middleware: [thunk]
 	middleware: (getDefaultMiddleware) =>
 		getDefaultMiddleware({
 			thunk,
