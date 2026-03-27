@@ -15,6 +15,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { Colors } from "../../constants/styles";
 import { polygonActions } from "../../store/redux/polygon";
 import { selectPolygonDraft } from "../../store/redux/polygonSelectors";
+import { useKeepAwake } from "expo-keep-awake";
 
 const DEFAULT_DELTA = {
 	latitudeDelta: 0.008,
@@ -50,10 +51,55 @@ function sanitizePoints(points = []) {
 		);
 }
 
+function getDistanceInMeters(pointA, pointB) {
+	if (!pointA || !pointB) return 0;
+
+	const toRad = (value) => (value * Math.PI) / 180;
+
+	const lat1 = Number(pointA.latitude);
+	const lon1 = Number(pointA.longitude);
+	const lat2 = Number(pointB.latitude);
+	const lon2 = Number(pointB.longitude);
+
+	if (
+		![lat1, lon1, lat2, lon2].every((value) => Number.isFinite(value))
+	) {
+		return 0;
+	}
+
+	const R = 6371000;
+	const dLat = toRad(lat2 - lat1);
+	const dLon = toRad(lon2 - lon1);
+
+	const a =
+		Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+		Math.cos(toRad(lat1)) *
+		Math.cos(toRad(lat2)) *
+		Math.sin(dLon / 2) *
+		Math.sin(dLon / 2);
+
+	const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+	return R * c;
+}
+
+function getSecondsBetween(dateA, dateB) {
+	if (!dateA || !dateB) return 999999;
+
+	const timeA = new Date(dateA).getTime();
+	const timeB = new Date(dateB).getTime();
+
+	if (!Number.isFinite(timeA) || !Number.isFinite(timeB)) return 999999;
+
+	return Math.abs(timeB - timeA) / 1000;
+}
+
 const PolygonMapPickerScreen = ({ navigation, route }) => {
 	const dispatch = useDispatch();
 	const draft = useSelector(selectPolygonDraft);
 	const mapRef = useRef(null);
+	const locationSubscription = useRef(null);
+	const trackingPointLockRef = useRef(false);
 
 	const initialEditIndex =
 		typeof route?.params?.editIndex === "number" ? route.params.editIndex : null;
@@ -66,9 +112,19 @@ const PolygonMapPickerScreen = ({ navigation, route }) => {
 	const [localPoints, setLocalPoints] = useState(draft?.points || []);
 	const [mapVersion, setMapVersion] = useState(0);
 	const [isSaving, setIsSaving] = useState(false);
+	const [currentLocation, setCurrentLocation] = useState(null);
+	const [trackingActive, setTrackingActive] = useState(draft?.mode === "tracking");
+
+	useKeepAwake();
 
 	useEffect(() => {
 		initialize();
+		return () => {
+			if (locationSubscription.current) {
+				locationSubscription.current.remove();
+				locationSubscription.current = null;
+			}
+		};
 	}, []);
 
 	useEffect(() => {
@@ -89,6 +145,12 @@ const PolygonMapPickerScreen = ({ navigation, route }) => {
 		}
 	}, [localPoints, dragEditIndex]);
 
+	useEffect(() => {
+		if (draft?.mode !== "tracking") {
+			setTrackingActive(false);
+		}
+	}, [draft?.mode]);
+
 	const initialize = async () => {
 		try {
 			setLoading(true);
@@ -103,6 +165,7 @@ const PolygonMapPickerScreen = ({ navigation, route }) => {
 			if (initialEditIndex !== null && localPoints[initialEditIndex]) {
 				const point = localPoints[initialEditIndex];
 				setRegion(buildRegion(point.latitude, point.longitude));
+				await startLocationWatch();
 				return;
 			}
 
@@ -110,9 +173,21 @@ const PolygonMapPickerScreen = ({ navigation, route }) => {
 				accuracy: Location.Accuracy.High,
 			});
 
-			setRegion(
-				buildRegion(location.coords.latitude, location.coords.longitude)
+			const initialRegion = buildRegion(
+				location.coords.latitude,
+				location.coords.longitude
 			);
+
+			setCurrentLocation({
+				latitude: location.coords.latitude,
+				longitude: location.coords.longitude,
+				accuracy: location.coords.accuracy ?? null,
+				recordedAt: new Date().toISOString(),
+			});
+
+			setRegion(initialRegion);
+
+			await startLocationWatch();
 		} catch (error) {
 			console.log("INIT ERROR:", error);
 			Alert.alert("Erro", "Não foi possível abrir o mapa.");
@@ -122,9 +197,115 @@ const PolygonMapPickerScreen = ({ navigation, route }) => {
 		}
 	};
 
+	const startLocationWatch = async () => {
+		try {
+			if (locationSubscription.current) {
+				locationSubscription.current.remove();
+				locationSubscription.current = null;
+			}
+
+			const subscription = await Location.watchPositionAsync(
+				{
+					accuracy: Location.Accuracy.High,
+					timeInterval: 2000,
+					distanceInterval: 2,
+				},
+				(location) => {
+					const nextLocation = {
+						latitude: Number(location?.coords?.latitude),
+						longitude: Number(location?.coords?.longitude),
+						accuracy: location?.coords?.accuracy ?? null,
+						recordedAt: new Date().toISOString(),
+					};
+
+					if (
+						!Number.isFinite(nextLocation.latitude) ||
+						!Number.isFinite(nextLocation.longitude)
+					) {
+						return;
+					}
+
+					setCurrentLocation(nextLocation);
+
+					if (draft?.followMe && dragEditIndex === null && !isSaving) {
+						const nextRegion = buildRegion(
+							nextLocation.latitude,
+							nextLocation.longitude
+						);
+
+						setRegion(nextRegion);
+
+						if (mapRef.current) {
+							mapRef.current.animateToRegion(nextRegion, 500);
+						}
+					}
+
+					const shouldAutoTrack =
+						draft?.mode === "tracking" &&
+						trackingActive &&
+						dragEditIndex === null &&
+						selectedPointIndex === null &&
+						!isSaving;
+
+					if (!shouldAutoTrack) return;
+					if (trackingPointLockRef.current) return;
+
+					trackingPointLockRef.current = true;
+
+					try {
+						setLocalPoints((prevPoints) => {
+							const sanitizedPrev = sanitizePoints(prevPoints);
+							const lastPoint =
+								sanitizedPrev.length > 0
+									? sanitizedPrev[sanitizedPrev.length - 1]
+									: null;
+
+							const minDistance = Number(draft?.autoMinDistance ?? 5);
+							const minSeconds = Number(draft?.autoMinSeconds ?? 3);
+
+							if (!lastPoint) {
+								setFeedbackMessage("Primeiro ponto automático capturado.");
+								return [...sanitizedPrev, nextLocation];
+							}
+
+							const distance = getDistanceInMeters(lastPoint, nextLocation);
+							const seconds = getSecondsBetween(
+								lastPoint.recordedAt,
+								nextLocation.recordedAt
+							);
+
+							const passedDistance = distance >= Math.max(minDistance, 0);
+							const passedTime = seconds >= Math.max(minSeconds, 0);
+
+							if (passedDistance && passedTime) {
+								setFeedbackMessage(
+									`Ponto automático capturado (${Math.round(distance)} m).`
+								);
+								return [...sanitizedPrev, nextLocation];
+							}
+
+							return sanitizedPrev;
+						});
+					} catch (trackingError) {
+						console.log("TRACKING WATCH ERROR:", trackingError);
+					} finally {
+						setTimeout(() => {
+							trackingPointLockRef.current = false;
+						}, 350);
+					}
+				}
+			);
+
+			locationSubscription.current = subscription;
+		} catch (error) {
+			console.log("WATCH ERROR:", error);
+		}
+	};
+
 	const handleRegionChangeComplete = (nextRegion) => {
 		if (dragEditIndex !== null) return;
 		if (isSaving) return;
+		if (draft?.followMe) return;
 		setRegion(nextRegion);
 	};
 
@@ -138,6 +319,13 @@ const PolygonMapPickerScreen = ({ navigation, route }) => {
 				location.coords.latitude,
 				location.coords.longitude
 			);
+
+			setCurrentLocation({
+				latitude: Number(location.coords.latitude),
+				longitude: Number(location.coords.longitude),
+				accuracy: location.coords.accuracy ?? null,
+				recordedAt: new Date().toISOString(),
+			});
 
 			setRegion(nextRegion);
 
@@ -166,7 +354,7 @@ const PolygonMapPickerScreen = ({ navigation, route }) => {
 		const point = {
 			latitude: Number(region.latitude),
 			longitude: Number(region.longitude),
-			accuracy: null,
+			accuracy: currentLocation?.accuracy ?? null,
 			recordedAt: new Date().toISOString(),
 		};
 
@@ -210,7 +398,7 @@ const PolygonMapPickerScreen = ({ navigation, route }) => {
 						const closingPoint = {
 							latitude: Number(region.latitude),
 							longitude: Number(region.longitude),
-							accuracy: null,
+							accuracy: currentLocation?.accuracy ?? null,
 							recordedAt: new Date().toISOString(),
 						};
 
@@ -264,7 +452,6 @@ const PolygonMapPickerScreen = ({ navigation, route }) => {
 		);
 	};
 
-	
 	const handleMarkerPress = (index) => {
 		if (dragEditIndex !== null) return;
 		if (isSaving) return;
@@ -350,33 +537,20 @@ const PolygonMapPickerScreen = ({ navigation, route }) => {
 		);
 	};
 
+	const handleToggleTracking = () => {
+		if (draft?.mode !== "tracking") return;
 
-	const getRootNavigation = () => {
-		let parentNav = navigation;
-
-		while (parentNav?.getParent?.()) {
-			parentNav = parentNav.getParent();
-		}
-
-		return parentNav;
-	};
-
-	const navigatePolygonFlow = (screen, params = {}) => {
-		const rootNav = getRootNavigation();
-
-		rootNav.navigate("PolygonFlowStackScreen", {
-			screen,
-			params,
+		setTrackingActive((prev) => {
+			const next = !prev;
+			setFeedbackMessage(
+				next
+					? "Captura automática ativada."
+					: "Captura automática pausada."
+			);
+			return next;
 		});
 	};
 
-	const navigatePolygonTabHome = () => {
-		const rootNav = getRootNavigation();
-
-		rootNav.navigate("HomeStackScreen", {
-			screen: "PoligonosTab",
-		});
-	};
 	const polylineCoords = useMemo(() => {
 		return sanitizePoints(localPoints).map((point) => ({
 			latitude: point.latitude,
@@ -391,6 +565,8 @@ const PolygonMapPickerScreen = ({ navigation, route }) => {
 				longitude: region.longitude,
 			}
 			: null;
+
+	const isTrackingMode = draft?.mode === "tracking";
 
 	if (loading || !region) {
 		return (
@@ -498,12 +674,18 @@ const PolygonMapPickerScreen = ({ navigation, route }) => {
 
 				<View style={styles.topInfo}>
 					<Text style={styles.topTitle}>
-						{dragEditIndex !== null ? "Editar ponto" : "Adicionar pontos"}
+						{dragEditIndex !== null
+							? "Editar ponto"
+							: isTrackingMode
+								? "Captura no mapa"
+								: "Adicionar pontos"}
 					</Text>
 					<Text style={styles.topSubtitle}>
 						{dragEditIndex !== null
 							? "Arraste o marcador amarelo para ajustar a posição"
-							: "Use o alvo central para adicionar. Toque em um ponto para editar ou remover"}
+							: isTrackingMode
+								? "Use Siga Me e ative a captura automática, ou confirme pontos manualmente"
+								: "Use o alvo central para adicionar. Toque em um ponto para editar ou remover"}
 					</Text>
 				</View>
 
@@ -511,6 +693,19 @@ const PolygonMapPickerScreen = ({ navigation, route }) => {
 					<Ionicons name="locate" size={22} color="#111827" />
 				</TouchableOpacity>
 			</View>
+
+			{isTrackingMode && selectedPointIndex === null && !isSaving ? (
+				<View style={styles.trackingPill}>
+					<Ionicons
+						name={trackingActive ? "radio-button-on" : "pause-circle-outline"}
+						size={16}
+						color={trackingActive ? "#16A34A" : "#92400E"}
+					/>
+					<Text style={styles.trackingPillText}>
+						{trackingActive ? "Captura automática ativa" : "Captura automática pausada"}
+					</Text>
+				</View>
+			) : null}
 
 			{selectedPointIndex !== null && !isSaving ? (
 				<View style={styles.pointActionSheet}>
@@ -555,13 +750,26 @@ const PolygonMapPickerScreen = ({ navigation, route }) => {
 						<Text style={styles.savingText}>Processando...</Text>
 					) : null}
 
-					<Text style={styles.coordLabel}>
-						{dragEditIndex !== null ? "Ponto em edição" : "Coordenadas do centro"}
-					</Text>
-
-					<Text style={styles.coordValue}>
-						Lat {Number(region.latitude).toFixed(6)} • Lon {Number(region.longitude).toFixed(6)}
-					</Text>
+					{isTrackingMode ? (
+						<TouchableOpacity
+							style={[
+								styles.trackingToggleButton,
+								trackingActive ? styles.trackingPauseButton : styles.trackingStartButton,
+								isSaving && styles.disabledButton,
+							]}
+							onPress={handleToggleTracking}
+							disabled={isSaving}
+						>
+							<Ionicons
+								name={trackingActive ? "pause-outline" : "play-outline"}
+								size={22}
+								color="#fff"
+							/>
+							<Text style={styles.trackingToggleButtonText}>
+								{trackingActive ? "Pausar captura automática" : "Iniciar captura automática"}
+							</Text>
+						</TouchableOpacity>
+					) : null}
 
 					<TouchableOpacity
 						style={[styles.confirmButton, isSaving && styles.disabledButton]}
@@ -663,6 +871,23 @@ const styles = StyleSheet.create({
 		lineHeight: 16,
 		marginTop: 4,
 	},
+	trackingPill: {
+		position: "absolute",
+		top: 156,
+		alignSelf: "center",
+		backgroundColor: "rgba(255,255,255,0.96)",
+		borderRadius: 999,
+		paddingHorizontal: 14,
+		paddingVertical: 8,
+		flexDirection: "row",
+		alignItems: "center",
+		gap: 6,
+	},
+	trackingPillText: {
+		fontSize: 12,
+		fontWeight: "800",
+		color: "#111827",
+	},
 	crosshairWrap: {
 		position: "absolute",
 		left: 0,
@@ -762,6 +987,26 @@ const styles = StyleSheet.create({
 		fontWeight: "700",
 		color: "#111827",
 		marginBottom: 14,
+	},
+	trackingToggleButton: {
+		height: 52,
+		borderRadius: 16,
+		alignItems: "center",
+		justifyContent: "center",
+		flexDirection: "row",
+		marginBottom: 10,
+	},
+	trackingStartButton: {
+		backgroundColor: "#16A34A",
+	},
+	trackingPauseButton: {
+		backgroundColor: "#D97706",
+	},
+	trackingToggleButtonText: {
+		color: "#fff",
+		fontSize: 15,
+		fontWeight: "800",
+		marginLeft: 10,
 	},
 	confirmButton: {
 		height: 52,

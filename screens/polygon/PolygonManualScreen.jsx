@@ -3,120 +3,108 @@ import {
 	View,
 	Text,
 	StyleSheet,
-	TouchableOpacity,
-	Alert,
-	ScrollView,
 	TextInput,
+	TouchableOpacity,
+	ScrollView,
+	FlatList,
+	Alert,
+	Switch,
 	ActivityIndicator,
 } from "react-native";
-import MapView, { Marker, Polyline, Polygon } from "react-native-maps";
-import * as Location from "expo-location";
-import Ionicons from "@expo/vector-icons/Ionicons";
 import { useDispatch, useSelector } from "react-redux";
+import { useNavigation } from "@react-navigation/native";
+import Ionicons from "@expo/vector-icons/Ionicons";
+import MapView, { Polygon as MapPolygon, Polyline, Marker } from "react-native-maps";
+import * as Location from "expo-location";
 
 import { Colors } from "../../constants/styles";
 import { polygonActions } from "../../store/redux/polygon";
-import { selectPolygonDraft } from "../../store/redux/polygonSelectors";
-import { farmsSelected, farmsSelector } from "../../store/redux/selector";
+import { farmsSelector } from "../../store/redux/selector";
 
-const FALLBACK_REGION = {
-	latitude: -15.7801,
-	longitude: -47.9292,
-	latitudeDelta: 0.03,
-	longitudeDelta: 0.03,
-};
-
-function sanitizePoints(points = []) {
-	return points
-		.filter(
+function buildPreviewRegion(points, currentLocation) {
+	const validPoints = Array.isArray(points)
+		? points.filter(
 			(point) =>
-				point &&
-				typeof point.latitude !== "undefined" &&
-				typeof point.longitude !== "undefined"
+				Number.isFinite(Number(point?.latitude)) &&
+				Number.isFinite(Number(point?.longitude))
 		)
-		.map((point) => ({
-			latitude: Number(point.latitude),
-			longitude: Number(point.longitude),
-			accuracy: point.accuracy ?? null,
-			recordedAt: point.recordedAt || new Date().toISOString(),
-		}))
-		.filter(
-			(point) =>
-				!Number.isNaN(point.latitude) &&
-				!Number.isNaN(point.longitude)
-		);
+		: [];
+
+	if (validPoints.length > 0) {
+		const latitudes = validPoints.map((p) => Number(p.latitude));
+		const longitudes = validPoints.map((p) => Number(p.longitude));
+
+		if (
+			currentLocation &&
+			Number.isFinite(Number(currentLocation.latitude)) &&
+			Number.isFinite(Number(currentLocation.longitude))
+		) {
+			latitudes.push(Number(currentLocation.latitude));
+			longitudes.push(Number(currentLocation.longitude));
+		}
+
+		const minLat = Math.min(...latitudes);
+		const maxLat = Math.max(...latitudes);
+		const minLng = Math.min(...longitudes);
+		const maxLng = Math.max(...longitudes);
+
+		return {
+			latitude: (minLat + maxLat) / 2,
+			longitude: (minLng + maxLng) / 2,
+			latitudeDelta: Math.max((maxLat - minLat) * 1.8, 0.0035),
+			longitudeDelta: Math.max((maxLng - minLng) * 1.8, 0.0035),
+		};
+	}
+
+	if (
+		currentLocation &&
+		Number.isFinite(Number(currentLocation.latitude)) &&
+		Number.isFinite(Number(currentLocation.longitude))
+	) {
+		return {
+			latitude: Number(currentLocation.latitude),
+			longitude: Number(currentLocation.longitude),
+			latitudeDelta: 0.008,
+			longitudeDelta: 0.008,
+		};
+	}
+
+	return {
+		latitude: -14.235,
+		longitude: -51.9253,
+		latitudeDelta: 20,
+		longitudeDelta: 20,
+	};
 }
 
-const PolygonManualScreen = ({ navigation }) => {
+function getModeLabel(mode) {
+	if (mode === "tracking") return "Navegação automática";
+	return "Ponto a ponto";
+}
+
+export default function PolygonManualScreen() {
 	const dispatch = useDispatch();
-	const draft = useSelector(selectPolygonDraft);
-	const selectedFarm = useSelector(farmsSelected);
-	const farms = useSelector(farmsSelector);
-	console.log('farmssssss', farms)
+	const navigation = useNavigation();
 
-	const [userPreviewRegion, setUserPreviewRegion] = useState(null);
-	const [polygonName, setPolygonName] = useState(draft?.name || "");
-	const [farmName, setFarmName] = useState(draft?.farmName || "");
-	const [farmSearch, setFarmSearch] = useState(draft?.farmName || "");
-	const [isSaving, setIsSaving] = useState(false);
-	const [mapVersion, setMapVersion] = useState(0);
+	const draft = useSelector((state) => state.polygon.draft);
+	const farms = useSelector(farmsSelector) || [];
 
-	const points = draft?.points || [];
-	const isClosed = !!draft?.isClosed;
-
-	useEffect(() => {
-		setPolygonName(draft?.name || "");
-	}, [draft?.name]);
-
-	useEffect(() => {
-		if (draft?.farmName) {
-			setFarmName(draft.farmName);
-			setFarmSearch(draft.farmName);
-			return;
-		}
-
-		if (typeof selectedFarm === "object") {
-			const value = selectedFarm?.nome || selectedFarm?.fazenda || "";
-			setFarmName(value);
-			setFarmSearch(value);
-			return;
-		}
-
-		if (selectedFarm && Array.isArray(farms)) {
-			const foundFarm = farms.find((item) => {
-				if (typeof item === "string") {
-					return item === selectedFarm;
-				}
-
-				return (
-					item?.id === selectedFarm ||
-					item?.fazenda_id === selectedFarm ||
-					item?.nome === selectedFarm ||
-					item?.fazenda === selectedFarm
-				);
-			});
-
-			if (foundFarm) {
-				const value =
-					typeof foundFarm === "string"
-						? foundFarm
-						: foundFarm?.nome || foundFarm?.fazenda || "";
-
-				setFarmName(value);
-				setFarmSearch(value);
-			}
-		}
-	}, [draft?.farmName, selectedFarm, farms]);
+	const [farmQuery, setFarmQuery] = useState(draft?.farmName || "");
+	const [currentLocation, setCurrentLocation] = useState(null);
+	const [loadingLocation, setLoadingLocation] = useState(true);
 
 	useEffect(() => {
 		let mounted = true;
 
-		const loadUserRegion = async () => {
-			if (points.length > 0) return;
-
+		const loadCurrentLocation = async () => {
 			try {
+				setLoadingLocation(true);
+
 				const { status } = await Location.requestForegroundPermissionsAsync();
-				if (status !== "granted") return;
+
+				if (status !== "granted") {
+					return;
+				}
 
 				const location = await Location.getCurrentPositionAsync({
 					accuracy: Location.Accuracy.High,
@@ -124,498 +112,385 @@ const PolygonManualScreen = ({ navigation }) => {
 
 				if (!mounted) return;
 
-				setUserPreviewRegion({
-					latitude: location.coords.latitude,
-					longitude: location.coords.longitude,
-					latitudeDelta: 0.01,
-					longitudeDelta: 0.01,
+				setCurrentLocation({
+					latitude: Number(location?.coords?.latitude),
+					longitude: Number(location?.coords?.longitude),
 				});
 			} catch (error) {
-				console.log("MANUAL PREVIEW LOCATION ERROR:", error);
+				console.log("LOAD CURRENT LOCATION ERROR:", error);
+			} finally {
+				if (mounted) {
+					setLoadingLocation(false);
+				}
 			}
 		};
 
-		loadUserRegion();
+		loadCurrentLocation();
 
 		return () => {
 			mounted = false;
 		};
-	}, [points.length]);
+	}, []);
 
-	const polygonCoords = useMemo(() => {
-		return sanitizePoints(points).map((point) => ({
-			latitude: point.latitude,
-			longitude: point.longitude,
-		}));
-	}, [points]);
+	const validPoints = useMemo(() => {
+		return (draft?.points || [])
+			.map((point) => ({
+				latitude: Number(point?.latitude),
+				longitude: Number(point?.longitude),
+			}))
+			.filter(
+				(point) =>
+					Number.isFinite(point.latitude) &&
+					Number.isFinite(point.longitude)
+			);
+	}, [draft?.points]);
 
-	const previewRegion = useMemo(() => {
-		if (polygonCoords.length > 0) {
-			return {
-				latitude: polygonCoords[0].latitude,
-				longitude: polygonCoords[0].longitude,
-				latitudeDelta: 0.01,
-				longitudeDelta: 0.01,
-			};
-		}
-
-		return userPreviewRegion || FALLBACK_REGION;
-	}, [polygonCoords, userPreviewRegion]);
+	const previewRegion = useMemo(
+		() => buildPreviewRegion(validPoints, currentLocation),
+		[validPoints, currentLocation]
+	);
 
 	const farmSuggestions = useMemo(() => {
-		const query = (farmSearch || "").trim().toLowerCase();
+		const term = (farmQuery || "").trim().toLowerCase();
 
-		const normalizedFarms = (farms || [])
-			.map((item, index) => {
-				if (typeof item === "string") {
-					return {
-						id: `farm-${index}-${item}`,
-						label: item,
-					};
-				}
+		if (term.length < 2) return [];
 
-				return {
-					id: item?.id || item?.fazenda_id || item?.nome || `farm-${index}`,
-					label: item?.nome || item?.fazenda || "",
-				};
-			})
-			.filter((item) => !!item.label);
-
-		// 🔥 regra nova
-		if (query.length < 3) {
-			return [];
-		}
-
-		return normalizedFarms
-			.filter((item) => item.label.toLowerCase().includes(query))
+		return farms
+			.filter((farm) => (farm || "").toLowerCase().includes(term))
 			.slice(0, 8);
-	}, [farmSearch, farms]);
+	}, [farmQuery, farms]);
 
-	const handleSelectFarm = (farm) => {
-		setFarmName(farm.label);
-		setFarmSearch(farm.label);
-
-		dispatch(
-			polygonActions.setPolygonMeta({
-				farmId: farm.id,
-				farmName: farm.label,
-			})
-		);
+	const updateMeta = (payload) => {
+		dispatch(polygonActions.setPolygonMeta(payload));
 	};
 
-	const handleAddByGps = async () => {
-		try {
-			const { status } = await Location.requestForegroundPermissionsAsync();
-			if (status !== "granted") {
-				Alert.alert("Permissão necessária", "Ative a localização para adicionar ponto por GPS.");
-				return;
-			}
-
-			const location = await Location.getCurrentPositionAsync({
-				accuracy: Location.Accuracy.High,
-			});
-
-			dispatch(
-				polygonActions.addPointToDraft({
-					latitude: location.coords.latitude,
-					longitude: location.coords.longitude,
-					accuracy: location.coords.accuracy ?? null,
-					recordedAt: new Date().toISOString(),
-				})
-			);
-		} catch (error) {
-			console.log("MANUAL ADD GPS ERROR:", error);
-			Alert.alert("Erro", "Não foi possível obter a localização atual.");
-		}
+	const handleChangeName = (value) => {
+		updateMeta({ name: value });
 	};
 
-	const handleOpenMapForNewPoint = () => {
+	const handleChangeFarm = (value) => {
+		setFarmQuery(value);
+		updateMeta({ farmName: value });
+	};
+
+	const handleSelectFarm = (farmName) => {
+		setFarmQuery(farmName);
+		updateMeta({ farmName });
+	};
+
+	const handleChangeFollowMe = (value) => {
+		updateMeta({ followMe: value });
+	};
+
+	const handleChangeAutoMinDistance = (value) => {
+		const numeric = String(value).replace(/[^0-9]/g, "");
+		updateMeta({
+			autoMinDistance: numeric ? Number(numeric) : 0,
+		});
+	};
+
+	const handleChangeAutoMinSeconds = (value) => {
+		const numeric = String(value).replace(/[^0-9]/g, "");
+		updateMeta({
+			autoMinSeconds: numeric ? Number(numeric) : 0,
+		});
+	};
+
+	const handleOpenMap = () => {
 		navigation.navigate("PolygonMapPickerScreen");
 	};
 
-	const handleEditPoint = (index) => {
-		navigation.navigate("PolygonMapPickerScreen", { editIndex: index });
+	const handleSaveDraft = () => {
+		if (!(draft?.name || "").trim()) {
+			Alert.alert("Nome obrigatório", "Informe um nome para o polígono.");
+			return;
+		}
+
+		if (validPoints.length < 3) {
+			Alert.alert("Pontos insuficientes", "Adicione ao menos 3 pontos válidos.");
+			return;
+		}
+
+		dispatch(
+			polygonActions.saveDraftAsPolygon({
+				status: "sync_pending",
+				syncPending: true,
+			})
+		);
+
+		Alert.alert("Sucesso", "Polígono salvo localmente com sucesso.", [
+			{
+				text: "OK",
+				onPress: () => navigation.replace("PolygonSavedListScreen"),
+			},
+		]);
 	};
 
 	const handleRemovePoint = (index) => {
-		Alert.alert("Remover ponto", `Deseja remover o ponto ${index + 1}?`, [
+		Alert.alert("Remover ponto", "Deseja remover este ponto?", [
 			{ text: "Cancelar", style: "cancel" },
 			{
 				text: "Remover",
+				style: "destructive",
 				onPress: () => {
-					try {
-						dispatch(polygonActions.removeDraftPointAtIndex(index));
-						setMapVersion((prev) => prev + 1);
-					} catch (error) {
-						console.log("MANUAL REMOVE POINT ERROR:", error);
-						Alert.alert("Erro", "Não foi possível remover o ponto.");
-					}
+					dispatch(polygonActions.removeDraftPointAtIndex(index));
 				},
 			},
 		]);
 	};
 
-	const handleClearPoints = () => {
-		if (!points.length) return;
+	const handleOpenDraftPreview = () => {
+		if (!validPoints.length) return;
 
-		Alert.alert("Limpar pontos", "Deseja remover todos os pontos do rascunho?", [
-			{ text: "Cancelar", style: "cancel" },
-			{
-				text: "Limpar tudo",
-				onPress: () => {
-					try {
-						dispatch(polygonActions.clearDraftPoints());
-						dispatch(
-							polygonActions.finishPolygonDraft({
-								isClosed: false,
-							})
-						);
-						setMapVersion((prev) => prev + 1);
-					} catch (error) {
-						console.log("MANUAL CLEAR POINTS ERROR:", error);
-						Alert.alert("Erro", "Não foi possível limpar os pontos.");
-					}
-				},
-			},
-		]);
-	};
-
-	const handleSavePolygon = () => {
-		const trimmedName = (polygonName || "").trim();
-		const trimmedFarm = (farmName || farmSearch || "").trim();
-		const safePoints = sanitizePoints(points);
-
-		if (!trimmedName) {
-			Alert.alert("Nome obrigatório", "Informe o nome do polígono antes de salvar.");
-			return;
-		}
-
-		if (!trimmedFarm) {
-			Alert.alert("Fazenda obrigatória", "Informe a fazenda do polígono antes de salvar.");
-			return;
-		}
-
-		if (safePoints.length < 3) {
-			Alert.alert("Polígono incompleto", "É necessário ter ao menos 3 pontos.");
-			return;
-		}
-
-		if (!isClosed) {
-			Alert.alert(
-				"Feche o polígono",
-				"Antes de salvar, feche o polígono no mapa para concluir o contorno."
-			);
-			return;
-		}
-
-		try {
-			setIsSaving(true);
-			console.log("MANUAL SAVE 1 - setPolygonMeta");
-
-			dispatch(
-				polygonActions.setPolygonMeta({
-					name: trimmedName,
-					farmName: trimmedFarm,
-				})
-			);
-
-			console.log("MANUAL SAVE 2 - setDraftPoints sanitized");
-			dispatch(polygonActions.setDraftPoints(safePoints));
-
-			setTimeout(() => {
-				try {
-					console.log("MANUAL SAVE 3 - saveDraftAsPolygon");
-					dispatch(
-						polygonActions.saveDraftAsPolygon({
-							status: "sync_pending",
-							syncPending: true,
-						})
-					);
-
-					console.log("MANUAL SAVE 4 - navigate PolygonSavedListScreen");
-					navigation.replace("PolygonSavedListScreen");
-
-					setTimeout(() => {
-						try {
-							console.log("MANUAL SAVE 5 - resetPolygonDraft");
-							dispatch(polygonActions.resetPolygonDraft());
-						} catch (resetError) {
-							console.log("MANUAL SAVE RESET ERROR:", resetError);
-						}
-					}, 500);
-				} catch (saveError) {
-					console.log("MANUAL SAVE FLOW ERROR:", saveError);
-					setIsSaving(false);
-					Alert.alert("Erro", "Não foi possível salvar o polígono.");
-				}
-			}, 180);
-		} catch (error) {
-			console.log("MANUAL SAVE OUTER ERROR:", error);
-			setIsSaving(false);
-			Alert.alert("Erro", "Não foi possível salvar o polígono.");
-		}
-	};
-
-	const handleStartNewDraft = () => {
-		Alert.alert(
-			"Novo polígono",
-			"Deseja limpar o rascunho atual e começar um novo?",
-			[
-				{ text: "Cancelar", style: "cancel" },
-				{
-					text: "Novo",
-					onPress: () => {
-						dispatch(
-							polygonActions.startPolygonDraft({
-								mode: "manual",
-								farmName: farmName || "",
-							})
-						);
-						setPolygonName("");
-						setMapVersion((prev) => prev + 1);
-					},
-				},
-			]
-		);
+		navigation.navigate("PolygonPreviewScreen", {
+			source: "draft",
+		});
 	};
 
 	return (
-		<View style={styles.container}>
-			<ScrollView
-				contentContainerStyle={styles.content}
-				showsVerticalScrollIndicator={false}
-				key={`manual-scroll-${mapVersion}`}
-			>
-				<View style={styles.headerCard}>
-					<View style={styles.headerTopRow}>
-						<Text style={styles.title}>Criação manual</Text>
-
-						<View style={styles.chipsRow}>
-							<View style={styles.infoBadge}>
-								<Text style={styles.infoBadgeText}>{points.length} pontos</Text>
-							</View>
-
-							<View
-								style={[
-									styles.statusChip,
-									isClosed ? styles.statusClosed : styles.statusOpen,
-								]}
-							>
-								<Text
-									style={[
-										styles.statusChipText,
-										isClosed ? styles.statusClosedText : styles.statusOpenText,
-									]}
-								>
-									{isClosed ? "Fechado" : "Aberto"}
-								</Text>
-							</View>
-						</View>
-					</View>
-
-					<Text style={styles.subtitle}>
-						Desenhe no mapa, feche o polígono e depois salve com nome e fazenda.
-					</Text>
-				</View>
-
-				<View style={styles.formCard}>
-					<Text style={styles.sectionTitle}>Dados do polígono</Text>
-
-					<Text style={styles.inputLabel}>Nome do polígono</Text>
-					<TextInput
-						value={polygonName}
-						onChangeText={setPolygonName}
-						placeholder="Ex.: Talhão Sul, Área 01..."
-						placeholderTextColor="#9CA3AF"
-						style={styles.input}
-					/>
-
-					<Text style={styles.inputLabel}>Fazenda</Text>
-					<TextInput
-						value={farmSearch}
-						onChangeText={(text) => {
-							setFarmSearch(text);
-							setFarmName(text);
-						}}
-						placeholder="Digite para buscar fazendas"
-						placeholderTextColor="#9CA3AF"
-						style={styles.input}
-					/>
-
-					{farmSuggestions.length > 0 ? (
-						<View style={styles.suggestionsWrap}>
-							{farmSuggestions.map((farm) => (
-								<TouchableOpacity
-									key={String(farm.id)}
-									style={styles.suggestionItem}
-									onPress={() => handleSelectFarm(farm)}
-								>
-									<Ionicons name="business-outline" size={16} color="#374151" />
-									<Text style={styles.suggestionText}>{farm.label}</Text>
-								</TouchableOpacity>
-							))}
-						</View>
-					) : null}
-				</View>
-
-				<View style={styles.previewCard}>
-					<Text style={styles.sectionTitle}>Pré-visualização</Text>
-
-					{isSaving ? (
-						<View style={styles.previewLoadingWrap}>
-							<ActivityIndicator size="large" color={Colors.primary[901]} />
-							<Text style={styles.previewLoadingText}>Salvando polígono...</Text>
-						</View>
-					) : (
-						<View style={styles.previewMapWrap}>
-							<MapView
-								key={`manual-preview-map-${mapVersion}`}
-								style={styles.previewMap}
-								initialRegion={previewRegion}
-								region={previewRegion}
-								showsUserLocation
-								scrollEnabled={false}
-								zoomEnabled={false}
-								rotateEnabled={false}
-								pitchEnabled={false}
-								toolbarEnabled={false}
-							>
-								{polygonCoords.map((coord, index) => (
-									<Marker
-										key={`preview-${index}`}
-										coordinate={coord}
-										pinColor="#DC2626"
-										title={`Ponto ${index + 1}`}
-									/>
-								))}
-
-								{polygonCoords.length >= 2 ? (
-									<Polyline
-										coordinates={polygonCoords}
-										strokeWidth={3}
-										strokeColor="#DC2626"
-									/>
-								) : null}
-
-								{isClosed && polygonCoords.length >= 3 ? (
-									<Polygon
-										coordinates={polygonCoords}
-										strokeWidth={2}
-										strokeColor="#16A34A"
-										fillColor="rgba(22,163,74,0.16)"
-									/>
-								) : null}
-							</MapView>
-						</View>
-					)}
-				</View>
-
-				<View style={styles.section}>
-					<Text style={styles.sectionTitle}>Geometria</Text>
-
-					<TouchableOpacity
-						style={[styles.primaryButton, isSaving && styles.disabledButton]}
-						onPress={handleOpenMapForNewPoint}
-						disabled={isSaving}
-					>
-						<Ionicons name="map" size={20} color="#fff" />
-						<Text style={styles.primaryButtonText}>
-							{points.length ? "Continuar no mapa" : "Abrir mapa"}
+		<ScrollView style={styles.container} contentContainerStyle={styles.content}>
+			<View style={styles.headerCard}>
+				<View style={styles.headerTopRow}>
+					<View style={styles.headerTitleWrap}>
+						<Text style={styles.headerTitle}>
+							{draft?.mode === "tracking" ? "Navegação automática" : "Ponto a ponto"}
 						</Text>
-					</TouchableOpacity>
-
-					<TouchableOpacity
-						style={[styles.secondaryButton, isSaving && styles.disabledButton]}
-						onPress={handleAddByGps}
-						disabled={isSaving}
-					>
-						<Ionicons name="location" size={20} color="#111827" />
-						<Text style={styles.secondaryButtonText}>Adicionar ponto pelo GPS atual</Text>
-					</TouchableOpacity>
+					</View>
 				</View>
+				<Text style={styles.headerSubtitle}>
+					{draft?.mode === "tracking"
+						? "Configure a captura automática e depois abra o mapa para acompanhar o trajeto."
+						: "Configure os dados e depois abra o mapa para marcar os pontos manualmente."}
+				</Text>
+			</View>
 
-				<View style={styles.section}>
-					<View style={styles.sectionHeader}>
-						<Text style={styles.sectionTitle}>Pontos do rascunho</Text>
+			<View style={styles.sectionCard}>
+				<Text style={styles.sectionTitle}>Informações</Text>
+
+				<Text style={styles.label}>Nome do polígono</Text>
+				<TextInput
+					style={styles.input}
+					placeholder="Ex.: Talhão 01"
+					placeholderTextColor="#9CA3AF"
+					value={draft?.name || ""}
+					onChangeText={handleChangeName}
+				/>
+
+				<Text style={styles.label}>Fazenda</Text>
+				<TextInput
+					style={styles.input}
+					placeholder="Digite para buscar"
+					placeholderTextColor="#9CA3AF"
+					value={farmQuery}
+					onChangeText={handleChangeFarm}
+				/>
+
+				{farmSuggestions.length > 0 ? (
+					<View style={styles.suggestionsBox}>
+						{farmSuggestions.map((farmName) => (
+							<TouchableOpacity
+								key={farmName}
+								style={styles.suggestionItem}
+								onPress={() => handleSelectFarm(farmName)}
+							>
+								<Text style={styles.suggestionText}>{farmName}</Text>
+							</TouchableOpacity>
+						))}
+					</View>
+				) : null}
+			</View>
+
+			{validPoints.length > 0 ? (
+				<View style={styles.sectionCard}>
+					<View style={styles.sectionHeaderRow}>
+						<View>
+							<Text style={styles.sectionTitle}>Pré-visualização</Text>
+							<Text style={styles.previewCount}>{validPoints.length} ponto(s)</Text>
+						</View>
 
 						<TouchableOpacity
-							disabled={!points.length || isSaving}
-							onPress={handleClearPoints}
-							style={[
-								styles.clearChip,
-								(!points.length || isSaving) && styles.disabledChip,
-							]}
+							style={styles.previewOpenButton}
+							onPress={handleOpenDraftPreview}
 						>
-							<Text style={styles.clearChipText}>Limpar tudo</Text>
+							<Ionicons name="expand-outline" size={16} color="#111827" />
+							<Text style={styles.previewOpenButtonText}>Abrir</Text>
 						</TouchableOpacity>
 					</View>
 
-					{points.length === 0 ? (
-						<View style={styles.emptyCard}>
-							<Ionicons name="location-outline" size={28} color="#9CA3AF" />
-							<Text style={styles.emptyTitle}>Nenhum ponto adicionado</Text>
-							<Text style={styles.emptyText}>
-								Use o mapa full screen ou o GPS atual para começar.
-							</Text>
+					<TouchableOpacity
+						activeOpacity={0.9}
+						style={styles.previewWrap}
+						onPress={handleOpenDraftPreview}
+					>
+						<MapView
+							style={styles.previewMap}
+							initialRegion={previewRegion}
+							region={previewRegion}
+							scrollEnabled={false}
+							zoomEnabled={false}
+							rotateEnabled={false}
+							pitchEnabled={false}
+							toolbarEnabled={false}
+							moveOnMarkerPress={false}
+							pointerEvents="none"
+							showsUserLocation={false}
+						>
+							{validPoints.length >= 2 ? (
+								<Polyline
+									coordinates={validPoints}
+									strokeColor="rgba(21,101,192,0.95)"
+									strokeWidth={3}
+								/>
+							) : null}
+
+							{validPoints.length >= 3 && draft?.isClosed ? (
+								<MapPolygon
+									coordinates={validPoints}
+									strokeColor="rgba(21,101,192,0.95)"
+									fillColor="rgba(21,101,192,0.20)"
+									strokeWidth={2}
+								/>
+							) : null}
+
+							{validPoints.map((point, index) => (
+								<Marker
+									key={`draft-point-${index}`}
+									coordinate={point}
+									pinColor={index === 0 ? "#16A34A" : "#DC2626"}
+								/>
+							))}
+
+							{currentLocation ? (
+								<Marker
+									coordinate={currentLocation}
+									pinColor="#2563EB"
+									title="Sua localização"
+								/>
+							) : null}
+						</MapView>
+
+						<View style={styles.previewOverlayHint}>
+							<Ionicons name="eye-outline" size={14} color="#fff" />
+							<Text style={styles.previewOverlayHintText}>Toque para ampliar</Text>
 						</View>
-					) : (
-						points.map((point, index) => (
-							<View key={`point-item-${index}`} style={styles.pointCard}>
-								<View style={styles.pointInfo}>
-									<Text style={styles.pointTitle}>Ponto {index + 1}</Text>
-									<Text style={styles.pointCoords}>
-										Lat {Number(point.latitude).toFixed(6)} • Lon {Number(point.longitude).toFixed(6)}
-									</Text>
-								</View>
+					</TouchableOpacity>
+				</View>
+			) : null}
 
-								<View style={styles.pointActions}>
-									<TouchableOpacity
-										style={styles.pointIconButton}
-										onPress={() => handleEditPoint(index)}
-										disabled={isSaving}
-									>
-										<Ionicons name="create-outline" size={18} color="#111827" />
-									</TouchableOpacity>
+			<View style={styles.sectionCard}>
+				<Text style={styles.sectionTitle}>Configurações de captura</Text>
 
-									<TouchableOpacity
-										style={styles.pointIconButton}
-										onPress={() => handleRemovePoint(index)}
-										disabled={isSaving}
-									>
-										<Ionicons name="trash-outline" size={18} color="#B91C1C" />
-									</TouchableOpacity>
-								</View>
-							</View>
-						))
-					)}
+				<View style={styles.configRow}>
+					<View style={styles.configTextWrap}>
+						<Text style={styles.configTitle}>Siga Me</Text>
+						<Text style={styles.configSubtitle}>
+							O alvo acompanha a localização atual.
+						</Text>
+					</View>
+
+					<Switch
+						value={!!draft?.followMe}
+						onValueChange={handleChangeFollowMe}
+					/>
 				</View>
 
-				<TouchableOpacity
-					style={[
-						styles.saveButton,
-						(!isClosed || points.length < 3 || isSaving) && styles.disabledSaveButton,
-					]}
-					onPress={handleSavePolygon}
-					disabled={!isClosed || points.length < 3 || isSaving}
-				>
-					<Ionicons name="save-outline" size={22} color="#fff" />
-					<Text style={styles.saveButtonText}>Salvar polígono</Text>
+				{draft?.mode === "tracking" ? (
+					<>
+						<View style={styles.inlineInputsRow}>
+							<View style={styles.inlineInputBox}>
+								<Text style={styles.label}>Distância mínima (m)</Text>
+								<TextInput
+									style={styles.input}
+									value={String(draft?.autoMinDistance ?? 10)}
+									onChangeText={handleChangeAutoMinDistance}
+									keyboardType="number-pad"
+									placeholder="10"
+									placeholderTextColor="#9CA3AF"
+								/>
+							</View>
+
+							<View style={styles.inlineInputBox}>
+								<Text style={styles.label}>Tempo mínimo (s)</Text>
+								<TextInput
+									style={styles.input}
+									value={String(draft?.autoMinSeconds ?? 3)}
+									onChangeText={handleChangeAutoMinSeconds}
+									keyboardType="number-pad"
+									placeholder="3"
+									placeholderTextColor="#9CA3AF"
+								/>
+							</View>
+						</View>
+
+						<Text style={styles.helperText}>
+							No próximo passo, essa base vai controlar a captura automática por
+							distância e tempo.
+						</Text>
+					</>
+				) : (
+					<Text style={styles.helperText}>
+						No modo manual, você escolhe quando adicionar cada ponto no mapa.
+					</Text>
+				)}
+			</View>
+
+			<View style={styles.sectionCard}>
+				<Text style={styles.sectionTitle}>Ações</Text>
+
+				<TouchableOpacity style={styles.primaryButton} onPress={handleOpenMap}>
+					<Ionicons name="map-outline" size={18} color="#fff" />
+					<Text style={styles.primaryButtonText}>Abrir mapa</Text>
 				</TouchableOpacity>
 
-				<TouchableOpacity
-					style={[styles.newDraftButton, isSaving && styles.disabledButton]}
-					onPress={handleStartNewDraft}
-					disabled={isSaving}
-				>
-					<Ionicons name="add-circle-outline" size={20} color="#111827" />
-					<Text style={styles.newDraftButtonText}>Novo rascunho</Text>
+				<TouchableOpacity style={styles.secondaryButton} onPress={handleSaveDraft}>
+					<Ionicons name="save-outline" size={18} color="#111827" />
+					<Text style={styles.secondaryButtonText}>Salvar polígono</Text>
 				</TouchableOpacity>
-			</ScrollView>
-		</View>
+			</View>
+
+			<View style={styles.sectionCard}>
+				<Text style={styles.sectionTitle}>Pontos do rascunho</Text>
+
+				{validPoints.length === 0 ? (
+					<Text style={styles.emptyPointsText}>
+						Ainda não há pontos adicionados.
+					</Text>
+				) : (
+					<FlatList
+						data={validPoints}
+						keyExtractor={(_, index) => `point-${index}`}
+						scrollEnabled={false}
+						renderItem={({ item, index }) => (
+							<View style={styles.pointRow}>
+								<View style={styles.pointLeft}>
+									<View style={styles.pointIndexBadge}>
+										<Text style={styles.pointIndexText}>{index + 1}</Text>
+									</View>
+
+									<View style={styles.pointTextWrap}>
+										<Text style={styles.pointText}>
+											Lat: {Number(item.latitude).toFixed(6)}
+										</Text>
+										<Text style={styles.pointText}>
+											Lng: {Number(item.longitude).toFixed(6)}
+										</Text>
+									</View>
+								</View>
+
+								<TouchableOpacity
+									style={styles.removePointButton}
+									onPress={() => handleRemovePoint(index)}
+								>
+									<Ionicons name="trash-outline" size={18} color="#B91C1C" />
+								</TouchableOpacity>
+							</View>
+						)}
+					/>
+				)}
+			</View>
+		</ScrollView>
 	);
-};
-
-export default PolygonManualScreen;
+}
 
 const styles = StyleSheet.create({
 	container: {
@@ -623,152 +498,161 @@ const styles = StyleSheet.create({
 		backgroundColor: Colors.primary100 || "#F4F6F8",
 	},
 	content: {
-		padding: 14,
-		paddingBottom: 40,
+		padding: 16,
+		paddingBottom: 32,
 	},
 	headerCard: {
-		backgroundColor: Colors.primary[901] || "#1F2937",
-		borderRadius: 22,
+		backgroundColor: Colors.primary?.[901] || "#1F2937",
+		borderRadius: 20,
 		padding: 16,
 		marginBottom: 14,
 	},
-	title: {
-		color: "#fff",
-		fontSize: 24,
-		fontWeight: "800",
+	headerTopRow: {
+		flexDirection: "row",
+		alignItems: "flex-start",
+		justifyContent: "space-between",
+		gap: 12,
 	},
-	subtitle: {
-		color: "rgba(255,255,255,0.84)",
+	headerTitleWrap: {
+		flex: 1,
+	},
+	headerTitle: {
+		fontSize: 22,
+		fontWeight: "800",
+		color: "#fff",
+	},
+	headerSubtitle: {
 		fontSize: 14,
 		lineHeight: 20,
+		color: "rgba(255,255,255,0.84)",
 		marginTop: 8,
 	},
-	infoRow: {
-		marginTop: 14,
-		flexDirection: "row",
-		alignItems: "center",
-	},
-	infoBadge: {
-		backgroundColor: "rgba(255,255,255,0.12)",
-		paddingHorizontal: 12,
-		paddingVertical: 7,
+	modeBadge: {
+		backgroundColor: "rgba(255,255,255,0.14)",
 		borderRadius: 999,
-		marginRight: 10,
+		paddingHorizontal: 10,
+		paddingVertical: 6,
 	},
-	infoBadgeText: {
+	modeBadgeText: {
 		color: "#fff",
-		fontWeight: "800",
 		fontSize: 12,
-	},
-	statusChip: {
-		paddingHorizontal: 12,
-		paddingVertical: 7,
-		borderRadius: 999,
-	},
-	statusOpen: {
-		backgroundColor: "rgba(245,158,11,0.16)",
-	},
-	statusClosed: {
-		backgroundColor: "rgba(22,163,74,0.18)",
-	},
-	statusChipText: {
 		fontWeight: "800",
-		fontSize: 12,
 	},
-	statusOpenText: {
-		color: "#F59E0B",
-	},
-	statusClosedText: {
-		color: "#16A34A",
-	},
-	formCard: {
+	sectionCard: {
 		backgroundColor: "#fff",
-		borderRadius: 20,
+		borderRadius: 18,
 		padding: 14,
 		marginBottom: 14,
 	},
-	section: {
-		marginBottom: 14,
-	},
-	sectionHeader: {
-		flexDirection: "row",
-		alignItems: "center",
-		justifyContent: "space-between",
-		marginBottom: 10,
-	},
 	sectionTitle: {
-		fontSize: 18,
+		fontSize: 16,
 		fontWeight: "800",
 		color: "#111827",
-		marginBottom: 10,
+		marginBottom: 12,
 	},
-	inputLabel: {
+	label: {
 		fontSize: 13,
 		fontWeight: "700",
 		color: "#374151",
-		marginBottom: 8,
+		marginBottom: 6,
+		marginTop: 4,
 	},
 	input: {
-		height: 50,
+		height: 46,
 		borderRadius: 14,
 		backgroundColor: "#F9FAFB",
-		paddingHorizontal: 14,
-		fontSize: 15,
+		paddingHorizontal: 12,
+		fontSize: 14,
 		color: "#111827",
-		marginBottom: 10,
 	},
-	suggestionsWrap: {
-		backgroundColor: "#F9FAFB",
+	suggestionsBox: {
+		marginTop: 8,
 		borderRadius: 14,
+		backgroundColor: "#F9FAFB",
 		overflow: "hidden",
-		marginBottom: 4,
 	},
 	suggestionItem: {
-		minHeight: 42,
 		paddingHorizontal: 12,
-		paddingVertical: 10,
+		paddingVertical: 12,
 		borderBottomWidth: 1,
 		borderBottomColor: "#E5E7EB",
-		flexDirection: "row",
-		alignItems: "center",
 	},
 	suggestionText: {
-		marginLeft: 8,
 		fontSize: 14,
-		fontWeight: "600",
 		color: "#111827",
+		fontWeight: "600",
 	},
-	previewCard: {
-		backgroundColor: "#fff",
-		borderRadius: 20,
-		padding: 14,
-		marginBottom: 14,
+	sectionHeaderRow: {
+		flexDirection: "row",
+		alignItems: "center",
+		justifyContent: "space-between",
+		marginBottom: 12,
 	},
-	previewMapWrap: {
-		height: 220,
-		borderRadius: 18,
+	previewCount: {
+		fontSize: 12,
+		fontWeight: "700",
+		color: "#6B7280",
+	},
+	previewWrap: {
+		height: 180,
+		borderRadius: 16,
 		overflow: "hidden",
+		backgroundColor: "#E5E7EB",
 	},
 	previewMap: {
 		flex: 1,
 	},
-	previewLoadingWrap: {
-		height: 220,
-		borderRadius: 18,
-		backgroundColor: "#F9FAFB",
+	previewLoading: {
+		flex: 1,
 		alignItems: "center",
 		justifyContent: "center",
+		backgroundColor: "#F3F4F6",
 	},
 	previewLoadingText: {
+		marginTop: 8,
+		fontSize: 13,
+		fontWeight: "600",
+		color: "#6B7280",
+	},
+	configRow: {
+		flexDirection: "row",
+		alignItems: "center",
+		justifyContent: "space-between",
+		marginBottom: 12,
+		gap: 12,
+	},
+	configTextWrap: {
+		flex: 1,
+	},
+	configTitle: {
+		fontSize: 15,
+		fontWeight: "800",
+		color: "#111827",
+	},
+	configSubtitle: {
+		fontSize: 13,
+		lineHeight: 18,
+		color: "#6B7280",
+		marginTop: 4,
+	},
+	inlineInputsRow: {
+		flexDirection: "row",
+		justifyContent: "space-between",
+		gap: 10,
+	},
+	inlineInputBox: {
+		flex: 1,
+	},
+	helperText: {
+		fontSize: 12,
+		lineHeight: 18,
+		color: "#6B7280",
 		marginTop: 12,
-		fontSize: 14,
-		fontWeight: "700",
-		color: "#374151",
 	},
 	primaryButton: {
-		height: 52,
-		borderRadius: 16,
-		backgroundColor: Colors.primary[901] || "#1F2937",
+		height: 48,
+		borderRadius: 14,
+		backgroundColor: "#2563EB",
 		alignItems: "center",
 		justifyContent: "center",
 		flexDirection: "row",
@@ -776,138 +660,102 @@ const styles = StyleSheet.create({
 	},
 	primaryButtonText: {
 		color: "#fff",
-		fontSize: 15,
+		fontSize: 14,
 		fontWeight: "800",
-		marginLeft: 10,
+		marginLeft: 8,
 	},
 	secondaryButton: {
-		height: 52,
-		borderRadius: 16,
-		backgroundColor: "#fff",
+		height: 48,
+		borderRadius: 14,
+		backgroundColor: "#F3F4F6",
 		alignItems: "center",
 		justifyContent: "center",
 		flexDirection: "row",
 	},
 	secondaryButtonText: {
 		color: "#111827",
-		fontSize: 15,
+		fontSize: 14,
 		fontWeight: "800",
-		marginLeft: 10,
+		marginLeft: 8,
 	},
-	clearChip: {
-		backgroundColor: "rgba(185,28,28,0.08)",
-		paddingHorizontal: 12,
-		paddingVertical: 7,
-		borderRadius: 999,
-	},
-	clearChipText: {
-		color: "#B91C1C",
-		fontSize: 12,
-		fontWeight: "800",
-	},
-	disabledChip: {
-		opacity: 0.4,
-	},
-	emptyCard: {
-		backgroundColor: "#fff",
-		borderRadius: 18,
-		padding: 18,
-		alignItems: "center",
-	},
-	emptyTitle: {
-		fontSize: 16,
-		fontWeight: "800",
-		color: "#111827",
-		marginTop: 10,
-	},
-	emptyText: {
-		fontSize: 13,
-		lineHeight: 19,
+	emptyPointsText: {
+		fontSize: 14,
 		color: "#6B7280",
-		textAlign: "center",
-		marginTop: 6,
 	},
-	pointCard: {
-		backgroundColor: "#fff",
-		borderRadius: 18,
-		padding: 14,
-		marginBottom: 10,
-		flexDirection: "row",
-		alignItems: "center",
-	},
-	pointInfo: {
-		flex: 1,
-	},
-	pointTitle: {
-		fontSize: 15,
-		fontWeight: "800",
-		color: "#111827",
-		marginBottom: 4,
-	},
-	pointCoords: {
-		fontSize: 13,
-		color: "#4B5563",
-	},
-	pointActions: {
-		flexDirection: "row",
-		alignItems: "center",
-		marginLeft: 10,
-	},
-	pointIconButton: {
-		width: 40,
-		height: 40,
-		borderRadius: 12,
-		backgroundColor: "#F3F4F6",
-		alignItems: "center",
-		justifyContent: "center",
-		marginLeft: 8,
-	},
-	saveButton: {
-		minHeight: 54,
-		borderRadius: 16,
-		backgroundColor: "#16A34A",
-		alignItems: "center",
-		justifyContent: "center",
-		flexDirection: "row",
-		marginTop: 6,
-	},
-	saveButtonText: {
-		color: "#fff",
-		fontSize: 16,
-		fontWeight: "800",
-		marginLeft: 10,
-	},
-	disabledSaveButton: {
-		opacity: 0.5,
-	},
-	newDraftButton: {
-		minHeight: 50,
-		borderRadius: 16,
-		backgroundColor: "#fff",
-		alignItems: "center",
-		justifyContent: "center",
-		flexDirection: "row",
-		marginTop: 10,
-	},
-	newDraftButtonText: {
-		color: "#111827",
-		fontSize: 15,
-		fontWeight: "800",
-		marginLeft: 8,
-	},
-	disabledButton: {
-		opacity: 0.5,
-	},
-	headerTopRow: {
+	pointRow: {
 		flexDirection: "row",
 		alignItems: "center",
 		justifyContent: "space-between",
+		paddingVertical: 10,
+		borderBottomWidth: 1,
+		borderBottomColor: "#F3F4F6",
 	},
-
-	chipsRow: {
+	pointLeft: {
 		flexDirection: "row",
 		alignItems: "center",
-		marginLeft: 4,
-		gap: 4, // se não funcionar, usar marginLeft nos filhos
+		flex: 1,
+		paddingRight: 12,
+	},
+	pointIndexBadge: {
+		width: 28,
+		height: 28,
+		borderRadius: 999,
+		backgroundColor: "#DBEAFE",
+		alignItems: "center",
+		justifyContent: "center",
+		marginRight: 10,
+	},
+	pointIndexText: {
+		color: "#1D4ED8",
+		fontSize: 12,
+		fontWeight: "800",
+	},
+	pointTextWrap: {
+		flex: 1,
+	},
+	pointText: {
+		fontSize: 12,
+		color: "#374151",
+		fontWeight: "600",
+	},
+	removePointButton: {
+		width: 36,
+		height: 36,
+		borderRadius: 12,
+		backgroundColor: "rgba(185,28,28,0.08)",
+		alignItems: "center",
+		justifyContent: "center",
+	},
+	previewOpenButton: {
+		height: 34,
+		paddingHorizontal: 12,
+		borderRadius: 999,
+		backgroundColor: "#EEF2FF",
+		flexDirection: "row",
+		alignItems: "center",
+		justifyContent: "center",
+	},
+	previewOpenButtonText: {
+		marginLeft: 6,
+		fontSize: 12,
+		fontWeight: "800",
+		color: "#111827",
+	},
+	previewOverlayHint: {
+		position: "absolute",
+		right: 10,
+		top: 10,
+		borderRadius: 999,
+		paddingHorizontal: 10,
+		paddingVertical: 6,
+		backgroundColor: "rgba(17,24,39,0.72)",
+		flexDirection: "row",
+		alignItems: "center",
+	},
+	previewOverlayHintText: {
+		marginLeft: 5,
+		color: "#fff",
+		fontSize: 11,
+		fontWeight: "700",
 	},
 });

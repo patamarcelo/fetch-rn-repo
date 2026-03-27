@@ -1,44 +1,80 @@
 import { createSlice } from "@reduxjs/toolkit";
 import { logout } from "./authSlice";
 
-const initialState = {
-	draft: {
-		id: null,
-		name: "",
-		farmId: null,
-		farmName: "",
-		mode: null, // "manual" | "tracking"
-		points: [],
-		isRecording: false,
-		isPaused: false,
-		isClosed: false,
-		startedAt: null,
-		finishedAt: null,
-		currentAccuracy: null,
-		observation: "",
-	},
-	items: [],
-	selectedPolygonId: null,
-	syncQueue: [],
-	syncStatus: "idle", // idle | pending | succeeded | failed
-	syncError: null,
+const DEFAULT_POLYGON_SETTINGS = {
+	autoMinDistance: 10,
+	autoMinSeconds: 3,
+	followMe: true,
 };
 
-const buildDraft = (payload = {}) => ({
+const buildDraft = (
+	payload = {},
+	settings = DEFAULT_POLYGON_SETTINGS
+) => ({
 	id: payload.id || `polygon_${Date.now()}`,
 	name: payload.name || "",
 	farmId: payload.farmId || null,
 	farmName: payload.farmName || "",
 	mode: payload.mode || null,
-	points: payload.points || [],
+	points: Array.isArray(payload.points) ? payload.points : [],
 	isRecording: false,
 	isPaused: false,
 	isClosed: false,
 	startedAt: payload.startedAt || null,
 	finishedAt: null,
 	currentAccuracy: null,
+	followMe: payload.followMe ?? settings.followMe,
 	observation: payload.observation || "",
+	autoMinDistance: payload.autoMinDistance ?? settings.autoMinDistance,
+	autoMinSeconds: payload.autoMinSeconds ?? settings.autoMinSeconds,
 });
+
+const initialState = {
+	settings: {
+		...DEFAULT_POLYGON_SETTINGS,
+	},
+	draft: buildDraft({}, DEFAULT_POLYGON_SETTINGS),
+	items: [],
+	selectedPolygonId: null,
+	syncQueue: [],
+	syncStatus: "idle",
+	syncError: null,
+};
+
+const ensureSettings = (state) => {
+	if (!state.settings) {
+		state.settings = { ...DEFAULT_POLYGON_SETTINGS };
+	} else {
+		state.settings = {
+			autoMinDistance:
+				state.settings.autoMinDistance ?? DEFAULT_POLYGON_SETTINGS.autoMinDistance,
+			autoMinSeconds:
+				state.settings.autoMinSeconds ?? DEFAULT_POLYGON_SETTINGS.autoMinSeconds,
+			followMe:
+				state.settings.followMe ?? DEFAULT_POLYGON_SETTINGS.followMe,
+		};
+	}
+};
+
+const ensureDraft = (state) => {
+	ensureSettings(state);
+
+	if (!state.draft) {
+		state.draft = buildDraft({}, state.settings);
+		return;
+	}
+
+	state.draft = {
+		...buildDraft({}, state.settings),
+		...state.draft,
+		followMe: state.draft.followMe ?? state.settings.followMe,
+		autoMinDistance:
+			state.draft.autoMinDistance ?? state.settings.autoMinDistance,
+		autoMinSeconds:
+			state.draft.autoMinSeconds ?? state.settings.autoMinSeconds,
+		points: Array.isArray(state.draft.points) ? state.draft.points : [],
+	};
+};
 
 const polygonSlice = createSlice({
 	name: "polygon",
@@ -47,36 +83,93 @@ const polygonSlice = createSlice({
 		resetPolygonState: () => initialState,
 
 		startPolygonDraft: (state, action) => {
-			state.draft = buildDraft(action.payload || {});
+			ensureSettings(state);
+			state.draft = buildDraft(action.payload || {}, state.settings);
 		},
 
 		resetPolygonDraft: (state) => {
-			state.draft = buildDraft();
+			ensureSettings(state);
+			state.draft = buildDraft({}, state.settings);
 		},
 
 		setPolygonMode: (state, action) => {
+			ensureDraft(state);
 			state.draft.mode = action.payload;
 		},
 
 		setPolygonMeta: (state, action) => {
+			ensureDraft(state);
+
 			const {
 				name,
 				farmId,
 				farmName,
 				observation,
+				followMe,
+				autoMinDistance,
+				autoMinSeconds,
 			} = action.payload || {};
 
 			if (name !== undefined) state.draft.name = name;
 			if (farmId !== undefined) state.draft.farmId = farmId;
 			if (farmName !== undefined) state.draft.farmName = farmName;
 			if (observation !== undefined) state.draft.observation = observation;
+
+			if (followMe !== undefined) {
+				state.draft.followMe = followMe;
+				state.settings.followMe = followMe;
+			}
+
+			if (autoMinDistance !== undefined) {
+				state.draft.autoMinDistance = autoMinDistance;
+				state.settings.autoMinDistance = autoMinDistance;
+			}
+
+			if (autoMinSeconds !== undefined) {
+				state.draft.autoMinSeconds = autoMinSeconds;
+				state.settings.autoMinSeconds = autoMinSeconds;
+			}
+		},
+
+		setPolygonSettings: (state, action) => {
+			ensureSettings(state);
+
+			const {
+				followMe,
+				autoMinDistance,
+				autoMinSeconds,
+			} = action.payload || {};
+
+			if (followMe !== undefined) {
+				state.settings.followMe = followMe;
+			}
+
+			if (autoMinDistance !== undefined) {
+				state.settings.autoMinDistance = autoMinDistance;
+			}
+
+			if (autoMinSeconds !== undefined) {
+				state.settings.autoMinSeconds = autoMinSeconds;
+			}
+
+			ensureDraft(state);
+			state.draft.followMe = state.settings.followMe;
+			state.draft.autoMinDistance = state.settings.autoMinDistance;
+			state.draft.autoMinSeconds = state.settings.autoMinSeconds;
+		},
+
+		resetPolygonSettingsToDefault: (state) => {
+			state.settings = { ...DEFAULT_POLYGON_SETTINGS };
+			state.draft = buildDraft({}, state.settings);
 		},
 
 		setDraftCurrentAccuracy: (state, action) => {
+			ensureDraft(state);
 			state.draft.currentAccuracy = action.payload;
 		},
 
 		addPointToDraft: (state, action) => {
+			ensureDraft(state);
 			const point = action.payload;
 
 			if (!point?.latitude || !point?.longitude) return;
@@ -90,6 +183,7 @@ const polygonSlice = createSlice({
 		},
 
 		addPointsToDraft: (state, action) => {
+			ensureDraft(state);
 			const points = Array.isArray(action.payload) ? action.payload : [];
 
 			points.forEach((point) => {
@@ -105,20 +199,24 @@ const polygonSlice = createSlice({
 		},
 
 		removeLastDraftPoint: (state) => {
+			ensureDraft(state);
 			if (state.draft.points.length > 0) {
 				state.draft.points.pop();
 			}
 		},
 
 		clearDraftPoints: (state) => {
+			ensureDraft(state);
 			state.draft.points = [];
 		},
 
 		setDraftPoints: (state, action) => {
+			ensureDraft(state);
 			state.draft.points = Array.isArray(action.payload) ? action.payload : [];
 		},
 
 		updateDraftPointAtIndex: (state, action) => {
+			ensureDraft(state);
 			const { index, point } = action.payload || {};
 			if (typeof index !== "number" || index < 0) return;
 			if (!point?.latitude || !point?.longitude) return;
@@ -137,6 +235,7 @@ const polygonSlice = createSlice({
 		},
 
 		removeDraftPointAtIndex: (state, action) => {
+			ensureDraft(state);
 			const index = action.payload;
 			if (typeof index !== "number" || index < 0) return;
 			if (!state.draft.points[index]) return;
@@ -145,14 +244,17 @@ const polygonSlice = createSlice({
 		},
 
 		setPolygonRecording: (state, action) => {
+			ensureDraft(state);
 			state.draft.isRecording = action.payload;
 		},
 
 		setPolygonPaused: (state, action) => {
+			ensureDraft(state);
 			state.draft.isPaused = action.payload;
 		},
 
 		startTrackingDraft: (state) => {
+			ensureDraft(state);
 			state.draft.isRecording = true;
 			state.draft.isPaused = false;
 			if (!state.draft.startedAt) {
@@ -161,16 +263,19 @@ const polygonSlice = createSlice({
 		},
 
 		pauseTrackingDraft: (state) => {
+			ensureDraft(state);
 			state.draft.isPaused = true;
 			state.draft.isRecording = false;
 		},
 
 		resumeTrackingDraft: (state) => {
+			ensureDraft(state);
 			state.draft.isPaused = false;
 			state.draft.isRecording = true;
 		},
 
 		finishPolygonDraft: (state, action) => {
+			ensureDraft(state);
 			const { isClosed = false } = action.payload || {};
 
 			state.draft.isClosed = isClosed;
@@ -180,6 +285,7 @@ const polygonSlice = createSlice({
 		},
 
 		saveDraftAsPolygon: (state, action) => {
+			ensureDraft(state);
 			const extraData = action.payload || {};
 			const polygonId = state.draft.id || `polygon_${Date.now()}`;
 
@@ -197,7 +303,7 @@ const polygonSlice = createSlice({
 				finishedAt: state.draft.finishedAt || new Date().toISOString(),
 				currentAccuracy: state.draft.currentAccuracy,
 				observation: state.draft.observation || "",
-				status: extraData.status || "saved", // saved | sync_pending | synced | sync_error
+				status: extraData.status || "saved",
 				syncPending: extraData.syncPending ?? true,
 				syncError: null,
 				areaM2: extraData.areaM2 ?? null,
@@ -323,5 +429,4 @@ const polygonSlice = createSlice({
 });
 
 export const polygonActions = polygonSlice.actions;
-
 export default polygonSlice.reducer;

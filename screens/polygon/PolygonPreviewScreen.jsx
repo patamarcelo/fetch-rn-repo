@@ -8,7 +8,7 @@ import {
 import { useRoute } from "@react-navigation/native";
 import { useSelector } from "react-redux";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import MapView, { Polygon as MapPolygon, Marker } from "react-native-maps";
+import MapView, { Polygon as MapPolygon, Marker, Polyline } from "react-native-maps";
 
 import { Colors } from "../../constants/styles";
 import { selectPolygonItems } from "../../store/redux/polygonSelectors";
@@ -80,12 +80,32 @@ function buildRegion(points) {
 export default function PolygonPreviewScreen() {
 	const route = useRoute();
 	const items = useSelector(selectPolygonItems);
-	const polygonId = route?.params?.polygonId;
+	const draft = useSelector((state) => state.polygon.draft);
 
-	const polygon = useMemo(
-		() => (items || []).find((item) => item?.id === polygonId),
-		[items, polygonId]
-	);
+	const polygonId = route?.params?.polygonId;
+	const source = route?.params?.source;
+
+	const polygon = useMemo(() => {
+		if (source === "draft") {
+			return {
+				id: draft?.id || "draft-preview",
+				name: draft?.name || "Rascunho",
+				farmName: draft?.farmName || "Sem fazenda",
+				mode: draft?.mode || "manual",
+				points: draft?.points || [],
+				isClosed: !!draft?.isClosed,
+				observation: draft?.observation || "",
+				status: "sync_pending",
+				syncPending: true,
+				createdAt: draft?.startedAt || null,
+				updatedAt: draft?.finishedAt || null,
+				areaM2: draft?.areaM2 || null,
+				perimeterM: draft?.perimeterM || null,
+			};
+		}
+
+		return (items || []).find((item) => item?.id === polygonId);
+	}, [items, polygonId, source, draft]);
 
 	const points = useMemo(() => {
 		if (!Array.isArray(polygon?.points)) return [];
@@ -120,12 +140,23 @@ export default function PolygonPreviewScreen() {
 			<MapView style={styles.map} initialRegion={region}>
 				{points.length > 0 ? (
 					<>
-						<MapPolygon
-							coordinates={points}
-							strokeColor="rgba(21,101,192,0.95)"
-							fillColor="rgba(21,101,192,0.22)"
-							strokeWidth={3}
-						/>
+						{points.length >= 2 ? (
+							<Polyline
+								coordinates={points}
+								strokeColor="rgba(21,101,192,0.95)"
+								strokeWidth={3}
+							/>
+						) : null}
+
+						{points.length >= 3 && polygon?.isClosed ? (
+							<MapPolygon
+								coordinates={points}
+								strokeColor="rgba(21,101,192,0.95)"
+								fillColor="rgba(21,101,192,0.22)"
+								strokeWidth={3}
+							/>
+						) : null}
+
 						<Marker coordinate={points[0]} pinColor="#16A34A" />
 					</>
 				) : null}
@@ -155,7 +186,9 @@ export default function PolygonPreviewScreen() {
 						]}
 					>
 						<Text style={styles.statusText}>
-							{getStatusLabel(polygon?.status, polygon?.syncPending)}
+							{source === "draft"
+								? "Rascunho"
+								: getStatusLabel(polygon?.status, polygon?.syncPending)}
 						</Text>
 					</View>
 				</View>
@@ -187,7 +220,9 @@ export default function PolygonPreviewScreen() {
 				</View>
 
 				<View style={styles.infoBlock}>
-					<Text style={styles.infoBlockLabel}>Criado em</Text>
+					<Text style={styles.infoBlockLabel}>
+						{source === "draft" ? "Rascunho iniciado em" : "Criado em"}
+					</Text>
 					<Text style={styles.infoBlockValue}>
 						{formatDateTimeBR(polygon?.createdAt || polygon?.updatedAt)}
 					</Text>
@@ -200,7 +235,7 @@ export default function PolygonPreviewScreen() {
 					</Text>
 				</View>
 
-				{polygon?.syncError ? (
+				{polygon?.syncError && source !== "draft" ? (
 					<View style={styles.errorBox}>
 						<Ionicons name="alert-circle-outline" size={16} color="#B91C1C" />
 						<Text style={styles.errorText}>{polygon.syncError}</Text>
@@ -210,6 +245,7 @@ export default function PolygonPreviewScreen() {
 		</View>
 	);
 }
+
 
 const styles = StyleSheet.create({
 	container: {

@@ -49,7 +49,7 @@ const HomeStack = () => {
 				component={FarmBoxStack}
 				options={{
 					title: "FarmBox",
-					headerShown: false,
+					// headerShown: false,
 					tabBarIcon: ({ color, size }) => (
 						<Ionicons name="hourglass-outline" color={color} size={size} />
 					),

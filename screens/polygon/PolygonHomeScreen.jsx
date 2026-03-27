@@ -1,48 +1,40 @@
-import React, { useMemo } from "react";
-import {
-	View,
-	Text,
-	StyleSheet,
-	TouchableOpacity,
-	ScrollView,
-	Pressable,
-} from "react-native";
-import { useNavigation } from "@react-navigation/native";
+import React from "react";
+import { View, Text, StyleSheet, ScrollView, Pressable } from "react-native";
 import { useDispatch, useSelector } from "react-redux";
+import { useNavigation } from "@react-navigation/native";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 
 import { Colors } from "../../constants/styles";
 import { polygonActions } from "../../store/redux/polygon";
+
 import {
 	selectPolygonItems,
 	selectPolygonStats,
 } from "../../store/redux/polygonSelectors";
-import { farmsSelected, farmsSelector } from "../../store/redux/selector";
 
-function ActionCard({ title, subtitle, icon, iconLib = "ion", onPress }) {
-	const IconComponent =
-		iconLib === "material" ? MaterialCommunityIcons : Ionicons;
-
+function ActionCard({ title, subtitle, icon, onPress }) {
 	return (
-		<TouchableOpacity activeOpacity={0.88} onPress={onPress} style={styles.actionCard}>
-			<View style={styles.actionIconWrap}>
-				<IconComponent name={icon} size={24} color="#fff" />
-			</View>
+		<View style={styles.cardShadow}>
+			<Text onPress={onPress} style={styles.actionCardPressable}>
+				<View style={styles.actionCard}>
+					<View style={styles.actionIconWrap}>
+						<Ionicons name={icon} size={24} color="#fff" />
+					</View>
 
-			<View style={styles.actionContent}>
-				<Text style={styles.actionTitle}>{title}</Text>
-				<Text style={styles.actionSubtitle}>{subtitle}</Text>
-			</View>
+					<View style={styles.actionTextWrap}>
+						<Text style={styles.actionTitle}>{title}</Text>
+						<Text style={styles.actionSubtitle}>{subtitle}</Text>
+					</View>
 
-			<Ionicons name="chevron-forward" size={20} color="rgba(255,255,255,0.8)" />
-		</TouchableOpacity>
+					<Ionicons name="chevron-forward" size={22} color="#6B7280" />
+				</View>
+			</Text>
+		</View>
 	);
 }
-
 function StatCard({ label, value, icon, color, onPress }) {
 	return (
-		<Pressable style={styles.statCard} onPress={ value !== 0 ? onPress : () => console.log('sem nav')}>
+		<Pressable style={styles.statCard} onPress={value !== 0 ? onPress : () => console.log('sem')}>
 			<View>
 
 				<View style={[styles.statIconWrap, { backgroundColor: color }]}>
@@ -61,73 +53,50 @@ function StatCard({ label, value, icon, color, onPress }) {
 	);
 }
 
-const PolygonHomeScreen = () => {
-	const navigation = useNavigation();
+export default function PolygonHomeScreen() {
 	const dispatch = useDispatch();
+	const navigation = useNavigation();
+
 
 	const polygonItems = useSelector(selectPolygonItems);
 	const polygonStats = useSelector(selectPolygonStats);
-	const selectedFarm = useSelector(farmsSelected);
-	const farms = useSelector(farmsSelector);
 
-	const selectedFarmData = useMemo(() => {
-		if (!selectedFarm) return null;
-		if (typeof selectedFarm === "object") return selectedFarm;
 
-		return farms?.find(
-			(item) =>
-				item?.id === selectedFarm ||
-				item?.fazenda_id === selectedFarm ||
-				item?.nome === selectedFarm
-		);
-	}, [selectedFarm, farms]);
+	const goToPolygonFlow = (screenName, params = {}) => {
+		const parent = navigation.getParent?.();
 
-	const goToPolygonFlow = (screen) => {
-		const parentNavigation = navigation.getParent();
-		if (!parentNavigation) return;
+		if (parent) {
+			parent.navigate("PolygonFlowStackScreen", {
+				screen: screenName,
+				params,
+			});
+			return;
+		}
 
-		parentNavigation.navigate("PolygonFlowStackScreen", {
-			screen,
+		navigation.navigate("PolygonFlowStackScreen", {
+			screen: screenName,
+			params,
 		});
 	};
 
-	const startNewDraft = (mode) => {
+	const startNewDraft = (mode = "manual") => {
 		dispatch(
 			polygonActions.startPolygonDraft({
-				farmId:
-					selectedFarmData?.id ||
-					selectedFarmData?.fazenda_id ||
-					null,
-				farmName:
-					selectedFarmData?.nome ||
-					selectedFarmData?.fazenda ||
-					"",
 				mode,
 			})
 		);
 
-		if (mode === "manual") {
-			goToPolygonFlow("PolygonManualScreen");
-			return;
-		}
-
-		goToPolygonFlow("PolygonTrackingScreen");
+		goToPolygonFlow("PolygonManualScreen", { mode });
 	};
 
 	return (
 		<ScrollView style={styles.container} contentContainerStyle={styles.content}>
 			<View style={styles.heroCard}>
-
 				<Text style={styles.heroTitle}>Polígonos</Text>
 				<Text style={styles.heroSubtitle}>
-					Crie áreas por GPS, salve offline no aparelho e sincronize depois com o backend.
+					Crie, visualize, exporte e sincronize polígonos das áreas da fazenda.
 				</Text>
-				<View style={styles.heroBadge}>
-					<Ionicons name="map" size={16} color="#fff" />
-					<Text style={styles.heroBadgeText}>Módulo de Geolocalização</Text>
-				</View>
 			</View>
-
 			<View style={styles.statsGrid}>
 				<StatCard
 					label="Total salvos"
@@ -156,21 +125,20 @@ const PolygonHomeScreen = () => {
 					color="#EF4444"
 				/>
 			</View>
-
 			<View style={styles.section}>
 				<Text style={styles.sectionTitle}>Criar novo polígono</Text>
 
 				<ActionCard
 					title="Ponto a ponto"
-					subtitle="Marque cada vértice manualmente usando a localização atual."
-					icon="location"
+					subtitle="Marque os vértices manualmente. Você controla cada ponto."
+					icon="location-outline"
 					onPress={() => startNewDraft("manual")}
 				/>
 
 				<ActionCard
 					title="Navegação automática"
-					subtitle="Inicie a gravação e deixe o app capturar os pontos automaticamente."
-					icon="navigate"
+					subtitle="Use a mesma tela, com configurações para captura automática."
+					icon="navigate-outline"
 					onPress={() => startNewDraft("tracking")}
 				/>
 			</View>
@@ -180,81 +148,93 @@ const PolygonHomeScreen = () => {
 
 				<ActionCard
 					title="Polígonos salvos"
-					subtitle={`Visualize os ${polygonItems.length} polígonos armazenados no aparelho.`}
-					icon="folder-open"
+					subtitle="Veja, exporte e abra os polígonos em modo visualização."
+					icon="map-outline"
 					onPress={() => goToPolygonFlow("PolygonSavedListScreen")}
 				/>
 
 				<ActionCard
 					title="Sincronização"
-					subtitle="Enviar pendentes para o servidor , precisa de internet."
+					subtitle="Enviar pendentes para o backend."
 					icon="cloud-upload-outline"
 					onPress={() => goToPolygonFlow("PolygonSyncScreen")}
 				/>
 			</View>
 		</ScrollView>
 	);
-};
-
-export default PolygonHomeScreen;
+}
 
 const styles = StyleSheet.create({
 	container: {
 		flex: 1,
-		backgroundColor: Colors.secondary[100] || "#F4F6F8",
+		backgroundColor: Colors.secondary[200] || "#F4F6F8",
+		marginBottom: 50
 	},
 	content: {
 		padding: 16,
-		paddingBottom: 120,
+		paddingBottom: 32,
 	},
 	heroCard: {
-		backgroundColor: Colors.primary[901] || "#1F2937",
-		borderRadius: 24,
+		backgroundColor: Colors.primary?.[901] || "#1F2937",
+		borderRadius: 20,
 		padding: 18,
 		marginBottom: 18,
 	},
-	heroBadge: {
-		alignSelf: "flex-end",
-		flexDirection: "row",
-		alignItems: "center",
-		gap: 8,
-		backgroundColor: "rgba(255,255,255,0.12)",
-		paddingHorizontal: 10,
-		paddingVertical: 6,
-		borderRadius: 999,
-		marginBottom: 14,
-	},
-	heroBadgeText: {
-		color: "#fff",
-		fontSize: 12,
-		fontWeight: "700",
-	},
 	heroTitle: {
-		color: "#fff",
-		fontSize: 28,
+		fontSize: 22,
 		fontWeight: "800",
-		marginBottom: 8,
+		color: "#fff",
 	},
 	heroSubtitle: {
-		color: "rgba(255,255,255,0.85)",
 		fontSize: 14,
 		lineHeight: 21,
-		marginBottom: 16,
+		color: "rgba(255,255,255,0.85)",
+		marginTop: 8,
 	},
-	farmInfoBox: {
-		backgroundColor: "rgba(255,255,255,0.10)",
-		borderRadius: 16,
-		padding: 12,
+	section: {
+		marginBottom: 18,
 	},
-	farmInfoLabel: {
-		color: "rgba(255,255,255,0.70)",
-		fontSize: 12,
-		marginBottom: 4,
+	sectionTitle: {
+		fontSize: 17,
+		fontWeight: "800",
+		color: "#111827",
+		marginBottom: 12,
 	},
-	farmInfoValue: {
-		color: "#fff",
-		fontSize: 15,
-		fontWeight: "700",
+	cardShadow: {
+		marginBottom: 12,
+	},
+	actionCardPressable: {
+	},
+	actionCard: {
+		backgroundColor: "#fff",
+		borderRadius: 18,
+		padding: 16,
+		flexDirection: "row",
+		alignItems: "center",
+	},
+	actionIconWrap: {
+		width: 48,
+		height: 48,
+		borderRadius: 14,
+		backgroundColor: "#2563EB",
+		alignItems: "center",
+		justifyContent: "center",
+		marginRight: 14,
+	},
+	actionTextWrap: {
+		flex: 1,
+		paddingRight: 8,
+	},
+	actionTitle: {
+		fontSize: 16,
+		fontWeight: "800",
+		color: "#111827",
+	},
+	actionSubtitle: {
+		fontSize: 13,
+		lineHeight: 18,
+		color: "#6B7280",
+		marginTop: 4,
 	},
 	statsGrid: {
 		flexDirection: "row",
@@ -289,45 +269,5 @@ const styles = StyleSheet.create({
 		fontSize: 13,
 		color: "#6B7280",
 		marginTop: 4,
-	},
-	section: {
-		marginBottom: 20,
-	},
-	sectionTitle: {
-		fontSize: 18,
-		fontWeight: "800",
-		color: "#111827",
-		marginBottom: 12,
-	},
-	actionCard: {
-		backgroundColor: Colors.primary[901] || "#1F2937",
-		borderRadius: 20,
-		padding: 14,
-		marginBottom: 12,
-		flexDirection: "row",
-		alignItems: "center",
-	},
-	actionIconWrap: {
-		width: 46,
-		height: 46,
-		borderRadius: 14,
-		backgroundColor: "rgba(255,255,255,0.14)",
-		alignItems: "center",
-		justifyContent: "center",
-		marginRight: 12,
-	},
-	actionContent: {
-		flex: 1,
-	},
-	actionTitle: {
-		color: "#fff",
-		fontSize: 16,
-		fontWeight: "800",
-		marginBottom: 4,
-	},
-	actionSubtitle: {
-		color: "rgba(255,255,255,0.78)",
-		fontSize: 13,
-		lineHeight: 18,
 	},
 });

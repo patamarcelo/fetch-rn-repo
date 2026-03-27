@@ -42,8 +42,11 @@ const PolygonFlowStack = () => {
 			<Stack.Screen
 				name="PolygonManualScreen"
 				component={PolygonManualScreen}
-				options={({ navigation }) => ({
-					title: "Ponto a ponto",
+				options={({ navigation, route }) => ({
+					title:
+						route?.params?.mode === "tracking"
+							? "Navegação automática"
+							: "Ponto a ponto",
 					headerLeft: () => buildBackButton(navigation),
 				})}
 			/>
