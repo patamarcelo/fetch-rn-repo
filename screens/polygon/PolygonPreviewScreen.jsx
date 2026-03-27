@@ -13,6 +13,96 @@ import MapView, { Polygon as MapPolygon, Marker, Polyline } from "react-native-m
 import { Colors } from "../../constants/styles";
 import { selectPolygonItems } from "../../store/redux/polygonSelectors";
 
+
+function toRad(value) {
+	return (Number(value) * Math.PI) / 180;
+}
+
+function distanceBetweenPointsInMeters(pointA, pointB) {
+	const lat1 = Number(pointA?.latitude);
+	const lon1 = Number(pointA?.longitude);
+	const lat2 = Number(pointB?.latitude);
+	const lon2 = Number(pointB?.longitude);
+
+	if (
+		!Number.isFinite(lat1) ||
+		!Number.isFinite(lon1) ||
+		!Number.isFinite(lat2) ||
+		!Number.isFinite(lon2)
+	) {
+		return 0;
+	}
+
+	const earthRadius = 6371000;
+	const dLat = toRad(lat2 - lat1);
+	const dLon = toRad(lon2 - lon1);
+
+	const a =
+		Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+		Math.cos(toRad(lat1)) *
+		Math.cos(toRad(lat2)) *
+		Math.sin(dLon / 2) *
+		Math.sin(dLon / 2);
+
+	const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+	return earthRadius * c;
+}
+
+function calculatePerimeterInMeters(points, isClosed) {
+	if (!Array.isArray(points) || points.length < 2) return 0;
+
+	let perimeter = 0;
+
+	for (let index = 0; index < points.length - 1; index += 1) {
+		perimeter += distanceBetweenPointsInMeters(points[index], points[index + 1]);
+	}
+
+	if (isClosed && points.length >= 3) {
+		perimeter += distanceBetweenPointsInMeters(
+			points[points.length - 1],
+			points[0]
+		);
+	}
+
+	return perimeter;
+}
+
+function calculatePolygonAreaInM2(points) {
+	if (!Array.isArray(points) || points.length < 3) return 0;
+
+	const valid = points.filter(
+		(point) =>
+			Number.isFinite(Number(point?.latitude)) &&
+			Number.isFinite(Number(point?.longitude))
+	);
+
+	if (valid.length < 3) return 0;
+
+	const earthRadius = 6378137;
+	const avgLat =
+		valid.reduce((sum, point) => sum + Number(point.latitude), 0) / valid.length;
+
+	const projected = valid.map((point) => {
+		const lat = Number(point.latitude);
+		const lng = Number(point.longitude);
+
+		return {
+			x: earthRadius * toRad(lng) * Math.cos(toRad(avgLat)),
+			y: earthRadius * toRad(lat),
+		};
+	});
+
+	let area = 0;
+
+	for (let index = 0; index < projected.length; index += 1) {
+		const current = projected[index];
+		const next = projected[(index + 1) % projected.length];
+		area += current.x * next.y - next.x * current.y;
+	}
+
+	return Math.abs(area / 2);
+}
+
 function formatDateTimeBR(dateValue) {
 	if (!dateValue) return "-";
 
@@ -100,6 +190,7 @@ export default function PolygonPreviewScreen() {
 				createdAt: draft?.startedAt || null,
 				updatedAt: draft?.finishedAt || null,
 				areaM2: draft?.areaM2 || null,
+				areaHa: draft?.areaHa || null,
 				perimeterM: draft?.perimeterM || null,
 			};
 		}
@@ -120,6 +211,40 @@ export default function PolygonPreviewScreen() {
 					Number.isFinite(point.longitude)
 			);
 	}, [polygon]);
+
+
+	const fallbackAreaM2 = useMemo(() => {
+		if (!polygon?.isClosed || points.length < 3) return 0;
+		return calculatePolygonAreaInM2(points);
+	}, [points, polygon?.isClosed]);
+
+	const fallbackAreaHa = useMemo(() => {
+		return fallbackAreaM2 / 10000;
+	}, [fallbackAreaM2]);
+
+	const fallbackPerimeterM = useMemo(() => {
+		return calculatePerimeterInMeters(points, !!polygon?.isClosed);
+	}, [points, polygon?.isClosed]);
+
+	const displayAreaHa = useMemo(() => {
+		if (Number.isFinite(Number(polygon?.areaHa)) && Number(polygon?.areaHa) > 0) {
+			return Number(polygon.areaHa);
+		}
+
+		if (Number.isFinite(Number(polygon?.areaM2)) && Number(polygon?.areaM2) > 0) {
+			return Number(polygon.areaM2) / 10000;
+		}
+
+		return fallbackAreaHa;
+	}, [polygon?.areaHa, polygon?.areaM2, fallbackAreaHa]);
+
+	const displayPerimeterM = useMemo(() => {
+		if (Number.isFinite(Number(polygon?.perimeterM)) && Number(polygon?.perimeterM) > 0) {
+			return Number(polygon.perimeterM);
+		}
+
+		return fallbackPerimeterM;
+	}, [polygon?.perimeterM, fallbackPerimeterM]);
 
 	const region = useMemo(() => buildRegion(points), [points]);
 
@@ -207,14 +332,14 @@ export default function PolygonPreviewScreen() {
 					<View style={styles.infoCard}>
 						<Text style={styles.infoLabel}>Área</Text>
 						<Text style={styles.infoValue}>
-							{polygon?.areaM2 ? `${polygon.areaM2} m²` : "-"}
+							{displayAreaHa > 0 ? `${displayAreaHa.toFixed(2)} ha` : "-"}
 						</Text>
 					</View>
 
 					<View style={styles.infoCard}>
 						<Text style={styles.infoLabel}>Perímetro</Text>
 						<Text style={styles.infoValue}>
-							{polygon?.perimeterM ? `${polygon.perimeterM} m` : "-"}
+							{displayPerimeterM > 0 ? `${displayPerimeterM.toFixed(2)} m` : "-"}
 						</Text>
 					</View>
 				</View>

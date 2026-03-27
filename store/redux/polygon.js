@@ -3,7 +3,7 @@ import { logout } from "./authSlice";
 
 const DEFAULT_POLYGON_SETTINGS = {
 	autoMinDistance: 10,
-	autoMinSeconds: 3,
+	autoMinSeconds: 2,
 	followMe: true,
 };
 
@@ -308,6 +308,7 @@ const polygonSlice = createSlice({
 				syncError: null,
 				areaM2: extraData.areaM2 ?? null,
 				perimeterM: extraData.perimeterM ?? null,
+				areaHa: extraData.areaHa ?? null,
 				createdAt: extraData.createdAt || new Date().toISOString(),
 				updatedAt: new Date().toISOString(),
 			};

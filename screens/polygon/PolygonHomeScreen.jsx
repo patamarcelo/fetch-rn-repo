@@ -1,4 +1,5 @@
 import React from "react";
+import { useState, useEffect } from "react";
 import { View, Text, StyleSheet, ScrollView, Pressable } from "react-native";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigation } from "@react-navigation/native";
@@ -11,6 +12,14 @@ import {
 	selectPolygonItems,
 	selectPolygonStats,
 } from "../../store/redux/polygonSelectors";
+
+
+import { geralActions } from "../../store/redux/geral";
+import { farmsSelected } from "../../store/redux/selector";
+import { fetchFarmsFromPlantioApi } from "../../services/farmsLoader";
+import { runPolygonAutoSyncIfNeeded } from "../../services/polygonAutoSync";
+
+
 
 function ActionCard({ title, subtitle, icon, onPress }) {
 	return (
@@ -57,9 +66,74 @@ export default function PolygonHomeScreen() {
 	const dispatch = useDispatch();
 	const navigation = useNavigation();
 
+	const { setFarms } = geralActions;
+	const [isLoadingFarms, setIsLoadingFarms] = useState(false);
 
 	const polygonItems = useSelector(selectPolygonItems);
 	const polygonStats = useSelector(selectPolygonStats);
+	const farmList = useSelector(farmsSelected)
+
+	const user = useSelector((state) => state.auth.user);
+
+	useEffect(() => {
+		const ensureFarmsLoaded = async () => {
+			if (farmList.length > 0) return;
+
+			try {
+				setIsLoadingFarms(true);
+				const result = await fetchFarmsFromPlantioApi();
+				dispatch(setFarms(result.farms));
+			} catch (error) {
+				console.log("Erro ao carregar fazendas nos polígonos:", error);
+				Alert.alert(
+					"Erro",
+					"Não foi possível carregar a lista de fazendas."
+				);
+			} finally {
+				setIsLoadingFarms(false);
+			}
+		};
+
+		ensureFarmsLoaded();
+	}, [dispatch, farmList.length, setFarms]);
+
+
+	useEffect(() => {
+		const pendingPolygons = polygonItems.filter(
+			(item) =>
+				item?.syncPending === true ||
+				item?.status === "sync_pending" ||
+				item?.status === "sync_error"
+		);
+
+		const runAutoSync = async () => {
+			await runPolygonAutoSyncIfNeeded({
+				user,
+				pendingPolygons,
+				onSuccessItem: (result) => {
+					dispatch(
+						polygonActions.markPolygonAsSynced({
+							id: result.localId,
+							serverId: result.serverId,
+						})
+					);
+				},
+				onErrorItem: (result) => {
+					dispatch(
+						polygonActions.markPolygonAsSyncError({
+							id: result.localId,
+							error: result.error || "Erro ao sincronizar",
+						})
+					);
+				},
+			});
+		};
+
+		runAutoSync();
+	}, [dispatch, user, polygonItems]);
+
+
+
 
 
 	const goToPolygonFlow = (screenName, params = {}) => {
