@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
 	View,
 	Text,
@@ -10,7 +10,6 @@ import {
 	Alert,
 	Switch,
 } from "react-native";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigation } from "@react-navigation/native";
 import Ionicons from "@expo/vector-icons/Ionicons";
@@ -21,7 +20,6 @@ import { Colors } from "../../constants/styles";
 import { polygonActions } from "../../store/redux/polygon";
 import { farmsSelector } from "../../store/redux/selector";
 
-const POLYGON_DRAFT_STORAGE_KEY = "@polygon_manual_draft_v1";
 
 function toRad(value) {
 	return (Number(value) * Math.PI) / 180;
@@ -199,67 +197,13 @@ export default function PolygonManualScreen() {
 	const [currentLocation, setCurrentLocation] = useState(null);
 	const [showFarmSuggestions, setShowFarmSuggestions] = useState(false);
 
-	const didRestoreRef = useRef(false);
-	const isHydratingRef = useRef(true);
-
-	const updateMeta = (payload) => {
-		dispatch(polygonActions.setPolygonMeta(payload));
-	};
-
 	useEffect(() => {
 		if (draft?.mode === "manual") {
 			updateMeta({ followMe: false });
-		} else if (draft?.mode === "tracking") {
+		} else {
 			updateMeta({ followMe: true });
 		}
 	}, [draft?.mode]);
-
-	useEffect(() => {
-		let mounted = true;
-
-		const loadPersistedDraft = async () => {
-			try {
-				const raw = await AsyncStorage.getItem(POLYGON_DRAFT_STORAGE_KEY);
-				if (!raw) return;
-
-				const persistedDraft = JSON.parse(raw);
-				if (!persistedDraft) return;
-
-				dispatch(polygonActions.startPolygonDraft(persistedDraft));
-				if (mounted) {
-					setFarmQuery(persistedDraft?.farmName || "");
-				}
-			} catch (error) {
-				console.log("LOAD PERSISTED POLYGON DRAFT ERROR:", error);
-			} finally {
-				didRestoreRef.current = true;
-				isHydratingRef.current = false;
-			}
-		};
-
-		loadPersistedDraft();
-
-		return () => {
-			mounted = false;
-		};
-	}, [dispatch]);
-
-	useEffect(() => {
-		if (!didRestoreRef.current || isHydratingRef.current) return;
-
-		const persistDraft = async () => {
-			try {
-				await AsyncStorage.setItem(
-					POLYGON_DRAFT_STORAGE_KEY,
-					JSON.stringify(draft || {})
-				);
-			} catch (error) {
-				console.log("SAVE PERSISTED POLYGON DRAFT ERROR:", error);
-			}
-		};
-
-		persistDraft();
-	}, [draft]);
 
 	useEffect(() => {
 		let mounted = true;
@@ -349,6 +293,10 @@ export default function PolygonManualScreen() {
 		);
 	}, [isNameValid, isFarmValid, hasMinimumPoints, isPolygonClosed]);
 
+	const updateMeta = (payload) => {
+		dispatch(polygonActions.setPolygonMeta(payload));
+	};
+
 	const handleChangeName = (value) => {
 		updateMeta({ name: value });
 	};
@@ -389,7 +337,7 @@ export default function PolygonManualScreen() {
 		navigation.navigate("PolygonMapPickerScreen");
 	};
 
-	const handleSaveDraft = async () => {
+	const handleSaveDraft = () => {
 		if (!(draft?.name || "").trim()) {
 			Alert.alert("Nome obrigatório", "Informe um nome para o polígono.");
 			return;
@@ -425,12 +373,6 @@ export default function PolygonManualScreen() {
 			})
 		);
 
-		try {
-			await AsyncStorage.removeItem(POLYGON_DRAFT_STORAGE_KEY);
-		} catch (error) {
-			console.log("REMOVE PERSISTED POLYGON DRAFT ERROR:", error);
-		}
-
 		Alert.alert("Sucesso", "Polígono salvo localmente com sucesso.", [
 			{
 				text: "OK",
@@ -438,7 +380,6 @@ export default function PolygonManualScreen() {
 			},
 		]);
 	};
-
 	const handleRemovePoint = (index) => {
 		Alert.alert("Remover ponto", "Deseja remover este ponto?", [
 			{ text: "Cancelar", style: "cancel" },
@@ -492,11 +433,9 @@ export default function PolygonManualScreen() {
 
 	return (
 		<View style={styles.screen}>
-			<ScrollView
-				style={styles.container}
-				contentContainerStyle={styles.content}
-				showsVerticalScrollIndicator={false}
-			>
+
+
+			<ScrollView style={styles.container} contentContainerStyle={styles.content}>
 				<View style={styles.headerCard}>
 					<View style={styles.headerTopRow}>
 						<View style={styles.headerTitleWrap}>
@@ -542,9 +481,7 @@ export default function PolygonManualScreen() {
 									style={styles.suggestionItem}
 									onPress={() => handleSelectFarm(farmName)}
 								>
-									<Text style={styles.suggestionText}>
-										{farmName?.replace("Projeto ", "")}
-									</Text>
+									<Text style={styles.suggestionText}>{farmName?.replace('Projeto ', '')}</Text>
 								</TouchableOpacity>
 							))}
 						</View>
@@ -555,7 +492,6 @@ export default function PolygonManualScreen() {
 							Selecione uma fazenda da lista.
 						</Text>
 					) : null}
-
 					<Text style={styles.label}>Observação</Text>
 					<TextInput
 						style={[styles.input, styles.textArea]}
@@ -579,32 +515,6 @@ export default function PolygonManualScreen() {
 					</View>
 				</View>
 
-				{validPoints.length > 0 && (
-					<View style={styles.sectionCard}>
-						<Text style={styles.sectionTitle}>Medições</Text>
-
-						<View style={styles.metricsGrid}>
-							<View style={styles.metricCard}>
-								<Text style={styles.metricLabel}>Área</Text>
-								<Text style={styles.metricValue}>
-									{draft?.isClosed && validPoints.length >= 3
-										? `${measuredAreaHa.toFixed(2)} ha`
-										: "-"}
-								</Text>
-							</View>
-
-							<View style={styles.metricCard}>
-								<Text style={styles.metricLabel}>Perímetro</Text>
-								<Text style={styles.metricValue}>
-									{validPoints.length >= 2
-										? `${measuredPerimeterM.toFixed(2)} m`
-										: "-"}
-								</Text>
-							</View>
-						</View>
-					</View>
-				)}
-
 				<View style={styles.sectionCard}>
 					<Text style={styles.sectionTitle}>Ações</Text>
 
@@ -612,6 +522,8 @@ export default function PolygonManualScreen() {
 						<Ionicons name="map-outline" size={18} color="#fff" />
 						<Text style={styles.primaryButtonText}>Abrir mapa</Text>
 					</TouchableOpacity>
+
+					
 
 					{!isValidPolygon ? (
 						<Text style={styles.saveHintText}>
@@ -806,7 +718,6 @@ export default function PolygonManualScreen() {
 					)}
 				</View>
 			</ScrollView>
-
 			<View style={styles.footer}>
 				<TouchableOpacity
 					style={[
@@ -841,14 +752,15 @@ const styles = StyleSheet.create({
 	screen: {
 		flex: 1,
 		backgroundColor: Colors.secondary?.[200] || "#F4F6F8",
+		paddingBottom: 62
 	},
 	container: {
 		flex: 1,
-		backgroundColor: Colors.secondary?.[200] || "#F4F6F8",
+		backgroundColor: Colors.secondary[200] || "#F4F6F8",
 	},
 	content: {
 		padding: 16,
-		paddingBottom: 120,
+		paddingBottom: 32,
 	},
 	headerCard: {
 		backgroundColor: Colors.primary?.[901] || "#1F2937",
@@ -933,6 +845,23 @@ const styles = StyleSheet.create({
 		marginTop: 6,
 		fontWeight: "600",
 	},
+	selectedFarmBadge: {
+		marginTop: 10,
+		paddingHorizontal: 12,
+		paddingVertical: 10,
+		borderRadius: 12,
+		backgroundColor: "rgba(22,163,74,0.08)",
+		borderWidth: 1,
+		borderColor: "rgba(22,163,74,0.18)",
+		flexDirection: "row",
+		alignItems: "center",
+	},
+	selectedFarmBadgeText: {
+		marginLeft: 8,
+		fontSize: 13,
+		fontWeight: "700",
+		color: "#166534",
+	},
 	validationList: {
 		gap: 10,
 	},
@@ -948,9 +877,6 @@ const styles = StyleSheet.create({
 	},
 	validationTextOk: {
 		color: "#166534",
-	},
-	validationTextError: {
-		color: "#B91C1C",
 	},
 	sectionHeaderRow: {
 		flexDirection: "row",
@@ -1015,6 +941,7 @@ const styles = StyleSheet.create({
 		alignItems: "center",
 		justifyContent: "center",
 		flexDirection: "row",
+		marginBottom: 10,
 	},
 	primaryButtonText: {
 		color: "#fff",
@@ -1022,10 +949,33 @@ const styles = StyleSheet.create({
 		fontWeight: "800",
 		marginLeft: 8,
 	},
+	secondaryButton: {
+		height: 48,
+		borderRadius: 14,
+		backgroundColor: "#F3F4F6",
+		alignItems: "center",
+		justifyContent: "center",
+		flexDirection: "row",
+	},
+	secondaryButtonActive: {
+		backgroundColor: "#16A34A",
+	},
+	secondaryButtonDisabled: {
+		opacity: 1,
+	},
+	secondaryButtonText: {
+		color: "#111827",
+		fontSize: 14,
+		fontWeight: "800",
+		marginLeft: 8,
+	},
+	secondaryButtonTextActive: {
+		color: "#fff",
+	},
 	saveHintText: {
 		color: "#6B7280",
 		fontSize: 12,
-		marginTop: 10,
+		marginTop: 8,
 		lineHeight: 18,
 	},
 	emptyPointsText: {
@@ -1123,15 +1073,20 @@ const styles = StyleSheet.create({
 		fontSize: 11,
 		fontWeight: "700",
 	},
+	validationTextError: {
+		color: "#B91C1C",
+	},
 	textArea: {
 		height: 96,
 		paddingTop: 12,
 		paddingBottom: 12,
 	},
+
 	metricsGrid: {
 		flexDirection: "row",
 		gap: 10,
 	},
+
 	metricCard: {
 		flex: 1,
 		backgroundColor: "#F9FAFB",
@@ -1139,6 +1094,7 @@ const styles = StyleSheet.create({
 		paddingHorizontal: 12,
 		paddingVertical: 12,
 	},
+
 	metricLabel: {
 		fontSize: 11,
 		fontWeight: "700",
@@ -1146,6 +1102,7 @@ const styles = StyleSheet.create({
 		textTransform: "uppercase",
 		marginBottom: 4,
 	},
+
 	metricValue: {
 		fontSize: 15,
 		fontWeight: "800",
