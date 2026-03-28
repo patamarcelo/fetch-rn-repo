@@ -7,15 +7,17 @@ import {
 	ActivityIndicator,
 	Alert,
 } from "react-native";
-import MapView, { Marker, Polyline } from "react-native-maps";
+import MapView, { Marker, Polyline, Polygon as MapPolygon } from "react-native-maps";
 import * as Location from "expo-location";
+import * as Haptics from "expo-haptics";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useDispatch, useSelector } from "react-redux";
+import { useKeepAwake } from "expo-keep-awake";
 
 import { Colors } from "../../constants/styles";
 import { polygonActions } from "../../store/redux/polygon";
 import { selectPolygonDraft } from "../../store/redux/polygonSelectors";
-import { useKeepAwake } from "expo-keep-awake";
+import { savePolygonDraftBackup } from "../../services/polygonDraftStorage";
 
 const DEFAULT_DELTA = {
 	latitudeDelta: 0.008,
@@ -94,31 +96,46 @@ function getSecondsBetween(dateA, dateB) {
 	return Math.abs(timeB - timeA) / 1000;
 }
 
-const PolygonMapPickerScreen = ({ navigation, route }) => {
+function PointMarker({ selected }) {
+	return (
+		<View
+			style={[
+				styles.pointMarkerOuter,
+				selected && styles.pointMarkerOuterSelected,
+			]}
+		>
+			<View
+				style={[
+					styles.pointMarkerInner,
+					selected && styles.pointMarkerInnerSelected,
+				]}
+			/>
+		</View>
+	);
+}
+
+const PolygonMapPickerScreen = ({ navigation }) => {
 	const dispatch = useDispatch();
 	const draft = useSelector(selectPolygonDraft);
 	const mapRef = useRef(null);
 	const locationSubscription = useRef(null);
 	const trackingPointLockRef = useRef(false);
 
-	const initialEditIndex =
-		typeof route?.params?.editIndex === "number" ? route.params.editIndex : null;
-
 	const [loading, setLoading] = useState(true);
 	const [region, setRegion] = useState(null);
 	const [feedbackMessage, setFeedbackMessage] = useState("");
 	const [selectedPointIndex, setSelectedPointIndex] = useState(null);
-	const [dragEditIndex, setDragEditIndex] = useState(initialEditIndex);
 	const [localPoints, setLocalPoints] = useState(draft?.points || []);
-	const [mapVersion, setMapVersion] = useState(0);
 	const [isSaving, setIsSaving] = useState(false);
 	const [currentLocation, setCurrentLocation] = useState(null);
 	const [trackingActive, setTrackingActive] = useState(draft?.mode === "tracking");
+	const [mapType, setMapType] = useState("satellite");
 
 	useKeepAwake();
 
 	useEffect(() => {
 		initialize();
+
 		return () => {
 			if (locationSubscription.current) {
 				locationSubscription.current.remove();
@@ -139,13 +156,6 @@ const PolygonMapPickerScreen = ({ navigation, route }) => {
 	}, [localPoints, selectedPointIndex]);
 
 	useEffect(() => {
-		if (dragEditIndex === null) return;
-		if (!localPoints[dragEditIndex]) {
-			setDragEditIndex(null);
-		}
-	}, [localPoints, dragEditIndex]);
-
-	useEffect(() => {
 		if (draft?.mode !== "tracking") {
 			setTrackingActive(false);
 		}
@@ -162,13 +172,6 @@ const PolygonMapPickerScreen = ({ navigation, route }) => {
 				return;
 			}
 
-			if (initialEditIndex !== null && localPoints[initialEditIndex]) {
-				const point = localPoints[initialEditIndex];
-				setRegion(buildRegion(point.latitude, point.longitude));
-				await startLocationWatch();
-				return;
-			}
-
 			const location = await Location.getCurrentPositionAsync({
 				accuracy: Location.Accuracy.High,
 			});
@@ -179,8 +182,8 @@ const PolygonMapPickerScreen = ({ navigation, route }) => {
 			);
 
 			setCurrentLocation({
-				latitude: location.coords.latitude,
-				longitude: location.coords.longitude,
+				latitude: Number(location.coords.latitude),
+				longitude: Number(location.coords.longitude),
 				accuracy: location.coords.accuracy ?? null,
 				recordedAt: new Date().toISOString(),
 			});
@@ -227,7 +230,7 @@ const PolygonMapPickerScreen = ({ navigation, route }) => {
 
 					setCurrentLocation(nextLocation);
 
-					if (draft?.followMe && dragEditIndex === null && !isSaving) {
+					if (draft?.followMe && !isSaving && selectedPointIndex === null) {
 						const nextRegion = buildRegion(
 							nextLocation.latitude,
 							nextLocation.longitude
@@ -236,14 +239,13 @@ const PolygonMapPickerScreen = ({ navigation, route }) => {
 						setRegion(nextRegion);
 
 						if (mapRef.current) {
-							mapRef.current.animateToRegion(nextRegion, 500);
+							mapRef.current.animateToRegion(nextRegion, 450);
 						}
 					}
 
 					const shouldAutoTrack =
 						draft?.mode === "tracking" &&
 						trackingActive &&
-						dragEditIndex === null &&
 						selectedPointIndex === null &&
 						!isSaving;
 
@@ -260,7 +262,7 @@ const PolygonMapPickerScreen = ({ navigation, route }) => {
 									? sanitizedPrev[sanitizedPrev.length - 1]
 									: null;
 
-							const minDistance = Number(draft?.autoMinDistance ?? 5);
+							const minDistance = Number(draft?.autoMinDistance ?? 10);
 							const minSeconds = Number(draft?.autoMinSeconds ?? 3);
 
 							if (!lastPoint) {
@@ -303,7 +305,6 @@ const PolygonMapPickerScreen = ({ navigation, route }) => {
 	};
 
 	const handleRegionChangeComplete = (nextRegion) => {
-		if (dragEditIndex !== null) return;
 		if (isSaving) return;
 		if (draft?.followMe) return;
 		setRegion(nextRegion);
@@ -338,16 +339,13 @@ const PolygonMapPickerScreen = ({ navigation, route }) => {
 		}
 	};
 
-	const handleConfirmPoint = () => {
-		if (dragEditIndex !== null) {
-			setFeedbackMessage(`Ponto ${dragEditIndex + 1} atualizado.`);
-			setSelectedPointIndex(null);
-			setDragEditIndex(null);
-			return;
-		}
+	const handleToggleMapType = () => {
+		setMapType((prev) => (prev === "satellite" ? "standard" : "satellite"));
+	};
 
+	const handleConfirmPoint = async () => {
 		if (!region?.latitude || !region?.longitude) {
-			Alert.alert("Erro", "Não foi possível obter o ponto central do mapa.");
+			Alert.alert("Erro", "Não foi possível obter o alvo central do mapa.");
 			return;
 		}
 
@@ -364,7 +362,7 @@ const PolygonMapPickerScreen = ({ navigation, route }) => {
 		}
 
 		try {
-			console.log("ADD POINT:", point);
+			await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 			setLocalPoints((prev) => [...prev, point]);
 			setFeedbackMessage("Ponto adicionado com sucesso.");
 		} catch (error) {
@@ -374,19 +372,6 @@ const PolygonMapPickerScreen = ({ navigation, route }) => {
 	};
 
 	const handleRequestClosePolygon = () => {
-		if (dragEditIndex !== null) {
-			Alert.alert(
-				"Concluir edição",
-				"Conclua a edição do ponto antes de fechar o polígono."
-			);
-			return;
-		}
-
-		if (!region?.latitude || !region?.longitude) {
-			Alert.alert("Erro", "Não foi possível obter o ponto central do mapa.");
-			return;
-		}
-
 		Alert.alert(
 			"Fechar polígono",
 			"Deseja fechar o polígono e voltar para preencher os dados?",
@@ -394,18 +379,8 @@ const PolygonMapPickerScreen = ({ navigation, route }) => {
 				{ text: "Cancelar", style: "cancel" },
 				{
 					text: "Salvar",
-					onPress: () => {
-						const closingPoint = {
-							latitude: Number(region.latitude),
-							longitude: Number(region.longitude),
-							accuracy: currentLocation?.accuracy ?? null,
-							recordedAt: new Date().toISOString(),
-						};
-
-						const finalPoints = sanitizePoints([...localPoints, closingPoint]);
-
-						console.log("CLOSE 1 - closingPoint:", closingPoint);
-						console.log("CLOSE 2 - finalPoints sanitized:", finalPoints);
+					onPress: async () => {
+						const finalPoints = sanitizePoints(localPoints);
 
 						if (finalPoints.length < 3) {
 							Alert.alert(
@@ -416,33 +391,36 @@ const PolygonMapPickerScreen = ({ navigation, route }) => {
 						}
 
 						try {
+							await Haptics.notificationAsync(
+								Haptics.NotificationFeedbackType.Success
+							);
+
 							setIsSaving(true);
 							setSelectedPointIndex(null);
-							setDragEditIndex(null);
 							setFeedbackMessage("");
 
-							setTimeout(() => {
-								try {
-									console.log("CLOSE 3 - setDraftPoints");
-									dispatch(polygonActions.setDraftPoints(finalPoints));
+							const closedDraft = {
+								...draft,
+								points: finalPoints,
+								isClosed: true,
+								finishedAt: new Date().toISOString(),
+							};
 
-									console.log("CLOSE 4 - finishPolygonDraft");
-									dispatch(
-										polygonActions.finishPolygonDraft({
-											isClosed: true,
-										})
-									);
+							dispatch(polygonActions.setDraftPoints(finalPoints));
+							dispatch(
+								polygonActions.finishPolygonDraft({
+									isClosed: true,
+								})
+							);
 
-									console.log("CLOSE 5 - goBack");
-									navigation.goBack();
-								} catch (closeError) {
-									console.log("CLOSE FLOW ERROR:", closeError);
-									setIsSaving(false);
-									Alert.alert("Erro", "Não foi possível fechar o polígono.");
-								}
-							}, 180);
+							await savePolygonDraftBackup({
+								draft: closedDraft,
+								farmQuery: draft?.farmName || "",
+							});
+
+							navigation.goBack();
 						} catch (error) {
-							console.log("CLOSE OUTER ERROR:", error);
+							console.log("CLOSE FLOW ERROR:", error);
 							setIsSaving(false);
 							Alert.alert("Erro", "Não foi possível fechar o polígono.");
 						}
@@ -452,31 +430,16 @@ const PolygonMapPickerScreen = ({ navigation, route }) => {
 		);
 	};
 
-	const handleMarkerPress = (index) => {
-		if (dragEditIndex !== null) return;
+	const handleMarkerPress = async (index) => {
 		if (isSaving) return;
-		setFeedbackMessage("");
+
+		setFeedbackMessage("Ponto selecionado. Agora arraste a bola verde.");
 		setSelectedPointIndex(index);
-	};
 
-	const handleStartEditPoint = () => {
-		if (selectedPointIndex === null) return;
-
-		const point = localPoints[selectedPointIndex];
-		if (!point) {
-			setSelectedPointIndex(null);
-			return;
-		}
-
-		setDragEditIndex(selectedPointIndex);
-		setSelectedPointIndex(null);
-		setFeedbackMessage("");
-
-		const nextRegion = buildRegion(point.latitude, point.longitude);
-		setRegion(nextRegion);
-
-		if (mapRef.current) {
-			mapRef.current.animateToRegion(nextRegion, 400);
+		try {
+			await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+		} catch (error) {
+			console.log("HAPTIC SELECT ERROR:", error);
 		}
 	};
 
@@ -493,39 +456,33 @@ const PolygonMapPickerScreen = ({ navigation, route }) => {
 				{
 					text: "Remover",
 					style: "destructive",
-					onPress: () => {
+					onPress: async () => {
 						try {
-							console.log("REMOVE 1 - index:", indexToRemove);
+							await Haptics.notificationAsync(
+								Haptics.NotificationFeedbackType.Warning
+							);
 
 							setSelectedPointIndex(null);
-							setDragEditIndex(null);
 							setFeedbackMessage("");
 							setIsSaving(true);
 
-							requestAnimationFrame(() => {
-								setTimeout(() => {
-									try {
-										console.log("REMOVE 2 - before:", localPoints);
+							setTimeout(() => {
+								try {
+									const nextPoints = localPoints.filter(
+										(_, index) => index !== indexToRemove
+									);
 
-										const nextPoints = localPoints.filter(
-											(_, index) => index !== indexToRemove
-										);
+									setLocalPoints(nextPoints);
 
-										console.log("REMOVE 3 - after:", nextPoints);
-
-										setLocalPoints(nextPoints);
-										setMapVersion((prev) => prev + 1);
-
-										setTimeout(() => {
-											setIsSaving(false);
-										}, 120);
-									} catch (removeError) {
-										console.log("REMOVE FLOW ERROR:", removeError);
+									setTimeout(() => {
 										setIsSaving(false);
-										Alert.alert("Erro", "Não foi possível remover o ponto.");
-									}
-								}, 180);
-							});
+									}, 100);
+								} catch (removeError) {
+									console.log("REMOVE FLOW ERROR:", removeError);
+									setIsSaving(false);
+									Alert.alert("Erro", "Não foi possível remover o ponto.");
+								}
+							}, 120);
 						} catch (error) {
 							console.log("REMOVE OUTER ERROR:", error);
 							setIsSaving(false);
@@ -543,9 +500,7 @@ const PolygonMapPickerScreen = ({ navigation, route }) => {
 		setTrackingActive((prev) => {
 			const next = !prev;
 			setFeedbackMessage(
-				next
-					? "Captura automática ativada."
-					: "Captura automática pausada."
+				next ? "Captura automática ativada." : "Captura automática pausada."
 			);
 			return next;
 		});
@@ -557,14 +512,6 @@ const PolygonMapPickerScreen = ({ navigation, route }) => {
 			longitude: point.longitude,
 		}));
 	}, [localPoints]);
-
-	const centerCoordinate =
-		region?.latitude && region?.longitude
-			? {
-				latitude: region.latitude,
-				longitude: region.longitude,
-			}
-			: null;
 
 	const isTrackingMode = draft?.mode === "tracking";
 
@@ -580,83 +527,89 @@ const PolygonMapPickerScreen = ({ navigation, route }) => {
 	return (
 		<View style={styles.container}>
 			<MapView
-				key={`polygon-map-${mapVersion}`}
 				ref={mapRef}
 				style={styles.map}
 				initialRegion={region}
+				region={region}
+				mapType={mapType}
 				onRegionChangeComplete={handleRegionChangeComplete}
 				showsUserLocation
 				showsMyLocationButton={false}
 				toolbarEnabled={false}
 			>
 				{!isSaving &&
-					polylineCoords.map((coord, index) => {
-						const isDraggingThisPoint = dragEditIndex === index;
+					polylineCoords.map((coord, index) => (
+						<Marker
+							key={`draft-point-${index}`}
+							coordinate={coord}
+							draggable
+							tracksViewChanges
+							onPress={() => handleMarkerPress(index)}
+							onDragStart={async () => {
+								setSelectedPointIndex(index);
+								setFeedbackMessage(`Arrastando ponto ${index + 1}...`);
 
-						return (
-							<Marker
-								key={`draft-point-${index}`}
-								coordinate={coord}
-								pinColor={isDraggingThisPoint ? "#F59E0B" : "#DC2626"}
-								title={`Ponto ${index + 1}`}
-								description={
-									isDraggingThisPoint
-										? "Arraste para editar"
-										: "Toque para editar ou remover"
+								try {
+									await Haptics.impactAsync(
+										Haptics.ImpactFeedbackStyle.Medium
+									);
+								} catch (error) {
+									console.log("HAPTIC DRAG START ERROR:", error);
 								}
-								draggable={isDraggingThisPoint}
-								onPress={() => handleMarkerPress(index)}
-								onDragEnd={(event) => {
-									if (!isDraggingThisPoint) return;
+							}}
+							onDragEnd={async (event) => {
+								const newCoord = event?.nativeEvent?.coordinate;
+								if (!newCoord?.latitude || !newCoord?.longitude) return;
 
-									const newCoord = event?.nativeEvent?.coordinate;
-									if (!newCoord?.latitude || !newCoord?.longitude) return;
+								try {
+									setLocalPoints((prev) =>
+										prev.map((point, pointIndex) =>
+											pointIndex === index
+												? {
+													...point,
+													latitude: Number(newCoord.latitude),
+													longitude: Number(newCoord.longitude),
+													recordedAt: new Date().toISOString(),
+												}
+												: point
+										)
+									);
 
-									try {
-										console.log("DRAG 1 - old index:", index);
-										console.log("DRAG 2 - new coord:", newCoord);
+									setSelectedPointIndex(index);
+									setFeedbackMessage(`Ponto ${index + 1} ajustado.`);
 
-										setLocalPoints((prev) =>
-											prev.map((point, pointIndex) =>
-												pointIndex === index
-													? {
-														...point,
-														latitude: Number(newCoord.latitude),
-														longitude: Number(newCoord.longitude),
-														recordedAt: new Date().toISOString(),
-													}
-													: point
-											)
-										);
+									await Haptics.notificationAsync(
+										Haptics.NotificationFeedbackType.Success
+									);
+								} catch (error) {
+									console.log("DRAG ERROR:", error);
+									Alert.alert("Erro", "Não foi possível atualizar o ponto.");
+								}
+							}}
+						>
+							<PointMarker selected={selectedPointIndex === index} />
+						</Marker>
+					))}
 
-										setRegion((prev) => ({
-											...(prev || DEFAULT_DELTA),
-											latitude: Number(newCoord.latitude),
-											longitude: Number(newCoord.longitude),
-										}));
-									} catch (error) {
-										console.log("DRAG ERROR:", error);
-										Alert.alert("Erro", "Não foi possível atualizar o ponto.");
-									}
-								}}
-							/>
-						);
-					})}
-
-				{!isSaving && polylineCoords.length >= 2 ? (
+				{!isSaving && polylineCoords.length >= 2 && !draft?.isClosed ? (
 					<Polyline
 						coordinates={polylineCoords}
 						strokeWidth={3}
-						strokeColor="#DC2626"
+						strokeColor="#22C55E"
 					/>
 				) : null}
 
-				{centerCoordinate && dragEditIndex === null && !isSaving ? (
-					<Marker coordinate={centerCoordinate} opacity={0} />
+				{!isSaving && polylineCoords.length >= 3 && draft?.isClosed ? (
+					<MapPolygon
+						coordinates={polylineCoords}
+						strokeWidth={3}
+						strokeColor="rgba(34,197,94,0.95)"
+						fillColor="rgba(34,197,94,0.18)"
+					/>
 				) : null}
 			</MapView>
 
-			{dragEditIndex === null && selectedPointIndex === null && !isSaving ? (
+			{selectedPointIndex === null && !isSaving ? (
 				<View pointerEvents="none" style={styles.crosshairWrap}>
 					<View style={styles.crosshairOuter}>
 						<View style={styles.crosshairInner} />
@@ -669,28 +622,30 @@ const PolygonMapPickerScreen = ({ navigation, route }) => {
 					style={styles.iconButton}
 					onPress={() => navigation.goBack()}
 				>
-					<Ionicons name="arrow-back" size={22} color="#111827" />
+					<Ionicons name="arrow-back" size={20} color="#111827" />
 				</TouchableOpacity>
 
 				<View style={styles.topInfo}>
 					<Text style={styles.topTitle}>
-						{dragEditIndex !== null
-							? "Editar ponto"
-							: isTrackingMode
-								? "Captura no mapa"
-								: "Adicionar pontos"}
+						{isTrackingMode ? "Navegação automática" : "Ponto a ponto"}
 					</Text>
 					<Text style={styles.topSubtitle}>
-						{dragEditIndex !== null
-							? "Arraste o marcador amarelo para ajustar a posição"
-							: isTrackingMode
-								? "Use Siga Me e ative a captura automática, ou confirme pontos manualmente"
-								: "Use o alvo central para adicionar. Toque em um ponto para editar ou remover"}
+						{isTrackingMode
+							? "Use o alvo central ou a captura automática"
+							: "Posicione o alvo e confirme os pontos"}
 					</Text>
 				</View>
 
 				<TouchableOpacity style={styles.iconButton} onPress={handleCenterUser}>
-					<Ionicons name="locate" size={22} color="#111827" />
+					<Ionicons name="locate" size={20} color="#111827" />
+				</TouchableOpacity>
+
+				<TouchableOpacity style={styles.iconButton} onPress={handleToggleMapType}>
+					<Ionicons
+						name={mapType === "satellite" ? "map-outline" : "earth-outline"}
+						size={20}
+						color="#111827"
+					/>
 				</TouchableOpacity>
 			</View>
 
@@ -698,11 +653,19 @@ const PolygonMapPickerScreen = ({ navigation, route }) => {
 				<View style={styles.trackingPill}>
 					<Ionicons
 						name={trackingActive ? "radio-button-on" : "pause-circle-outline"}
-						size={16}
+						size={15}
 						color={trackingActive ? "#16A34A" : "#92400E"}
 					/>
 					<Text style={styles.trackingPillText}>
-						{trackingActive ? "Captura automática ativa" : "Captura automática pausada"}
+						{trackingActive ? "Captura ativa" : "Captura pausada"}
+					</Text>
+				</View>
+			) : null}
+			{selectedPointIndex !== null && !isSaving ? (
+				<View style={styles.dragHintPill}>
+					<Ionicons name="move-outline" size={15} color="#111827" />
+					<Text style={styles.dragHintPillText}>
+						Ponto pronto para arrastar
 					</Text>
 				</View>
 			) : null}
@@ -713,13 +676,9 @@ const PolygonMapPickerScreen = ({ navigation, route }) => {
 						Ponto {selectedPointIndex + 1}
 					</Text>
 
-					<TouchableOpacity
-						style={styles.pointActionButton}
-						onPress={handleStartEditPoint}
-					>
-						<Ionicons name="create-outline" size={18} color="#111827" />
-						<Text style={styles.pointActionButtonText}>Editar ponto</Text>
-					</TouchableOpacity>
+					<Text style={styles.pointActionHint}>
+						Arraste a bola verde para ajustar este ponto.
+					</Text>
 
 					<TouchableOpacity
 						style={styles.pointActionButton}
@@ -735,7 +694,7 @@ const PolygonMapPickerScreen = ({ navigation, route }) => {
 						style={styles.pointActionCancel}
 						onPress={() => setSelectedPointIndex(null)}
 					>
-						<Text style={styles.pointActionCancelText}>Cancelar</Text>
+						<Text style={styles.pointActionCancelText}>Fechar</Text>
 					</TouchableOpacity>
 				</View>
 			) : null}
@@ -754,7 +713,9 @@ const PolygonMapPickerScreen = ({ navigation, route }) => {
 						<TouchableOpacity
 							style={[
 								styles.trackingToggleButton,
-								trackingActive ? styles.trackingPauseButton : styles.trackingStartButton,
+								trackingActive
+									? styles.trackingPauseButton
+									: styles.trackingStartButton,
 								isSaving && styles.disabledButton,
 							]}
 							onPress={handleToggleTracking}
@@ -762,11 +723,11 @@ const PolygonMapPickerScreen = ({ navigation, route }) => {
 						>
 							<Ionicons
 								name={trackingActive ? "pause-outline" : "play-outline"}
-								size={22}
+								size={20}
 								color="#fff"
 							/>
 							<Text style={styles.trackingToggleButtonText}>
-								{trackingActive ? "Pausar captura automática" : "Iniciar captura automática"}
+								{trackingActive ? "Pausar captura" : "Iniciar captura"}
 							</Text>
 						</TouchableOpacity>
 					) : null}
@@ -776,39 +737,22 @@ const PolygonMapPickerScreen = ({ navigation, route }) => {
 						onPress={handleConfirmPoint}
 						disabled={isSaving}
 					>
-						<Ionicons
-							name={dragEditIndex !== null ? "save-outline" : "checkmark-circle"}
-							size={22}
-							color="#fff"
-						/>
-						<Text style={styles.confirmButtonText}>
-							{dragEditIndex !== null ? "Concluir edição" : "Confirmar ponto"}
-						</Text>
+						<Ionicons name="checkmark-circle" size={20} color="#fff" />
+						<Text style={styles.confirmButtonText}>Confirmar ponto</Text>
 					</TouchableOpacity>
 
-					{dragEditIndex === null && localPoints.length >= 3 ? (
+					{localPoints.length >= 3 ? (
 						<TouchableOpacity
 							style={[styles.closePolygonButton, isSaving && styles.disabledButton]}
 							onPress={handleRequestClosePolygon}
 							disabled={isSaving}
 						>
-							<Ionicons name="git-network-outline" size={22} color="#fff" />
+							<Ionicons name="git-network-outline" size={20} color="#fff" />
 							<Text style={styles.closePolygonButtonText}>
 								Fechar polígono
 							</Text>
 						</TouchableOpacity>
 					) : null}
-
-					<TouchableOpacity
-						style={[styles.secondaryActionButton, isSaving && styles.disabledButton]}
-						onPress={() => navigation.goBack()}
-						disabled={isSaving}
-					>
-						<Ionicons name="arrow-back" size={20} color="#111827" />
-						<Text style={styles.secondaryActionButtonText}>
-							Voltar para o rascunho
-						</Text>
-					</TouchableOpacity>
 				</View>
 			) : null}
 		</View>
@@ -838,55 +782,56 @@ const styles = StyleSheet.create({
 	},
 	topBar: {
 		position: "absolute",
-		top: 54,
-		left: 16,
-		right: 16,
+		top: 52,
+		left: 12,
+		right: 12,
 		flexDirection: "row",
 		alignItems: "center",
 	},
 	iconButton: {
-		width: 46,
-		height: 46,
-		borderRadius: 23,
-		backgroundColor: "rgba(255,255,255,0.95)",
+		width: 40,
+		height: 40,
+		borderRadius: 20,
+		backgroundColor: "rgba(255,255,255,0.82)",
 		alignItems: "center",
 		justifyContent: "center",
+		marginLeft: 6,
 	},
 	topInfo: {
 		flex: 1,
-		marginHorizontal: 12,
-		backgroundColor: "rgba(17,24,39,0.82)",
-		borderRadius: 16,
-		paddingHorizontal: 14,
-		paddingVertical: 10,
+		marginHorizontal: 8,
+		backgroundColor: "rgba(17,24,39,0.50)",
+		borderRadius: 14,
+		paddingHorizontal: 12,
+		paddingVertical: 8,
 	},
 	topTitle: {
 		color: "#fff",
-		fontSize: 16,
+		fontSize: 14,
 		fontWeight: "800",
 	},
 	topSubtitle: {
 		color: "rgba(255,255,255,0.88)",
-		fontSize: 12,
-		lineHeight: 16,
-		marginTop: 4,
+		fontSize: 11,
+		lineHeight: 14,
+		marginTop: 2,
 	},
 	trackingPill: {
 		position: "absolute",
-		top: 156,
+		top: 108,
 		alignSelf: "center",
-		backgroundColor: "rgba(255,255,255,0.96)",
+		backgroundColor: "rgba(255,255,255,0.85)",
 		borderRadius: 999,
-		paddingHorizontal: 14,
-		paddingVertical: 8,
+		paddingHorizontal: 12,
+		paddingVertical: 7,
 		flexDirection: "row",
 		alignItems: "center",
-		gap: 6,
 	},
 	trackingPillText: {
-		fontSize: 12,
+		fontSize: 11,
 		fontWeight: "800",
 		color: "#111827",
+		marginLeft: 5,
 	},
 	crosshairWrap: {
 		position: "absolute",
@@ -898,47 +843,80 @@ const styles = StyleSheet.create({
 		justifyContent: "center",
 	},
 	crosshairOuter: {
-		width: 34,
-		height: 34,
-		borderRadius: 17,
+		width: 32,
+		height: 32,
+		borderRadius: 16,
 		borderWidth: 2,
-		borderColor: "#DC2626",
-		backgroundColor: "rgba(255,255,255,0.28)",
+		borderColor: "#EF4444",
+		backgroundColor: "rgba(255,255,255,0.18)",
 		alignItems: "center",
 		justifyContent: "center",
 	},
 	crosshairInner: {
-		width: 10,
-		height: 10,
-		borderRadius: 5,
-		backgroundColor: "#DC2626",
+		width: 9,
+		height: 9,
+		borderRadius: 4.5,
+		backgroundColor: "#EF4444",
+	},
+	pointMarkerOuter: {
+		width: 22,
+		height: 22,
+		borderRadius: 11,
+		backgroundColor: "rgba(255,255,255,0.90)",
+		alignItems: "center",
+		justifyContent: "center",
+		borderWidth: 1,
+		borderColor: "rgba(0,0,0,0.15)",
+	},
+	pointMarkerOuterSelected: {
+		width: 30,
+		height: 30,
+		borderRadius: 15,
+	},
+	pointMarkerInner: {
+		width: 14,
+		height: 14,
+		borderRadius: 7,
+		backgroundColor: "#22C55E",
+	},
+	pointMarkerInnerSelected: {
+		width: 20,
+		height: 20,
+		borderRadius: 10,
+		backgroundColor: "#16A34A",
 	},
 	pointActionSheet: {
 		position: "absolute",
-		left: 16,
-		right: 16,
-		bottom: 22,
-		backgroundColor: "rgba(255,255,255,0.98)",
-		borderRadius: 22,
-		padding: 16,
+		left: 14,
+		right: 14,
+		bottom: 18,
+		backgroundColor: "rgba(255,255,255,0.94)",
+		borderRadius: 18,
+		padding: 14,
 	},
 	pointActionTitle: {
-		fontSize: 16,
+		fontSize: 15,
 		fontWeight: "800",
 		color: "#111827",
-		marginBottom: 12,
+		marginBottom: 6,
+	},
+	pointActionHint: {
+		fontSize: 12,
+		color: "#6B7280",
+		marginBottom: 10,
+		lineHeight: 17,
 	},
 	pointActionButton: {
-		height: 48,
-		borderRadius: 14,
+		height: 44,
+		borderRadius: 12,
 		backgroundColor: "#F3F4F6",
 		flexDirection: "row",
 		alignItems: "center",
 		justifyContent: "center",
-		marginBottom: 10,
+		marginBottom: 8,
 	},
 	pointActionButtonText: {
-		fontSize: 15,
+		fontSize: 14,
 		fontWeight: "700",
 		color: "#111827",
 		marginLeft: 8,
@@ -947,54 +925,49 @@ const styles = StyleSheet.create({
 		color: "#B91C1C",
 	},
 	pointActionCancel: {
-		height: 42,
+		height: 38,
 		alignItems: "center",
 		justifyContent: "center",
 	},
 	pointActionCancelText: {
-		fontSize: 14,
+		fontSize: 13,
 		fontWeight: "700",
 		color: "#6B7280",
 	},
 	bottomCard: {
 		position: "absolute",
-		left: 16,
-		right: 16,
-		bottom: 22,
-		backgroundColor: "rgba(255,255,255,0.96)",
-		borderRadius: 22,
-		padding: 16,
+		left: 14,
+		right: 14,
+		bottom: 18,
+		backgroundColor: "rgba(255,255,255,0.82)",
+		borderRadius: 18,
+		padding: 14,
 	},
 	feedbackText: {
-		marginBottom: 8,
-		fontSize: 13,
+		marginBottom: 6,
+		fontSize: 12,
 		fontWeight: "700",
 		color: "#16A34A",
 	},
 	savingText: {
-		marginBottom: 8,
-		fontSize: 13,
+		marginBottom: 6,
+		fontSize: 12,
 		fontWeight: "700",
 		color: "#2563EB",
 	},
-	coordLabel: {
-		fontSize: 12,
-		color: "#6B7280",
-		marginBottom: 4,
-	},
 	coordValue: {
-		fontSize: 15,
+		fontSize: 13,
 		fontWeight: "700",
 		color: "#111827",
-		marginBottom: 14,
+		marginBottom: 10,
 	},
 	trackingToggleButton: {
-		height: 52,
-		borderRadius: 16,
+		height: 46,
+		borderRadius: 14,
 		alignItems: "center",
 		justifyContent: "center",
 		flexDirection: "row",
-		marginBottom: 10,
+		marginBottom: 8,
 	},
 	trackingStartButton: {
 		backgroundColor: "#16A34A",
@@ -1004,13 +977,13 @@ const styles = StyleSheet.create({
 	},
 	trackingToggleButtonText: {
 		color: "#fff",
-		fontSize: 15,
+		fontSize: 14,
 		fontWeight: "800",
-		marginLeft: 10,
+		marginLeft: 8,
 	},
 	confirmButton: {
-		height: 52,
-		borderRadius: 16,
+		height: 48,
+		borderRadius: 14,
 		backgroundColor: Colors.primary[901] || "#1F2937",
 		alignItems: "center",
 		justifyContent: "center",
@@ -1018,41 +991,43 @@ const styles = StyleSheet.create({
 	},
 	confirmButtonText: {
 		color: "#fff",
-		fontSize: 16,
+		fontSize: 15,
 		fontWeight: "800",
-		marginLeft: 10,
+		marginLeft: 8,
 	},
 	closePolygonButton: {
-		height: 52,
-		borderRadius: 16,
+		height: 48,
+		borderRadius: 14,
 		backgroundColor: "#16A34A",
 		alignItems: "center",
 		justifyContent: "center",
 		flexDirection: "row",
-		marginTop: 10,
+		marginTop: 8,
 	},
 	closePolygonButtonText: {
 		color: "#fff",
-		fontSize: 16,
-		fontWeight: "800",
-		marginLeft: 10,
-	},
-	secondaryActionButton: {
-		height: 48,
-		borderRadius: 14,
-		backgroundColor: "#F3F4F6",
-		alignItems: "center",
-		justifyContent: "center",
-		flexDirection: "row",
-		marginTop: 10,
-	},
-	secondaryActionButtonText: {
-		color: "#111827",
 		fontSize: 15,
 		fontWeight: "800",
 		marginLeft: 8,
 	},
 	disabledButton: {
 		opacity: 0.5,
+	},
+	dragHintPill: {
+		position: "absolute",
+		top: 148,
+		alignSelf: "center",
+		backgroundColor: "rgba(255,255,255,0.92)",
+		borderRadius: 999,
+		paddingHorizontal: 14,
+		paddingVertical: 8,
+		flexDirection: "row",
+		alignItems: "center",
+	},
+	dragHintPillText: {
+		fontSize: 12,
+		fontWeight: "800",
+		color: "#111827",
+		marginLeft: 6,
 	},
 });

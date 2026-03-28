@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
 	View,
 	Text,
@@ -9,7 +9,11 @@ import {
 	FlatList,
 	Alert,
 	Switch,
+	AppState,
+	Platform
 } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigation } from "@react-navigation/native";
 import Ionicons from "@expo/vector-icons/Ionicons";
@@ -19,6 +23,8 @@ import * as Location from "expo-location";
 import { Colors } from "../../constants/styles";
 import { polygonActions } from "../../store/redux/polygon";
 import { farmsSelector } from "../../store/redux/selector";
+
+const POLYGON_DRAFT_STORAGE_KEY = "@polygon_manual_draft_backup_v1";
 
 
 function toRad(value) {
@@ -123,15 +129,6 @@ function buildPreviewRegion(points, currentLocation) {
 		const latitudes = validPoints.map((p) => Number(p.latitude));
 		const longitudes = validPoints.map((p) => Number(p.longitude));
 
-		if (
-			currentLocation &&
-			Number.isFinite(Number(currentLocation.latitude)) &&
-			Number.isFinite(Number(currentLocation.longitude))
-		) {
-			latitudes.push(Number(currentLocation.latitude));
-			longitudes.push(Number(currentLocation.longitude));
-		}
-
 		const minLat = Math.min(...latitudes);
 		const maxLat = Math.max(...latitudes);
 		const minLng = Math.min(...longitudes);
@@ -186,6 +183,24 @@ function ValidationItem({ ok, label }) {
 	);
 }
 
+function hasMeaningfulDraft(draft, farmQuery) {
+	return Boolean(
+		(draft?.name || "").trim() ||
+		(draft?.farmName || "").trim() ||
+		(farmQuery || "").trim() ||
+		(draft?.observation || "").trim() ||
+		(Array.isArray(draft?.points) && draft.points.length > 0)
+	);
+}
+
+function PointMarker() {
+	return (
+		<View style={styles.pointMarkerOuter}>
+			<View style={styles.pointMarkerInner} />
+		</View>
+	);
+}
+
 export default function PolygonManualScreen() {
 	const dispatch = useDispatch();
 	const navigation = useNavigation();
@@ -196,14 +211,9 @@ export default function PolygonManualScreen() {
 	const [farmQuery, setFarmQuery] = useState(draft?.farmName || "");
 	const [currentLocation, setCurrentLocation] = useState(null);
 	const [showFarmSuggestions, setShowFarmSuggestions] = useState(false);
+	const [didTryRestore, setDidTryRestore] = useState(false);
 
-	useEffect(() => {
-		if (draft?.mode === "manual") {
-			updateMeta({ followMe: false });
-		} else {
-			updateMeta({ followMe: true });
-		}
-	}, [draft?.mode]);
+	const persistTimeoutRef = useRef(null);
 
 	useEffect(() => {
 		let mounted = true;
@@ -237,6 +247,144 @@ export default function PolygonManualScreen() {
 			mounted = false;
 		};
 	}, []);
+
+	useEffect(() => {
+		let mounted = true;
+
+		const restoreDraftFromStorage = async () => {
+			try {
+				const raw = await AsyncStorage.getItem(POLYGON_DRAFT_STORAGE_KEY);
+
+				if (!raw) {
+					setDidTryRestore(true);
+					return;
+				}
+
+				const backup = JSON.parse(raw);
+
+				if (!backup || !backup.draft) {
+					setDidTryRestore(true);
+					return;
+				}
+
+				const currentHasData = hasMeaningfulDraft(draft, farmQuery);
+
+				if (!currentHasData && mounted) {
+					dispatch(
+						polygonActions.startPolygonDraft({
+							...backup.draft,
+						})
+					);
+
+					setFarmQuery(backup?.farmQuery || backup?.draft?.farmName || "");
+				}
+			} catch (error) {
+				console.log("RESTORE POLYGON DRAFT ERROR:", error);
+			} finally {
+				if (mounted) {
+					setDidTryRestore(true);
+				}
+			}
+		};
+
+		restoreDraftFromStorage();
+
+		return () => {
+			mounted = false;
+		};
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [dispatch]);
+
+	const persistDraftBackup = async () => {
+		try {
+			if (!hasMeaningfulDraft(draft, farmQuery)) {
+				await AsyncStorage.removeItem(POLYGON_DRAFT_STORAGE_KEY);
+				return;
+			}
+
+			const payload = {
+				draft: {
+					id: draft?.id || null,
+					name: draft?.name || "",
+					farmId: draft?.farmId || null,
+					farmName: draft?.farmName || "",
+					mode: draft?.mode || "manual",
+					points: Array.isArray(draft?.points) ? draft.points : [],
+					isClosed: !!draft?.isClosed,
+					observation: draft?.observation || "",
+					followMe: !!draft?.followMe,
+					autoMinDistance: Number(draft?.autoMinDistance ?? 10),
+					autoMinSeconds: Number(draft?.autoMinSeconds ?? 3),
+					startedAt: draft?.startedAt || null,
+				},
+				farmQuery: farmQuery || "",
+				savedAt: new Date().toISOString(),
+			};
+
+			await AsyncStorage.setItem(
+				POLYGON_DRAFT_STORAGE_KEY,
+				JSON.stringify(payload)
+			);
+		} catch (error) {
+			console.log("SAVE POLYGON DRAFT BACKUP ERROR:", error);
+		}
+	};
+
+	useEffect(() => {
+		if (!didTryRestore) return;
+
+		if (persistTimeoutRef.current) {
+			clearTimeout(persistTimeoutRef.current);
+		}
+
+		persistTimeoutRef.current = setTimeout(() => {
+			persistDraftBackup();
+		}, 250);
+
+		return () => {
+			if (persistTimeoutRef.current) {
+				clearTimeout(persistTimeoutRef.current);
+			}
+		};
+	}, [
+		didTryRestore,
+		draft?.id,
+		draft?.name,
+		draft?.farmId,
+		draft?.farmName,
+		draft?.mode,
+		draft?.isClosed,
+		draft?.observation,
+		draft?.followMe,
+		draft?.autoMinDistance,
+		draft?.autoMinSeconds,
+		draft?.startedAt,
+		JSON.stringify(draft?.points || []),
+		farmQuery,
+	]);
+
+
+
+	useEffect(() => {
+		if (draft?.mode === "manual") {
+			updateMeta({ followMe: false });
+		} else {
+			updateMeta({ followMe: true });
+		}
+	}, [draft?.mode]);
+
+	useEffect(() => {
+		const subscription = AppState.addEventListener("change", (nextState) => {
+			if (nextState === "inactive" || nextState === "background") {
+				persistDraftBackup();
+			}
+		});
+
+		return () => {
+			subscription?.remove?.();
+		};
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [draft, farmQuery]);
 
 	const validPoints = useMemo(() => {
 		return (draft?.points || [])
@@ -279,18 +427,14 @@ export default function PolygonManualScreen() {
 			.slice(0, 8);
 	}, [farmQuery, farms]);
 
+
 	const isNameValid = (draft?.name || "").trim().length > 0;
 	const isFarmValid = (draft?.farmName || "").trim().length > 0;
 	const isPolygonClosed = draft?.isClosed === true;
 	const hasMinimumPoints = validPoints.length >= 3;
 
 	const isValidPolygon = useMemo(() => {
-		return (
-			isNameValid &&
-			isFarmValid &&
-			hasMinimumPoints &&
-			isPolygonClosed
-		);
+		return isNameValid && isFarmValid && hasMinimumPoints && isPolygonClosed;
 	}, [isNameValid, isFarmValid, hasMinimumPoints, isPolygonClosed]);
 
 	const updateMeta = (payload) => {
@@ -337,7 +481,15 @@ export default function PolygonManualScreen() {
 		navigation.navigate("PolygonMapPickerScreen");
 	};
 
-	const handleSaveDraft = () => {
+	const clearLocalDraftBackup = async () => {
+		try {
+			await AsyncStorage.removeItem(POLYGON_DRAFT_STORAGE_KEY);
+		} catch (error) {
+			console.log("CLEAR POLYGON DRAFT BACKUP ERROR:", error);
+		}
+	};
+
+	const handleSaveDraft = async () => {
 		if (!(draft?.name || "").trim()) {
 			Alert.alert("Nome obrigatório", "Informe um nome para o polígono.");
 			return;
@@ -373,6 +525,8 @@ export default function PolygonManualScreen() {
 			})
 		);
 
+		await clearLocalDraftBackup();
+
 		Alert.alert("Sucesso", "Polígono salvo localmente com sucesso.", [
 			{
 				text: "OK",
@@ -380,6 +534,7 @@ export default function PolygonManualScreen() {
 			},
 		]);
 	};
+
 	const handleRemovePoint = (index) => {
 		Alert.alert("Remover ponto", "Deseja remover este ponto?", [
 			{ text: "Cancelar", style: "cancel" },
@@ -388,35 +543,30 @@ export default function PolygonManualScreen() {
 				style: "destructive",
 				onPress: () => {
 					dispatch(polygonActions.removeDraftPointAtIndex(index));
-
-					const nextPointsCount = validPoints.length - 1;
-					if (nextPointsCount < 3 && draft?.isClosed) {
-						updateMeta({ isClosed: false });
-					}
 				},
 			},
 		]);
 	};
 
 	const handleClearAllPoints = () => {
-		if (!validPoints.length) return;
-
 		Alert.alert(
 			"Limpar rascunho",
-			"Deseja remover todos os pontos do rascunho?",
+			"Deseja remover todo o rascunho atual? Isso apaga pontos, nome, fazenda, observação e o backup local.",
 			[
 				{ text: "Cancelar", style: "cancel" },
 				{
 					text: "Limpar tudo",
 					style: "destructive",
-					onPress: () => {
-						const totalPoints = validPoints.length;
-
-						for (let index = totalPoints - 1; index >= 0; index -= 1) {
-							dispatch(polygonActions.removeDraftPointAtIndex(index));
-						}
-
-						updateMeta({ isClosed: false });
+					onPress: async () => {
+						await clearLocalDraftBackup();
+						setFarmQuery("");
+						setShowFarmSuggestions(false);
+						dispatch(
+							polygonActions.resetPolygonDraft({
+								mode: "manual",
+								followMe: false,
+							})
+						);
 					},
 				},
 			]
@@ -432,15 +582,17 @@ export default function PolygonManualScreen() {
 	};
 
 	return (
-		<View style={styles.screen}>
-
-
+		<SafeAreaView style={styles.screen}
+			edges={Platform.OS === "android" ? ["bottom"] : []}
+		>
 			<ScrollView style={styles.container} contentContainerStyle={styles.content}>
 				<View style={styles.headerCard}>
 					<View style={styles.headerTopRow}>
 						<View style={styles.headerTitleWrap}>
 							<Text style={styles.headerTitle}>
-								{draft?.mode === "tracking" ? "Navegação automática" : "Ponto a ponto"}
+								{draft?.mode === "tracking"
+									? "Navegação automática"
+									: "Ponto a ponto"}
 							</Text>
 						</View>
 					</View>
@@ -481,7 +633,9 @@ export default function PolygonManualScreen() {
 									style={styles.suggestionItem}
 									onPress={() => handleSelectFarm(farmName)}
 								>
-									<Text style={styles.suggestionText}>{farmName?.replace('Projeto ', '')}</Text>
+									<Text style={styles.suggestionText}>
+										{farmName?.replace("Projeto ", "")}
+									</Text>
 								</TouchableOpacity>
 							))}
 						</View>
@@ -492,6 +646,7 @@ export default function PolygonManualScreen() {
 							Selecione uma fazenda da lista.
 						</Text>
 					) : null}
+
 					<Text style={styles.label}>Observação</Text>
 					<TextInput
 						style={[styles.input, styles.textArea]}
@@ -523,11 +678,10 @@ export default function PolygonManualScreen() {
 						<Text style={styles.primaryButtonText}>Abrir mapa</Text>
 					</TouchableOpacity>
 
-					
-
 					{!isValidPolygon ? (
 						<Text style={styles.saveHintText}>
-							Preencha o nome, selecione a fazenda na lista, adicione ao menos 3 pontos e feche o polígono.
+							Preencha o nome, selecione a fazenda na lista, adicione ao menos 3
+							pontos e feche o polígono.
 						</Text>
 					) : null}
 				</View>
@@ -537,7 +691,9 @@ export default function PolygonManualScreen() {
 						<View style={styles.sectionHeaderRow}>
 							<View>
 								<Text style={styles.sectionTitle}>Pré-visualização</Text>
-								<Text style={styles.previewCount}>{validPoints.length} ponto(s)</Text>
+								<Text style={styles.previewCount}>
+									{validPoints.length} ponto(s)
+								</Text>
 							</View>
 
 							<TouchableOpacity
@@ -555,8 +711,8 @@ export default function PolygonManualScreen() {
 							onPress={handleOpenDraftPreview}
 						>
 							<MapView
+								key={`preview-${validPoints.length}-${draft?.isClosed ? "closed" : "open"}`}
 								style={styles.previewMap}
-								initialRegion={previewRegion}
 								region={previewRegion}
 								scrollEnabled={false}
 								zoomEnabled={false}
@@ -572,27 +728,41 @@ export default function PolygonManualScreen() {
 										coordinates={validPoints}
 										strokeColor="rgba(21,101,192,0.95)"
 										strokeWidth={3}
+										lineCap="round"
+										lineJoin="round"
 									/>
 								) : null}
 
-								{validPoints.length >= 3 && draft?.isClosed ? (
-									<MapPolygon
-										coordinates={validPoints}
-										strokeColor="rgba(21,101,192,0.95)"
-										fillColor="rgba(21,101,192,0.20)"
-										strokeWidth={2}
-									/>
+								{draft?.isClosed && validPoints.length >= 3 ? (
+									<>
+										<MapPolygon
+											coordinates={validPoints}
+											strokeColor="rgba(21,101,192,0.95)"
+											fillColor="rgba(21,101,192,0.20)"
+											strokeWidth={2}
+										/>
+
+										<Polyline
+											coordinates={[validPoints[validPoints.length - 1], validPoints[0]]}
+											strokeColor="rgba(21,101,192,0.95)"
+											strokeWidth={3}
+											lineCap="round"
+											lineJoin="round"
+										/>
+									</>
 								) : null}
 
 								{validPoints.map((point, index) => (
 									<Marker
 										key={`draft-point-${index}`}
 										coordinate={point}
-										pinColor={index === 0 ? "#16A34A" : "#DC2626"}
-									/>
+										tracksViewChanges={false}
+									>
+										<PointMarker />
+									</Marker>
 								))}
 
-								{currentLocation ? (
+								{currentLocation && validPoints.length === 0 ? (
 									<Marker
 										coordinate={currentLocation}
 										pinColor="#2563EB"
@@ -603,7 +773,9 @@ export default function PolygonManualScreen() {
 
 							<View style={styles.previewOverlayHint}>
 								<Ionicons name="eye-outline" size={14} color="#fff" />
-								<Text style={styles.previewOverlayHintText}>Toque para ampliar</Text>
+								<Text style={styles.previewOverlayHintText}>
+									Toque para ampliar
+								</Text>
 							</View>
 						</TouchableOpacity>
 					</View>
@@ -655,7 +827,8 @@ export default function PolygonManualScreen() {
 							</View>
 
 							<Text style={styles.helperText}>
-								No próximo passo, essa base vai controlar a captura automática por distância e tempo.
+								No próximo passo, essa base vai controlar a captura automática por
+								distância e tempo.
 							</Text>
 						</>
 					) : (
@@ -664,60 +837,62 @@ export default function PolygonManualScreen() {
 						</Text>
 					)}
 				</View>
+				{validPoints.length > 0 && (
+					<View style={styles.sectionCard}>
+						<View style={styles.sectionHeaderRow}>
+							<Text style={styles.sectionTitleNoMargin}>Pontos do rascunho ({validPoints?.length} )</Text>
 
-				<View style={styles.sectionCard}>
-					<View style={styles.sectionHeaderRow}>
-						<Text style={styles.sectionTitleNoMargin}>Pontos do rascunho</Text>
+							{hasMeaningfulDraft(draft, farmQuery) ? (
+								<TouchableOpacity
+									style={styles.clearAllButton}
+									onPress={handleClearAllPoints}
+								>
+									<Ionicons name="trash-outline" size={16} color="#B91C1C" />
+									<Text style={styles.clearAllButtonText}>Limpar tudo</Text>
+								</TouchableOpacity>
+							) : null}
+						</View>
 
-						{validPoints.length > 0 ? (
-							<TouchableOpacity
-								style={styles.clearAllButton}
-								onPress={handleClearAllPoints}
-							>
-								<Ionicons name="trash-outline" size={16} color="#B91C1C" />
-								<Text style={styles.clearAllButtonText}>Limpar tudo</Text>
-							</TouchableOpacity>
-						) : null}
-					</View>
+						{validPoints.length === 0 ? (
+							<Text style={styles.emptyPointsText}>
+								Ainda não há pontos adicionados.
+							</Text>
+						) : (
+							<FlatList
+								data={validPoints}
+								keyExtractor={(_, index) => `point-${index}`}
+								scrollEnabled={false}
+								renderItem={({ item, index }) => (
+									<View style={styles.pointRow}>
+										<View style={styles.pointLeft}>
+											<View style={styles.pointIndexBadge}>
+												<Text style={styles.pointIndexText}>{index + 1}</Text>
+											</View>
 
-					{validPoints.length === 0 ? (
-						<Text style={styles.emptyPointsText}>
-							Ainda não há pontos adicionados.
-						</Text>
-					) : (
-						<FlatList
-							data={validPoints}
-							keyExtractor={(_, index) => `point-${index}`}
-							scrollEnabled={false}
-							renderItem={({ item, index }) => (
-								<View style={styles.pointRow}>
-									<View style={styles.pointLeft}>
-										<View style={styles.pointIndexBadge}>
-											<Text style={styles.pointIndexText}>{index + 1}</Text>
+											<View style={styles.pointTextWrap}>
+												<Text style={styles.pointText}>
+													Lat: {Number(item.latitude).toFixed(6)}
+												</Text>
+												<Text style={styles.pointText}>
+													Lng: {Number(item.longitude).toFixed(6)}
+												</Text>
+											</View>
 										</View>
 
-										<View style={styles.pointTextWrap}>
-											<Text style={styles.pointText}>
-												Lat: {Number(item.latitude).toFixed(6)}
-											</Text>
-											<Text style={styles.pointText}>
-												Lng: {Number(item.longitude).toFixed(6)}
-											</Text>
-										</View>
+										<TouchableOpacity
+											style={styles.removePointButton}
+											onPress={() => handleRemovePoint(index)}
+										>
+											<Ionicons name="trash-outline" size={18} color="#B91C1C" />
+										</TouchableOpacity>
 									</View>
-
-									<TouchableOpacity
-										style={styles.removePointButton}
-										onPress={() => handleRemovePoint(index)}
-									>
-										<Ionicons name="trash-outline" size={18} color="#B91C1C" />
-									</TouchableOpacity>
-								</View>
-							)}
-						/>
-					)}
-				</View>
+								)}
+							/>
+						)}
+					</View>
+				)}
 			</ScrollView>
+
 			<View style={styles.footer}>
 				<TouchableOpacity
 					style={[
@@ -744,7 +919,7 @@ export default function PolygonManualScreen() {
 					</Text>
 				</TouchableOpacity>
 			</View>
-		</View>
+		</SafeAreaView>
 	);
 }
 
@@ -752,7 +927,7 @@ const styles = StyleSheet.create({
 	screen: {
 		flex: 1,
 		backgroundColor: Colors.secondary?.[200] || "#F4F6F8",
-		paddingBottom: 62
+		paddingBottom: 62,
 	},
 	container: {
 		flex: 1,
@@ -845,23 +1020,6 @@ const styles = StyleSheet.create({
 		marginTop: 6,
 		fontWeight: "600",
 	},
-	selectedFarmBadge: {
-		marginTop: 10,
-		paddingHorizontal: 12,
-		paddingVertical: 10,
-		borderRadius: 12,
-		backgroundColor: "rgba(22,163,74,0.08)",
-		borderWidth: 1,
-		borderColor: "rgba(22,163,74,0.18)",
-		flexDirection: "row",
-		alignItems: "center",
-	},
-	selectedFarmBadgeText: {
-		marginLeft: 8,
-		fontSize: 13,
-		fontWeight: "700",
-		color: "#166534",
-	},
 	validationList: {
 		gap: 10,
 	},
@@ -877,6 +1035,9 @@ const styles = StyleSheet.create({
 	},
 	validationTextOk: {
 		color: "#166534",
+	},
+	validationTextError: {
+		color: "#B91C1C",
 	},
 	sectionHeaderRow: {
 		flexDirection: "row",
@@ -948,29 +1109,6 @@ const styles = StyleSheet.create({
 		fontSize: 14,
 		fontWeight: "800",
 		marginLeft: 8,
-	},
-	secondaryButton: {
-		height: 48,
-		borderRadius: 14,
-		backgroundColor: "#F3F4F6",
-		alignItems: "center",
-		justifyContent: "center",
-		flexDirection: "row",
-	},
-	secondaryButtonActive: {
-		backgroundColor: "#16A34A",
-	},
-	secondaryButtonDisabled: {
-		opacity: 1,
-	},
-	secondaryButtonText: {
-		color: "#111827",
-		fontSize: 14,
-		fontWeight: "800",
-		marginLeft: 8,
-	},
-	secondaryButtonTextActive: {
-		color: "#fff",
 	},
 	saveHintText: {
 		color: "#6B7280",
@@ -1073,40 +1211,10 @@ const styles = StyleSheet.create({
 		fontSize: 11,
 		fontWeight: "700",
 	},
-	validationTextError: {
-		color: "#B91C1C",
-	},
 	textArea: {
 		height: 96,
 		paddingTop: 12,
 		paddingBottom: 12,
-	},
-
-	metricsGrid: {
-		flexDirection: "row",
-		gap: 10,
-	},
-
-	metricCard: {
-		flex: 1,
-		backgroundColor: "#F9FAFB",
-		borderRadius: 14,
-		paddingHorizontal: 12,
-		paddingVertical: 12,
-	},
-
-	metricLabel: {
-		fontSize: 11,
-		fontWeight: "700",
-		color: "#6B7280",
-		textTransform: "uppercase",
-		marginBottom: 4,
-	},
-
-	metricValue: {
-		fontSize: 15,
-		fontWeight: "800",
-		color: "#111827",
 	},
 	footer: {
 		position: "absolute",
@@ -1141,5 +1249,22 @@ const styles = StyleSheet.create({
 	},
 	footerSaveButtonTextActive: {
 		color: "#fff",
+	},
+	pointMarkerOuter: {
+		width: 18,
+		height: 18,
+		borderRadius: 9,
+		backgroundColor: "rgba(255,255,255,0.95)",
+		alignItems: "center",
+		justifyContent: "center",
+		borderWidth: 1,
+		borderColor: "rgba(0,0,0,0.15)",
+	},
+
+	pointMarkerInner: {
+		width: 10,
+		height: 10,
+		borderRadius: 5,
+		backgroundColor: "#22C55E",
 	},
 });

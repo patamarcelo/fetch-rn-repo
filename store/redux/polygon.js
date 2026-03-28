@@ -17,12 +17,12 @@ const buildDraft = (
 	farmName: payload.farmName || "",
 	mode: payload.mode || null,
 	points: Array.isArray(payload.points) ? payload.points : [],
-	isRecording: false,
-	isPaused: false,
-	isClosed: false,
+	isRecording: payload.isRecording ?? false,
+	isPaused: payload.isPaused ?? false,
+	isClosed: payload.isClosed ?? false,
 	startedAt: payload.startedAt || null,
-	finishedAt: null,
-	currentAccuracy: null,
+	finishedAt: payload.finishedAt || null,
+	currentAccuracy: payload.currentAccuracy ?? null,
 	followMe: payload.followMe ?? settings.followMe,
 	observation: payload.observation || "",
 	autoMinDistance: payload.autoMinDistance ?? settings.autoMinDistance,
@@ -87,14 +87,21 @@ const polygonSlice = createSlice({
 			state.draft = buildDraft(action.payload || {}, state.settings);
 		},
 
-		resetPolygonDraft: (state) => {
+		resetPolygonDraft: (state, action) => {
 			ensureSettings(state);
-			state.draft = buildDraft({}, state.settings);
+			state.draft = buildDraft(action.payload || {}, state.settings);
 		},
 
 		setPolygonMode: (state, action) => {
 			ensureDraft(state);
+
 			state.draft.mode = action.payload;
+
+			if (action.payload === "manual") {
+				state.draft.followMe = false;
+			} else {
+				state.draft.followMe = true;
+			}
 		},
 
 		setPolygonMeta: (state, action) => {

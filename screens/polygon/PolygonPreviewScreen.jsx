@@ -1,18 +1,22 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import {
 	View,
 	Text,
 	StyleSheet,
-	ScrollView,
+	TouchableOpacity,
+	Platform,
 } from "react-native";
 import { useRoute } from "@react-navigation/native";
-import { useSelector } from "react-redux";
+import { useSelector, useDispatch } from "react-redux";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import MapView, { Polygon as MapPolygon, Marker, Polyline } from "react-native-maps";
 
 import { Colors } from "../../constants/styles";
 import { selectPolygonItems } from "../../store/redux/polygonSelectors";
+import { polygonActions } from "../../store/redux/polygon";
 
+import * as Haptics from "expo-haptics";
 
 function toRad(value) {
 	return (Number(value) * Math.PI) / 180;
@@ -167,10 +171,27 @@ function buildRegion(points) {
 	};
 }
 
+
+function PointMarker() {
+	return (
+		<View style={styles.pointMarkerOuter}>
+			<View style={styles.pointMarkerInner} />
+		</View>
+	);
+}
+
 export default function PolygonPreviewScreen() {
 	const route = useRoute();
+	const dispatch = useDispatch();
+	const insets = useSafeAreaInsets();
+
 	const items = useSelector(selectPolygonItems);
 	const draft = useSelector((state) => state.polygon.draft);
+
+	const [mapType, setMapType] = useState("satellite");
+	const [sheetExpanded, setSheetExpanded] = useState(false);
+
+	const [showDragHint, setShowDragHint] = useState(false);
 
 	const polygonId = route?.params?.polygonId;
 	const source = route?.params?.source;
@@ -212,19 +233,16 @@ export default function PolygonPreviewScreen() {
 			);
 	}, [polygon]);
 
-
 	const fallbackAreaM2 = useMemo(() => {
-		if (!polygon?.isClosed || points.length < 3) return 0;
+		if (points.length < 3) return 0;
 		return calculatePolygonAreaInM2(points);
-	}, [points, polygon?.isClosed]);
+	}, [points]);
 
-	const fallbackAreaHa = useMemo(() => {
-		return fallbackAreaM2 / 10000;
-	}, [fallbackAreaM2]);
+	const fallbackAreaHa = useMemo(() => fallbackAreaM2 / 10000, [fallbackAreaM2]);
 
 	const fallbackPerimeterM = useMemo(() => {
-		return calculatePerimeterInMeters(points, !!polygon?.isClosed);
-	}, [points, polygon?.isClosed]);
+		return calculatePerimeterInMeters(points, points.length >= 3);
+	}, [points]);
 
 	const displayAreaHa = useMemo(() => {
 		if (Number.isFinite(Number(polygon?.areaHa)) && Number(polygon?.areaHa) > 0) {
@@ -248,6 +266,9 @@ export default function PolygonPreviewScreen() {
 
 	const region = useMemo(() => buildRegion(points), [points]);
 
+	const shouldRenderClosedShape =
+		points.length >= 3 && (polygon?.isClosed || source === "draft");
+
 	if (!polygon) {
 		return (
 			<View style={styles.emptyWrap}>
@@ -260,9 +281,35 @@ export default function PolygonPreviewScreen() {
 		);
 	}
 
+	const handleEditDraft = () => {
+		if (source !== "draft") return;
+		// edição real continua no MapPicker
+	};
+
+
+	const handleMarkerPress = async () => {
+		setShowDragHint(true);
+
+		try {
+			await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+		} catch (error) {
+			console.log("HAPTIC SELECT ERROR:", error);
+		}
+
+		setTimeout(() => {
+			setShowDragHint(false);
+		}, 2200);
+	};
 	return (
-		<View style={styles.container}>
-			<MapView style={styles.map} initialRegion={region}>
+		<SafeAreaView
+			style={styles.container}
+			edges={Platform.OS === "android" ? ["bottom"] : []}
+		>
+			<MapView
+				style={styles.map}
+				initialRegion={region}
+				mapType={mapType}
+			>
 				{points.length > 0 ? (
 					<>
 						{points.length >= 2 ? (
@@ -273,7 +320,7 @@ export default function PolygonPreviewScreen() {
 							/>
 						) : null}
 
-						{points.length >= 3 && polygon?.isClosed ? (
+						{shouldRenderClosedShape ? (
 							<MapPolygon
 								coordinates={points}
 								strokeColor="rgba(21,101,192,0.95)"
@@ -282,32 +329,120 @@ export default function PolygonPreviewScreen() {
 							/>
 						) : null}
 
-						<Marker coordinate={points[0]} pinColor="#16A34A" />
+						{points.map((point, index) => (
+							<Marker
+								key={`preview-point-${index}`}
+								coordinate={point}
+								draggable={source === "draft"}
+								tracksViewChanges={false}
+								onPress={handleMarkerPress}
+								onDragStart={async () => {
+									setShowDragHint(false);
+
+									try {
+										await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+									} catch (error) {
+										console.log("HAPTIC DRAG START ERROR:", error);
+									}
+								}}
+								onDragEnd={async (event) => {
+									if (source !== "draft") return;
+									const newCoord = event?.nativeEvent?.coordinate;
+									if (!newCoord?.latitude || !newCoord?.longitude) return;
+
+									const nextPoints = points.map((item, idx) =>
+										idx === index
+											? {
+												latitude: Number(newCoord.latitude),
+												longitude: Number(newCoord.longitude),
+											}
+											: item
+									);
+
+									dispatch(polygonActions.setDraftPoints(nextPoints));
+
+									try {
+										await Haptics.notificationAsync(
+											Haptics.NotificationFeedbackType.Success
+										);
+									} catch (error) {
+										console.log("HAPTIC DRAG END ERROR:", error);
+									}
+								}}
+							>
+								<PointMarker />
+							</Marker>
+						))}
 					</>
 				) : null}
 			</MapView>
 
-			<ScrollView
-				style={styles.bottomSheet}
-				contentContainerStyle={styles.bottomSheetContent}
-				showsVerticalScrollIndicator={false}
+			<View style={styles.mapControls}>
+				<TouchableOpacity
+					style={styles.mapButton}
+					onPress={() =>
+						setMapType((prev) =>
+							prev === "satellite" ? "standard" : "satellite"
+						)
+					}
+				>
+					<Ionicons name="layers-outline" size={18} color="#111827" />
+				</TouchableOpacity>
+			</View>
+			{showDragHint && source === "draft" ? (
+				<View style={styles.dragHintPill}>
+					<Ionicons name="move-outline" size={15} color="#111827" />
+					<Text style={styles.dragHintPillText}>Arraste a bola verde</Text>
+				</View>
+			) : null}
+
+			<View
+				style={[
+					styles.bottomSheet,
+					{
+						paddingBottom: Math.max(insets.bottom, 10),
+						minHeight: sheetExpanded ? 220 : 108,
+					},
+				]}
 			>
+				<TouchableOpacity
+					style={styles.dragHandleWrap}
+					onPress={async () => {
+						try {
+							await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+						} catch (error) {
+							console.log("HAPTIC SHEET ERROR:", error);
+						}
+
+						setSheetExpanded((prev) => !prev);
+					}}
+					activeOpacity={0.8}
+				>
+					<View style={styles.dragHandleRow}>
+						<Ionicons
+							name={sheetExpanded ? "chevron-down" : "chevron-up"}
+							size={18}
+							color="#6B7280"
+						/>
+					</View>
+				</TouchableOpacity>
+
 				<View style={styles.titleRow}>
-					<View style={styles.titleWrap}>
-						<Text style={styles.title}>{polygon?.name || "Polígono sem nome"}</Text>
-						<Text style={styles.subtitle}>
-							{polygon?.farmName || "Sem fazenda"}
-						</Text>
+					<View style={styles.titleBlock}>
+						<Text style={styles.title}>{polygon?.name}</Text>
+						<Text style={styles.subtitle}>{polygon?.farmName}</Text>
 					</View>
 
 					<View
 						style={[
 							styles.statusBadge,
-							polygon?.status === "synced"
-								? styles.statusSynced
-								: polygon?.status === "sync_error"
-									? styles.statusError
-									: styles.statusPending,
+							source === "draft"
+								? styles.statusPending
+								: polygon?.status === "synced"
+									? styles.statusSynced
+									: polygon?.status === "sync_error"
+										? styles.statusError
+										: styles.statusPending,
 						]}
 					>
 						<Text style={styles.statusText}>
@@ -318,59 +453,46 @@ export default function PolygonPreviewScreen() {
 					</View>
 				</View>
 
-				<View style={styles.infoGrid}>
-					<View style={styles.infoCard}>
-						<Text style={styles.infoLabel}>Modo</Text>
-						<Text style={styles.infoValue}>{getModeLabel(polygon?.mode)}</Text>
-					</View>
-
-					<View style={styles.infoCard}>
-						<Text style={styles.infoLabel}>Pontos</Text>
-						<Text style={styles.infoValue}>{points.length}</Text>
-					</View>
-
-					<View style={styles.infoCard}>
-						<Text style={styles.infoLabel}>Área</Text>
-						<Text style={styles.infoValue}>
-							{displayAreaHa > 0 ? `${displayAreaHa.toFixed(2)} ha` : "-"}
-						</Text>
-					</View>
-
-					<View style={styles.infoCard}>
-						<Text style={styles.infoLabel}>Perímetro</Text>
-						<Text style={styles.infoValue}>
-							{displayPerimeterM > 0 ? `${displayPerimeterM.toFixed(2)} m` : "-"}
-						</Text>
-					</View>
+				<View style={styles.infoRow}>
+					<Text style={styles.infoMini}>📍 {points.length} pontos</Text>
+					<Text style={styles.infoMini}>🌱 {displayAreaHa?.toFixed(2)} ha</Text>
+					<Text style={styles.infoMini}>📏 {displayPerimeterM?.toFixed(0)} m</Text>
 				</View>
 
-				<View style={styles.infoBlock}>
-					<Text style={styles.infoBlockLabel}>
-						{source === "draft" ? "Rascunho iniciado em" : "Criado em"}
-					</Text>
-					<Text style={styles.infoBlockValue}>
-						{formatDateTimeBR(polygon?.createdAt || polygon?.updatedAt)}
-					</Text>
-				</View>
+				{sheetExpanded ? (
+					<View style={styles.expandedContent}>
+						<View style={styles.infoLine}>
+							<Text style={styles.infoLabel}>Modo</Text>
+							<Text style={styles.infoValue}>{getModeLabel(polygon?.mode)}</Text>
+						</View>
 
-				<View style={styles.infoBlock}>
-					<Text style={styles.infoBlockLabel}>Observação</Text>
-					<Text style={styles.infoBlockValue}>
-						{polygon?.observation || "-"}
-					</Text>
-				</View>
+						<View style={styles.infoLine}>
+							<Text style={styles.infoLabel}>
+								{source === "draft" ? "Rascunho iniciado" : "Criado em"}
+							</Text>
+							<Text style={styles.infoValue}>
+								{formatDateTimeBR(polygon?.createdAt || polygon?.updatedAt)}
+							</Text>
+						</View>
 
-				{polygon?.syncError && source !== "draft" ? (
-					<View style={styles.errorBox}>
-						<Ionicons name="alert-circle-outline" size={16} color="#B91C1C" />
-						<Text style={styles.errorText}>{polygon.syncError}</Text>
+						<View style={styles.infoLineColumn}>
+							<Text style={styles.infoLabel}>Observação</Text>
+							<Text style={styles.infoValueMultiline}>
+								{polygon?.observation || "-"}
+							</Text>
+						</View>
+
+						{source === "draft" ? (
+							<Text style={styles.editHint}>
+								Você pode arrastar os pontos diretamente no mapa para ajustar.
+							</Text>
+						) : null}
 					</View>
 				) : null}
-			</ScrollView>
-		</View>
+			</View>
+		</SafeAreaView>
 	);
 }
-
 
 const styles = StyleSheet.create({
 	container: {
@@ -380,35 +502,54 @@ const styles = StyleSheet.create({
 	map: {
 		flex: 1,
 	},
-	bottomSheet: {
-		maxHeight: "42%",
-		backgroundColor: "#fff",
-		borderTopLeftRadius: 24,
-		borderTopRightRadius: 24,
-		marginTop: -18,
+	mapControls: {
+		position: "absolute",
+		top: 30,
+		right: 16,
 	},
-	bottomSheetContent: {
-		padding: 18,
-		paddingBottom: 32,
+	mapButton: {
+		backgroundColor: "rgba(255,255,255,0.9)",
+		padding: 10,
+		borderRadius: 999,
+	},
+	bottomSheet: {
+		position: "absolute",
+		bottom: 0,
+		left: 0,
+		right: 0,
+		backgroundColor: "rgba(255,255,255,0.96)",
+		borderTopLeftRadius: 20,
+		borderTopRightRadius: 20,
+		paddingHorizontal: 14,
+		paddingTop: 8,
+	},
+	dragHandleWrap: {
+		alignItems: "center",
+		paddingBottom: 8,
+	},
+	dragHandle: {
+		width: 42,
+		height: 5,
+		borderRadius: 999,
+		backgroundColor: "#D1D5DB",
 	},
 	titleRow: {
 		flexDirection: "row",
 		justifyContent: "space-between",
 		alignItems: "flex-start",
 		gap: 12,
-		marginBottom: 16,
 	},
-	titleWrap: {
+	titleBlock: {
 		flex: 1,
 	},
 	title: {
-		fontSize: 20,
+		fontSize: 18,
 		fontWeight: "800",
 		color: "#111827",
 	},
 	subtitle: {
 		marginTop: 4,
-		fontSize: 14,
+		fontSize: 13,
 		color: "#6B7280",
 		fontWeight: "600",
 	},
@@ -432,65 +573,57 @@ const styles = StyleSheet.create({
 		fontWeight: "800",
 		color: "#111827",
 	},
-	infoGrid: {
+	infoRow: {
 		flexDirection: "row",
-		flexWrap: "wrap",
 		justifyContent: "space-between",
-		marginBottom: 14,
+		marginTop: 10,
 	},
-	infoCard: {
-		width: "48.5%",
-		backgroundColor: "#F9FAFB",
-		borderRadius: 14,
-		paddingHorizontal: 12,
-		paddingVertical: 12,
+	infoMini: {
+		fontSize: 13,
+		fontWeight: "700",
+		color: "#374151",
+	},
+	expandedContent: {
+		marginTop: 14,
+		paddingTop: 10,
+		borderTopWidth: 1,
+		borderTopColor: "#E5E7EB",
+	},
+	infoLine: {
+		flexDirection: "row",
+		justifyContent: "space-between",
+		alignItems: "center",
+		marginBottom: 10,
+		gap: 12,
+	},
+	infoLineColumn: {
 		marginBottom: 10,
 	},
 	infoLabel: {
-		fontSize: 11,
+		fontSize: 12,
 		fontWeight: "700",
 		color: "#6B7280",
 		textTransform: "uppercase",
-		marginBottom: 4,
 	},
 	infoValue: {
-		fontSize: 14,
-		fontWeight: "700",
-		color: "#111827",
-	},
-	infoBlock: {
-		backgroundColor: "#F9FAFB",
-		borderRadius: 14,
-		paddingHorizontal: 12,
-		paddingVertical: 12,
-		marginBottom: 10,
-	},
-	infoBlockLabel: {
-		fontSize: 11,
-		fontWeight: "700",
-		color: "#6B7280",
-		textTransform: "uppercase",
-		marginBottom: 4,
-	},
-	infoBlockValue: {
-		fontSize: 14,
-		fontWeight: "600",
-		color: "#111827",
-	},
-	errorBox: {
-		marginTop: 6,
-		backgroundColor: "rgba(185,28,28,0.08)",
-		borderRadius: 12,
-		paddingHorizontal: 10,
-		paddingVertical: 8,
-		flexDirection: "row",
-		alignItems: "center",
-	},
-	errorText: {
 		flex: 1,
-		marginLeft: 8,
+		textAlign: "right",
+		fontSize: 13,
+		fontWeight: "700",
+		color: "#111827",
+	},
+	infoValueMultiline: {
+		marginTop: 6,
+		fontSize: 13,
+		lineHeight: 18,
+		color: "#111827",
+		fontWeight: "600",
+	},
+	editHint: {
+		marginTop: 4,
 		fontSize: 12,
-		color: "#B91C1C",
+		lineHeight: 18,
+		color: "#2563EB",
 		fontWeight: "600",
 	},
 	emptyWrap: {
@@ -513,5 +646,49 @@ const styles = StyleSheet.create({
 		lineHeight: 21,
 		color: "#6B7280",
 		textAlign: "center",
+	},
+	pointMarkerOuter: {
+		width: 22,
+		height: 22,
+		borderRadius: 11,
+		backgroundColor: "rgba(255,255,255,0.92)",
+		alignItems: "center",
+		justifyContent: "center",
+		borderWidth: 1,
+		borderColor: "rgba(0,0,0,0.12)",
+	},
+
+	pointMarkerInner: {
+		width: 14,
+		height: 14,
+		borderRadius: 7,
+		backgroundColor: "#22C55E",
+	},
+
+	dragHandleRow: {
+		width: 44,
+		height: 22,
+		borderRadius: 999,
+		backgroundColor: "#F3F4F6",
+		alignItems: "center",
+		justifyContent: "center",
+	},
+	dragHintPill: {
+		position: "absolute",
+		top: 132,
+		alignSelf: "center",
+		backgroundColor: "rgba(255,255,255,0.94)",
+		borderRadius: 999,
+		paddingHorizontal: 14,
+		paddingVertical: 8,
+		flexDirection: "row",
+		alignItems: "center",
+	},
+
+	dragHintPillText: {
+		fontSize: 12,
+		fontWeight: "800",
+		color: "#111827",
+		marginLeft: 6,
 	},
 });
