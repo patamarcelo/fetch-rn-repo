@@ -131,6 +131,8 @@ const PolygonMapPickerScreen = ({ navigation }) => {
 	const [trackingActive, setTrackingActive] = useState(draft?.mode === "tracking");
 	const [mapType, setMapType] = useState("satellite");
 
+	const [dragPreviewPoint, setDragPreviewPoint] = useState(null);
+
 	useKeepAwake();
 
 	useEffect(() => {
@@ -507,11 +509,24 @@ const PolygonMapPickerScreen = ({ navigation }) => {
 	};
 
 	const polylineCoords = useMemo(() => {
-		return sanitizePoints(localPoints).map((point) => ({
+		const basePoints = sanitizePoints(localPoints).map((point) => ({
 			latitude: point.latitude,
 			longitude: point.longitude,
 		}));
-	}, [localPoints]);
+
+		if (
+			dragPreviewPoint &&
+			dragPreviewPoint.index !== null &&
+			basePoints[dragPreviewPoint.index]
+		) {
+			basePoints[dragPreviewPoint.index] = {
+				latitude: Number(dragPreviewPoint.latitude),
+				longitude: Number(dragPreviewPoint.longitude),
+			};
+		}
+
+		return basePoints;
+	}, [localPoints, dragPreviewPoint]);
 
 	const isTrackingMode = draft?.mode === "tracking";
 
@@ -530,7 +545,6 @@ const PolygonMapPickerScreen = ({ navigation }) => {
 				ref={mapRef}
 				style={styles.map}
 				initialRegion={region}
-				region={region}
 				mapType={mapType}
 				onRegionChangeComplete={handleRegionChangeComplete}
 				showsUserLocation
@@ -541,18 +555,38 @@ const PolygonMapPickerScreen = ({ navigation }) => {
 					polylineCoords.map((coord, index) => (
 						<Marker
 							key={`draft-point-${index}`}
-							coordinate={coord}
+							coordinate={
+								dragPreviewPoint && dragPreviewPoint.index === index
+									? {
+										latitude: Number(dragPreviewPoint.latitude),
+										longitude: Number(dragPreviewPoint.longitude),
+									}
+									: coord
+							}
 							draggable
-							tracksViewChanges
+							tracksViewChanges={false}
 							onPress={() => handleMarkerPress(index)}
+							onDrag={(event) => {
+								const newCoord = event?.nativeEvent?.coordinate;
+								if (!newCoord?.latitude || !newCoord?.longitude) return;
+
+								setDragPreviewPoint({
+									index,
+									latitude: Number(newCoord.latitude),
+									longitude: Number(newCoord.longitude),
+								});
+							}}
 							onDragStart={async () => {
 								setSelectedPointIndex(index);
+								setDragPreviewPoint({
+									index,
+									latitude: Number(coord.latitude),
+									longitude: Number(coord.longitude),
+								});
 								setFeedbackMessage(`Arrastando ponto ${index + 1}...`);
 
 								try {
-									await Haptics.impactAsync(
-										Haptics.ImpactFeedbackStyle.Medium
-									);
+									await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 								} catch (error) {
 									console.log("HAPTIC DRAG START ERROR:", error);
 								}
@@ -562,19 +596,23 @@ const PolygonMapPickerScreen = ({ navigation }) => {
 								if (!newCoord?.latitude || !newCoord?.longitude) return;
 
 								try {
+									const latitude = Number(newCoord.latitude);
+									const longitude = Number(newCoord.longitude);
+
 									setLocalPoints((prev) =>
 										prev.map((point, pointIndex) =>
 											pointIndex === index
 												? {
 													...point,
-													latitude: Number(newCoord.latitude),
-													longitude: Number(newCoord.longitude),
+													latitude,
+													longitude,
 													recordedAt: new Date().toISOString(),
 												}
 												: point
 										)
 									);
 
+									setDragPreviewPoint(null);
 									setSelectedPointIndex(index);
 									setFeedbackMessage(`Ponto ${index + 1} ajustado.`);
 

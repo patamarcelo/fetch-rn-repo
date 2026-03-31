@@ -33,7 +33,7 @@ const PlantioStack = () => {
                     // fontSize: 36, // Large title font size
                     fontWeight: 'bold', // You can change this as needed
                 },
-                headerLargeTitle: true, // Enable large title for iOS
+                // headerLargeTitle: true, // Enable large title for iOS
                 headerTitleAlign: 'center', // Align title to the center
             }}
         >

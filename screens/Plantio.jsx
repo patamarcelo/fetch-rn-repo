@@ -219,14 +219,20 @@ const PlantioScreen = () => {
 
     if (isLoadingData) {
         return (
-            <View style={styles.containerActivity} >
+            <View style={styles.containerActivity}>
                 <ActivityIndicator size="large" color="#1E90FF" />
             </View>
-        )
+        );
     }
     return (
         <GestureHandlerRootView style={styles.containerGesture}>
             {/* <GestureHandlerRootView style={[styles.containerGesture, { paddingBottom: tabBarHeight, paddingTop: 10, flex: 1 }]}> */}
+            {isRefreshing && (
+                <View style={styles.customRefreshContainer}>
+                    <ActivityIndicator size="large" color="#1E90FF" />
+                    <Text style={styles.customRefreshText}>Atualizando Dados...</Text>
+                </View>
+            )}
             <ScrollView
                 style={{
                     paddingBottom: tabBarHeight, flex: 1
@@ -238,13 +244,10 @@ const PlantioScreen = () => {
                 contentInsetAdjustmentBehavior='automatic'
                 refreshControl={
                     <RefreshControl
-                        refreshing={isRefreshing} // Make sure this comes from state
-                        onRefresh={() => {
-                            console.log('Pull-to-refresh triggered');
-                            handleUpdateApiData();
-                        }}
-                        colors={[Colors.secondary[100], Colors.secondary[200], Colors.secondary[300]]}
-                        tintColor={Colors.secondary[100]}
+                        refreshing={isRefreshing}
+                        onRefresh={handleUpdateApiData}
+                        colors={["#1E90FF"]}      // Android
+                        tintColor="#1E90FF"       // iOS
                     />
                 }
             >
@@ -379,5 +382,41 @@ const styles = StyleSheet.create({
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center'
-    }
+    },
+    customRefreshContainer: {
+        paddingVertical: 14,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: 'rgba(30,144,255,0.08)',
+        borderBottomWidth: 1,
+        borderColor: 'rgba(30,144,255,0.25)',
+    },
+
+    customRefreshText: {
+        marginTop: 8,
+        fontSize: 12,
+        fontWeight: '700',
+        color: '#1E90FF',
+    },
+
+    refreshActionRow: {
+        paddingHorizontal: 12,
+        paddingTop: 10,
+    },
+
+    refreshButton: {
+        height: 42,
+        borderRadius: 10,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: 'rgba(30,144,255,0.08)',
+        borderWidth: 1,
+        borderColor: 'rgba(30,144,255,0.25)',
+    },
+
+    refreshButtonText: {
+        color: '#1E90FF',
+        fontWeight: '800',
+        fontSize: 14,
+    },
 })

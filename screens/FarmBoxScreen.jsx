@@ -342,7 +342,7 @@ const FarmBoxScreen = (props) => {
     if (isloadingDbFarm) {
         return (
             <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-                <ActivityIndicator size="large" color={Colors.primary[500]} />
+                <ActivityIndicator size="large" color={'#1E90FF'} />
             </View>
         )
     }
@@ -355,6 +355,12 @@ const FarmBoxScreen = (props) => {
                     value={searchQuery}
                     onChangeText={(e) => dispatch(setFarmboxSearchQuery(e))}
                 />
+            )}
+            {isLoading && (
+                <View style={styles.customRefreshContainer}>
+                    <ActivityIndicator size="large" color="#1E90FF" />
+                    <Text style={styles.customRefreshText}>Atualizando Aplicações...</Text>
+                </View>
             )}
             <ScrollView
                 contentInsetAdjustmentBehavior='automatic'
@@ -369,8 +375,9 @@ const FarmBoxScreen = (props) => {
                     <RefreshControl
                         refreshing={isLoading}
                         onRefresh={getData}
-                        colors={["#9Bd35A", "#689F38"]}
-                        tintColor={Colors.primary[400]}
+                        colors={["#16A34A"]}
+                        progressBackgroundColor="red"
+                        tintColor="#16A34A"
                     />
                 }
             >
@@ -483,5 +490,41 @@ const styles = StyleSheet.create({
     },
     pressed: {
         opacity: 0.7
+    },
+    customRefreshContainer: {
+        paddingVertical: 14,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: 'rgba(30,144,255,0.08)',
+        borderBottomWidth: 1,
+        borderColor: 'rgba(30,144,255,0.25)',
+    },
+
+    customRefreshText: {
+        marginTop: 8,
+        fontSize: 12,
+        fontWeight: '700',
+        color: '#1E90FF',
+    },
+
+    refreshActionRow: {
+        paddingHorizontal: 12,
+        paddingTop: 10,
+    },
+
+    refreshButton: {
+        height: 42,
+        borderRadius: 10,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: 'rgba(30,144,255,0.08)',
+        borderWidth: 1,
+        borderColor: 'rgba(30,144,255,0.25)',
+    },
+
+    refreshButtonText: {
+        color: '#1E90FF',
+        fontWeight: '800',
+        fontSize: 14,
     },
 })

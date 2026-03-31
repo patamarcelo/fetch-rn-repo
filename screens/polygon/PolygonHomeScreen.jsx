@@ -18,6 +18,7 @@ import { geralActions } from "../../store/redux/geral";
 import { farmsSelected } from "../../store/redux/selector";
 import { fetchFarmsFromPlantioApi } from "../../services/farmsLoader";
 import { runPolygonAutoSyncIfNeeded } from "../../services/polygonAutoSync";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 
 
@@ -164,77 +165,79 @@ export default function PolygonHomeScreen() {
 	};
 
 	return (
-		<ScrollView style={styles.container} contentContainerStyle={styles.content}>
-			<View style={styles.heroCard}>
-				<Text style={styles.heroTitle}>Polígonos</Text>
-				<Text style={styles.heroSubtitle}>
-					Crie, visualize, exporte e sincronize polígonos das áreas da fazenda.
-				</Text>
-			</View>
-			<View style={styles.statsGrid}>
-				<StatCard
-					label="Total salvos"
-					value={polygonStats?.total || 0}
-					icon="layers"
-					color="#8B5CF6"
-					onPress={() => goToPolygonFlow("PolygonSavedListScreen")}
-				/>
-				<StatCard
-					label="Pendentes"
-					value={polygonStats?.pending || 0}
-					icon="cloud-upload"
-					color="#F59E0B"
-					onPress={() => goToPolygonFlow("PolygonSyncScreen")}
-				/>
-				<StatCard
-					label="Sincronizados"
-					value={polygonStats?.synced || 0}
-					icon="checkmark-done"
-					color="#10B981"
-				/>
-				<StatCard
-					label="Com erro"
-					value={polygonStats?.error || 0}
-					icon="alert-circle"
-					color="#EF4444"
-				/>
-			</View>
-			<View style={styles.section}>
-				<Text style={styles.sectionTitle}>Criar novo polígono</Text>
+		<SafeAreaView style={{flex: 1}} edges={[]}>
+			<ScrollView style={styles.container} contentContainerStyle={styles.content}>
+				<View style={styles.heroCard}>
+					<Text style={styles.heroTitle}>Polígonos</Text>
+					<Text style={styles.heroSubtitle}>
+						Crie, visualize, exporte e sincronize polígonos das áreas da fazenda.
+					</Text>
+				</View>
+				<View style={styles.statsGrid}>
+					<StatCard
+						label="Total salvos"
+						value={polygonStats?.total || 0}
+						icon="layers"
+						color="#8B5CF6"
+						onPress={() => goToPolygonFlow("PolygonSavedListScreen")}
+					/>
+					<StatCard
+						label="Pendentes"
+						value={polygonStats?.pending || 0}
+						icon="cloud-upload"
+						color="#F59E0B"
+						onPress={() => goToPolygonFlow("PolygonSyncScreen")}
+					/>
+					<StatCard
+						label="Sincronizados"
+						value={polygonStats?.synced || 0}
+						icon="checkmark-done"
+						color="#10B981"
+					/>
+					<StatCard
+						label="Com erro"
+						value={polygonStats?.error || 0}
+						icon="alert-circle"
+						color="#EF4444"
+					/>
+				</View>
+				<View style={styles.section}>
+					<Text style={styles.sectionTitle}>Criar novo polígono</Text>
 
-				<ActionCard
-					title="Ponto a ponto"
-					subtitle="Marque os vértices manualmente. Você controla cada ponto."
-					icon="location-outline"
-					onPress={() => startNewDraft("manual")}
-				/>
+					<ActionCard
+						title="Ponto a ponto"
+						subtitle="Marque os vértices manualmente. Você controla cada ponto."
+						icon="location-outline"
+						onPress={() => startNewDraft("manual")}
+					/>
 
-				<ActionCard
-					title="Navegação automática"
-					subtitle="Use a mesma tela, com configurações para captura automática."
-					icon="navigate-outline"
-					onPress={() => startNewDraft("tracking")}
-				/>
-			</View>
+					<ActionCard
+						title="Navegação automática"
+						subtitle="Use a mesma tela, com configurações para captura automática."
+						icon="navigate-outline"
+						onPress={() => startNewDraft("tracking")}
+					/>
+				</View>
 
-			<View style={styles.section}>
-				<Text style={styles.sectionTitle}>Gerenciar</Text>
+				<View style={styles.section}>
+					<Text style={styles.sectionTitle}>Gerenciar</Text>
 
-				<ActionCard
-					title="Polígonos salvos"
-					subtitle="Veja, exporte e abra os polígonos em modo visualização."
-					icon="map-outline"
-					onPress={() => goToPolygonFlow("PolygonSavedListScreen")}
-				/>
+					<ActionCard
+						title="Polígonos salvos"
+						subtitle="Veja, exporte e abra os polígonos em modo visualização."
+						icon="map-outline"
+						onPress={() => goToPolygonFlow("PolygonSavedListScreen")}
+					/>
 
-				<ActionCard
-					title="Sincronização"
-					subtitle="Enviar pendentes para o backend."
-					icon="cloud-upload-outline"
-					onPress={() => goToPolygonFlow("PolygonSyncScreen")}
-				/>
-			</View>
-		</ScrollView>
+					<ActionCard
+						title="Sincronização"
+						subtitle="Enviar pendentes para o backend."
+						icon="cloud-upload-outline"
+						onPress={() => goToPolygonFlow("PolygonSyncScreen")}
+					/>
+				</View>
+			</ScrollView>
+		</SafeAreaView>
 	);
 }
 
@@ -242,11 +245,11 @@ const styles = StyleSheet.create({
 	container: {
 		flex: 1,
 		backgroundColor: Colors.secondary[200] || "#F4F6F8",
-		marginBottom: 50
+		paddingBottom: 60
 	},
 	content: {
 		padding: 16,
-		paddingBottom: 32,
+		paddingBottom: 92,
 	},
 	heroCard: {
 		backgroundColor: Colors.primary?.[901] || "#1F2937",

@@ -417,15 +417,49 @@ export default function PolygonManualScreen() {
 		[validPoints, currentLocation]
 	);
 
+	const MANUAL_FARMS = [
+		"5 Estrelas",
+		"Benção de Deus",
+		"Biguá",
+		"Cacíque",
+		"Campo Guapo",
+		"Capivara",
+		"Cervo",
+		"Eldorado",
+		"Fazendinha",
+		"Jacaré",
+		"João de Barro",
+		"Lago Verde",
+		"Novo Acordo",
+		"Ouro Verde",
+		"Pau Brasil",
+		"Praia Alta",
+		"Safira",
+		"Santa Maria",
+		"Tucano",
+		"Tuiuiu",
+		"Outra",
+	];
+
+	function normalizeText(value) {
+		return String(value || "")
+			.normalize("NFD")
+			.replace(/[\u0300-\u036f]/g, "")
+			.toLowerCase()
+			.trim();
+	}
+
 	const farmSuggestions = useMemo(() => {
-		const term = (farmQuery || "").trim().toLowerCase();
+		const query = normalizeText(farmQuery);
 
-		if (term.length < 2) return [];
+		if (!query || query.length < 2) {
+			return [];
+		}
 
-		return farms
-			.filter((farm) => (farm || "").toLowerCase().includes(term))
-			.slice(0, 8);
-	}, [farmQuery, farms]);
+		return MANUAL_FARMS.filter((farmName) =>
+			normalizeText(farmName).includes(query)
+		);
+	}, [farmQuery]);
 
 
 	const isNameValid = (draft?.name || "").trim().length > 0;
@@ -449,11 +483,29 @@ export default function PolygonManualScreen() {
 		setFarmQuery(value);
 		updateMeta({ farmName: "" });
 
-		const hasTerm = (value || "").trim().length >= 2;
-		setShowFarmSuggestions(hasTerm);
+		const normalizedValue = normalizeText(value);
+		const hasTerm = normalizedValue.length >= 2;
+
+		if (!hasTerm) {
+			setShowFarmSuggestions(false);
+			return;
+		}
+
+		const filtered = MANUAL_FARMS.filter((farmName) =>
+			normalizeText(farmName).includes(normalizedValue)
+		);
+
+		setShowFarmSuggestions(filtered.length > 0);
 	};
 
 	const handleSelectFarm = (farmName) => {
+		if (farmName === "Outra") {
+			setFarmQuery("");
+			updateMeta({ farmName: "" });
+			setShowFarmSuggestions(false);
+			return;
+		}
+
 		setFarmQuery(farmName);
 		updateMeta({ farmName });
 		setShowFarmSuggestions(false);
