@@ -1,105 +1,482 @@
-import { Pressable, View, Text, StyleSheet, Image, Easing, ScrollView, TouchableOpacity, RefreshControl, Alert, Platform, ActivityIndicator } from "react-native"
+import {
+    Pressable,
+    View,
+    Text,
+    StyleSheet,
+    Image,
+    Alert,
+    Platform,
+    ActivityIndicator,
+    RefreshControl,
+} from "react-native";
 import { Colors } from "../../constants/styles";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { useState, useRef, useEffect, useMemo } from "react";
+import { Divider } from "@rneui/themed";
 
-import { useState, useRef, useEffect, useLayoutEffect, useMemo } from "react";
+import * as Progress from "react-native-progress";
+import * as Haptics from "expo-haptics";
+import FontAwesome5 from "@expo/vector-icons/FontAwesome5";
 
-import { Divider } from '@rneui/themed';
-
-
-
-import * as Progress from 'react-native-progress';
-
-import * as Haptics from 'expo-haptics';
-
-import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
-import { useNavigation } from "@react-navigation/native";
-import { exportPolygonsAsKML } from "../../utils/kml-generator";
-import { selectMapDataPlot, selectFarmBoxData } from "../../store/redux/selector";
-import { MaterialCommunityIcons } from '@expo/vector-icons';
-import MaterialIcons from 'react-native-vector-icons/MaterialIcons'
-
-import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
-
-import { HeaderBackButton } from '@react-navigation/elements';
-
+import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
+import { HeaderBackButton } from "@react-navigation/elements";
 import { useScrollToTop } from "@react-navigation/native";
 
 import { useDispatch, useSelector } from "react-redux";
 import { geralActions } from "../../store/redux/geral";
-import { selectFarmboxSearchBar, selectFarmboxSearchQuery } from "../../store/redux/selector";
+import {
+    selectMapDataPlot,
+    selectFarmBoxData,
+    selectFarmboxSearchBar,
+    selectFarmboxSearchQuery,
+} from "../../store/redux/selector";
+
 import SearchBar from "../Global/SearchBar";
 import { FAB } from "react-native-paper";
-
 import IconButton from "../ui/IconButton";
 
+import Animated, {
+    FadeInRight,
+    FadeInUp,
+    FadeOut,
+    FadeOutUp,
+    Layout,
+} from "react-native-reanimated";
 
-
-import Animated, { BounceIn, BounceOut, FadeIn, FadeInRight, FadeInUp, FadeOut, FadeOutUp, FlipInEasyX, FlipOutEasyX, Layout, SlideInLeft, SlideInRight, SlideOutRight, SlideOutUp, StretchInY, StretchOutX, ZoomIn, ZoomOut } from 'react-native-reanimated';
-
-
-import FilterModalApps from "./FilterModalApps";
 import { EXPO_PUBLIC_REACT_APP_DJANGO_TOKEN } from "@env";
-import { NODELINK } from "../../utils/api";
-
+import { NODELINK, LINK } from "../../utils/api";
 import { exportPdf } from "../../store/redux/authSlice";
 
 import * as FileSystem from "expo-file-system/legacy";
-import * as Sharing from 'expo-sharing';
+import * as Sharing from "expo-sharing";
 
+import { exportPolygonsAsKML } from "../../utils/kml-generator";
 import { postKmlMerge } from "../../services/generatekml";
 import { newMapArr } from "../../screens/plot-helper";
-import { LINK } from "../../utils/api";
 import { SectionList } from "react-native";
 
 import { captureRef } from "react-native-view-shot";
 import ViewShot from "react-native-view-shot";
 
+import AsyncStorage from "@react-native-async-storage/async-storage";
+
 
 const CardFarmBox = ({ route, navigation }) => {
-    // const { data, indexParent, showMapPlot } = props
-    const { indexParent, farm } = route.params; // Extract route parameters
+    const { indexParent, farm } = route.params;
     const { setFarmboxSearchBar, setFarmboxSearchQuery, setFarmBoxData } = geralActions;
 
-    const stackNavigator = navigation.getParent()
+    const stackNavigator = navigation.getParent();
     const tabBarHeight = useBottomTabBarHeight();
     const ref = useRef(null);
-    const dispatch = useDispatch()
+    const dispatch = useDispatch();
 
-    const { data: data } = useSelector(selectFarmBoxData)
-
-
-
-    const mapPlotData = useSelector(selectMapDataPlot)
-    const searchQuery = useSelector(selectFarmboxSearchQuery)
-    const showSearch = useSelector(selectFarmboxSearchBar)
+    const { data } = useSelector(selectFarmBoxData);
+    const mapPlotData = useSelector(selectMapDataPlot);
+    const searchQuery = useSelector(selectFarmboxSearchQuery);
+    const showSearch = useSelector(selectFarmboxSearchBar);
 
     const [showAps, setShowAps] = useState({});
-
-    // por isto:
-    const [selectedParcelasByCode, setSelectedParcelasByCode] = useState({});
-    const [activeCode, setActiveCode] = useState(null);
+    const [selectedParcelasByCardKey, setSelectedParcelasByCardKey] = useState({});
+    const [activeCardKey, setActiveCardKey] = useState(null);
     const [totalSelected, setTotalSelected] = useState(0);
 
-    const cardShareRefs = useRef({});
-
-    // helpers
-    const getSelectedFor = (code) => selectedParcelasByCode[code] || [];
-
     const [farmData, setfarmData] = useState([]);
-
     const [isLoading, setIsLoading] = useState(false);
-
     const [isSharing, setIsSharing] = useState(false);
     const [isSharingUnique, setIsSharingUnique] = useState(false);
 
-    const backgroundColorCard = Platform.OS === 'ios' ? 'whitesmoke' : 'white'
+    const [viewMode, setViewMode] = useState("normal"); // normal | consolidated
+
+    const backgroundColorCard = Platform.OS === "ios" ? "whitesmoke" : "white";
+    const cardShareRefs = useRef({});
+
+    const getSelectedFor = (cardKey) => selectedParcelasByCardKey[cardKey] || [];
+
+    const wait = (ms = 120) => new Promise((resolve) => setTimeout(resolve, ms));
+
+    const VIEW_MODE_STORAGE_KEY = "@farmbox_card_view_mode";
+
+    useEffect(() => {
+        const loadSavedViewMode = async () => {
+            try {
+                const savedMode = await AsyncStorage.getItem(VIEW_MODE_STORAGE_KEY);
+
+                if (savedMode === "normal" || savedMode === "consolidated") {
+                    setViewMode(savedMode);
+                }
+            } catch (error) {
+                console.log("Erro ao carregar viewMode salvo:", error);
+            }
+        };
+
+        loadSavedViewMode();
+    }, []);
+
+    const handleChangeViewMode = async (mode) => {
+        try {
+            setViewMode(mode);
+            await AsyncStorage.setItem(VIEW_MODE_STORAGE_KEY, mode);
+        } catch (error) {
+            console.log("Erro ao salvar viewMode:", error);
+        }
+    };
+
+    const sumNumber = (v) => {
+        const n = Number(v);
+        return Number.isFinite(n) ? n : 0;
+    };
+
+    const formatNumber = (number, decimals = 2) => {
+        const n = Number(number || 0);
+        return n.toLocaleString("pt-br", {
+            minimumFractionDigits: decimals,
+            maximumFractionDigits: decimals,
+        });
+    };
+
+    const formatNumberProds = (number) => {
+        const n = Number(number || 0);
+        return n.toLocaleString("pt-br", {
+            minimumFractionDigits: 3,
+            maximumFractionDigits: 3,
+        });
+    };
+
+    const slugify = (s = "") =>
+        s
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .replace(/\s+/g, "_")
+            .replace(/[^\w.-]/g, "")
+            .replace(/_+/g, "_")
+            .replace(/^_+|_+$/g, "");
+
+    const normalizeString = (s = "") =>
+        String(s || "")
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .trim()
+            .toLowerCase();
+
+    const normalizeDose = (v) => {
+        const n = Number(v || 0);
+        return Number.isFinite(n) ? n.toFixed(6) : "0.000000";
+    };
+
+
+    const getApCode = (code) => {
+        if (!code) return "-";
+        return `AP ${String(code).replace(/AP/gi, "").trim()}`;
+    };
+
+    const getAppKind = (app) => {
+        const prods = Array.isArray(app?.prods) ? app.prods : [];
+
+        if (prods.length <= 1) return "Operação";
+
+        const semOperacao = prods.filter((p) => (p?.type || "") !== "Operação");
+
+        if (semOperacao.length === 1) return "Sólido";
+        return "Líquido";
+    };
+
+    const removeDuplicateParcelas = (parcelas = []) => {
+        const map = new Map();
+
+        for (const parcela of parcelas) {
+            const key =
+                parcela?.parcelaId ??
+                `${parcela?.parcela || ""}-${parcela?.parcelaAppPlantationId || ""}`;
+
+            if (!map.has(key)) {
+                map.set(key, parcela);
+            }
+        }
+
+        return Array.from(map.values());
+    };
+
+    const getCompositionSignature = (app) => {
+        const prods = Array.isArray(app?.prods) ? app.prods : [];
+
+        return prods
+            .filter((p) => (p?.type || "") !== "Operação")
+            .map((p) => ({
+                product: normalizeString(p?.product || ""),
+                dose: normalizeDose(p?.doseSolicitada),
+                unit: normalizeString(p?.unit || ""),
+            }))
+            .sort((a, b) => a.product.localeCompare(b.product))
+            .map((p) => `${p.product}|${p.dose}|${p.unit}`)
+            .join(";");
+    };
+
+    const buildCardFromAp = (ap) => {
+        const areaSolicitada = sumNumber(ap?.areaSolicitada);
+        const areaAplicada = sumNumber(ap?.areaAplicada);
+        const saldoAreaAplicar =
+            ap?.saldoAreaAplicar != null
+                ? sumNumber(ap?.saldoAreaAplicar)
+                : Math.max(areaSolicitada - areaAplicada, 0);
+
+        const percent =
+            areaSolicitada > 0 ? Math.min(areaAplicada / areaSolicitada, 1) : sumNumber(ap?.percent || 0);
+
+        return {
+            ...ap,
+            cardKey: `normal-${ap?.code}`,
+            isConsolidated: false,
+            displayCode: ap?.code || "-",
+            codes: [ap?.code].filter(Boolean),
+            aps: [ap],
+            parcelas: Array.isArray(ap?.parcelas) ? ap.parcelas : [],
+            areaSolicitada,
+            areaAplicada,
+            saldoAreaAplicar,
+            percent,
+            signature: getCompositionSignature(ap),
+        };
+    };
+
+    const buildConsolidatedCards = (apps = []) => {
+        const groups = new Map();
+
+        for (const ap of apps) {
+            const signature = getCompositionSignature(ap);
+
+            const groupKey = [
+                normalizeString(ap?.farmName || ""),
+                normalizeString(ap?.ciclo || ""),
+                signature,
+            ].join("::");
+
+            if (!groups.has(groupKey)) {
+                const baseAreaSolicitada = sumNumber(ap?.areaSolicitada);
+                const baseAreaAplicada = sumNumber(ap?.areaAplicada);
+                const baseSaldo =
+                    ap?.saldoAreaAplicar != null
+                        ? sumNumber(ap?.saldoAreaAplicar)
+                        : Math.max(baseAreaSolicitada - baseAreaAplicada, 0);
+
+                groups.set(groupKey, {
+                    ...ap,
+                    cardKey: `group-${groupKey}`,
+                    groupKey,
+                    isConsolidated: true,
+                    displayCode: "Consolidado de Aplicações",
+                    codes: ap?.code ? [ap.code] : [],
+                    aps: [ap],
+                    parcelas: Array.isArray(ap?.parcelas) ? [...ap.parcelas] : [],
+                    areaSolicitada: baseAreaSolicitada,
+                    areaAplicada: baseAreaAplicada,
+                    saldoAreaAplicar: baseSaldo,
+                    signature,
+                });
+            } else {
+                const existing = groups.get(groupKey);
+
+                existing.codes = Array.from(new Set([...existing.codes, ap?.code].filter(Boolean)));
+                existing.aps.push(ap);
+                existing.parcelas = [...existing.parcelas, ...(ap?.parcelas || [])];
+
+                const areaSolicitada = sumNumber(ap?.areaSolicitada);
+                const areaAplicada = sumNumber(ap?.areaAplicada);
+                const saldo =
+                    ap?.saldoAreaAplicar != null
+                        ? sumNumber(ap?.saldoAreaAplicar)
+                        : Math.max(areaSolicitada - areaAplicada, 0);
+
+                existing.areaSolicitada += areaSolicitada;
+                existing.areaAplicada += areaAplicada;
+                existing.saldoAreaAplicar += saldo;
+            }
+        }
+
+        return Array.from(groups.values()).map((group) => {
+            const percent =
+                group.areaSolicitada > 0
+                    ? Math.min(group.areaAplicada / group.areaSolicitada, 1)
+                    : 0;
+
+            return {
+                ...group,
+                parcelas: removeDuplicateParcelas(group.parcelas),
+                totalAps: group.codes.length,
+                displayCode: `${group.codes.length} AP${group.codes.length > 1 ? "s" : ""}`,
+                percent,
+            };
+        });
+    };
+
+    const visibleBaseData = useMemo(() => {
+        const raw = Array.isArray(farmData) ? farmData : [];
+
+        if (viewMode === "consolidated") {
+            return buildConsolidatedCards(raw);
+        }
+
+        return raw.map(buildCardFromAp);
+    }, [farmData, viewMode]);
+
+    const buildGroupTotals = (apps = []) => {
+        const totals = {
+            count: apps.length,
+            areaSolicitada: 0,
+            areaAplicada: 0,
+            saldoAreaAplicar: 0,
+            products: {},
+        };
+
+        for (const app of apps) {
+            totals.areaSolicitada += sumNumber(app?.areaSolicitada);
+            totals.areaAplicada += sumNumber(app?.areaAplicada);
+
+            const saldo =
+                app?.saldoAreaAplicar != null
+                    ? sumNumber(app?.saldoAreaAplicar)
+                    : Math.max(sumNumber(app?.areaSolicitada) - sumNumber(app?.areaAplicada), 0);
+
+            totals.saldoAreaAplicar += saldo;
+
+            const prods = Array.isArray(app?.prods) ? app.prods : [];
+            for (const p of prods) {
+                if ((p?.type || "") === "Operação") continue;
+
+                const key = `${p?.product || "?"}|${p?.unit || ""}`;
+                if (!totals.products[key]) {
+                    totals.products[key] = {
+                        product: p?.product || "?",
+                        unit: p?.unit || "",
+                        total: 0,
+                    };
+                }
+
+                totals.products[key].total += sumNumber(p?.quantidadeSolicitada);
+            }
+        }
+
+        const productsArr = Object.values(totals.products).sort((a, b) =>
+            String(a.product).localeCompare(String(b.product))
+        );
+
+        return { ...totals, productsArr };
+    };
+
+    const sections = useMemo(() => {
+        const base = Array.isArray(visibleBaseData) ? visibleBaseData : [];
+
+        const groups = {
+            Operação: [],
+            Sólido: [],
+            Líquido: [],
+        };
+
+        for (const app of base) {
+            const kind = getAppKind(app);
+            groups[kind].push(app);
+        }
+
+        const order = ["Operação", "Sólido", "Líquido"];
+
+        return order
+            .map((title) => {
+                const items = groups[title] || [];
+                return {
+                    title,
+                    items,
+                    totals: buildGroupTotals(items),
+                };
+            })
+            .filter((sec) => sec.items.length > 0);
+    }, [visibleBaseData]);
+
+    const escapeFarmName = (s = "") =>
+        s.replace("Fazenda", "Projeto").replace("Cacique", "Cacíque");
+
+    const buildParcelasPayload = (cardData, mapPlotDataParam, selectedParcelasParam = [], ciclo) => {
+        const selected = Array.isArray(selectedParcelasParam) ? selectedParcelasParam : [];
+
+        const filteredParcelas =
+            selected.length > 0
+                ? selected.map((p) => p.parcela)
+                : (cardData?.parcelas ?? []).map((p) => p.parcela);
+
+        const farmName = cardData?.farmName ?? "";
+        const dataFromMap = newMapArr(mapPlotDataParam ?? []);
+
+        const filteredFarmArr = dataFromMap
+            .filter(
+                (d) =>
+                    (d?.farmName ?? "")
+                        .replace("Fazenda", "Projeto")
+                        .replace("Cacique", "Cacíque") === escapeFarmName(farmName)
+            )
+            .filter((parc) => parc?.ciclo === ciclo && filteredParcelas.includes(parc?.talhao));
+
+        const parcelas = filteredFarmArr.map((item) => {
+            const coords = (item?.coords ?? []).map((p) => ({
+                latitude: Number(p.latitude),
+                longitude: Number(p.longitude),
+            }));
+
+            return {
+                talhao: item?.talhao ?? "Sem nome",
+                ciclo: item?.ciclo ?? "Sem Ciclo",
+                coords,
+            };
+        });
+
+        return { parcelas };
+    };
+
+    const getShareFarmTitle = (farmName = "") => {
+        const clean = String(farmName || farm || "")
+            .replace(/^Fazenda\s*/i, "")
+            .trim();
+
+        return clean ? `${clean}` : "";
+    };
+
+    const getShareFileName = (farmName = "", code = "") => {
+        const farmPart = slugify(
+            String(farmName || farm || "fazenda")
+                .replace(/^Fazenda\s*/i, "")
+                .trim()
+        );
+
+        const codePart = slugify(String(code || ""));
+        return codePart ? `${farmPart}-${codePart}.png` : `${farmPart}.png`;
+    };
+
+    const getDisplayCodeForShare = (cardData) => {
+        if (!cardData?.isConsolidated) return cardData?.code || "";
+        return `${cardData?.codes?.length || 0}_aps`;
+    };
+
+    const iconDict = [
+        { cultura: "Feijão", icon: require("../../utils/assets/icons/beans2.png"), alt: "feijao" },
+        { cultura: "Arroz", icon: require("../../utils/assets/icons/rice.png"), alt: "arroz" },
+        { cultura: "Soja", icon: require("../../utils/assets/icons/soy.png"), alt: "soja" },
+        { cultura: undefined, icon: require("../../utils/assets/icons/question.png"), alt: "?" },
+    ];
+
+    const filteredIcon = (data) => {
+        const filtered = iconDict.filter((dictD) => dictD.cultura === data);
+
+        if (filtered.length > 0) {
+            return filtered[0].icon;
+        }
+        return iconDict[3].icon;
+    };
+
+    const getCultura = (dataCult) => filteredIcon(dataCult.cultura);
 
     const handleExprotData = () => {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy)
-        const allApps = data.filter((farmName) => farmName.farmName === farm)
-        console.log('AllApss', allApps[0]?.parcelas)
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+
+        const allApps = data.filter((farmName) => farmName.farmName === farm);
+
         const apParcelasIndex = (allApps ?? []).map((ap) => ({
             idAp: ap?.idAp,
             parcelasIds: (ap?.parcelas ?? [])
@@ -107,86 +484,71 @@ const CardFarmBox = ({ route, navigation }) => {
                 .filter((id) => id != null),
         }));
 
-        // flatten + unique
-        const onlyIds = Array.from(
-            new Set(
-                apParcelasIndex.flatMap((ap) => ap.parcelasIds)
-            )
-        );
-
-        console.log("onlyIds:", onlyIds);
+        const onlyIds = Array.from(new Set(apParcelasIndex.flatMap((ap) => ap.parcelasIds)));
 
         const params = {
             farm: allApps[0]?.farmId,
             apParcelasIndex,
             onlyIds,
         };
-        dispatch(exportPdf(params))
-        navigation.navigate('FarmBoxFilterApps', { data: data, farm: farm })
-    }
 
-
+        dispatch(exportPdf(params));
+        navigation.navigate("FarmBoxFilterApps", { data: data, farm: farm });
+    };
 
     useEffect(() => {
         const unsubscribeFocus = navigation.addListener("focus", () => {
             const currentStack = navigation.getState();
-            const stackName = currentStack.routes[0]['name']
+            const stackName = currentStack.routes[0]["name"];
 
-            console.log("Now on FarmBoxStack", navigation);
             stackNavigator.setOptions({
-                title: stackName !== 'FarmBoxStack' ? 'FarmBox' : farm?.replace('Fazenda ', ''),
+                title: stackName !== "FarmBoxStack" ? "FarmBox" : farm?.replace("Fazenda ", ""),
                 headerShadowVisible: false,
                 headerRight: ({ tintColor }) => (
-                    <View style={{ flexDirection: "row", alignItems: 'center', paddingRight: 20, flex: 1 }}>
+                    <View style={{ flexDirection: "row", alignItems: "center", paddingRight: 20, flex: 1 }}>
                         <IconButton
                             type={"awesome"}
-                            icon={'print'}
+                            icon={"print"}
                             color={tintColor}
                             size={22}
                             onPress={() => {
-                                console.log('trigger here')
-                                handleExprotData()
+                                handleExprotData();
                             }}
                             btnStyles={{ marginLeft: 5, marginTop: 10 }}
                         />
                     </View>
                 ),
-                headerLeft: stackName === 'FarmBoxStack'
-                    ? (props) => (
-                        <HeaderBackButton
-                            {...props}
-                            label="Voltar"  // Directly set label
-                            onPress={() => {
-                                navigation.navigate('FarmBoxStack');
-                            }}
-                        />
-                    )
-                    : null, // No arrow-back if on FarmBoxStack
+                headerLeft:
+                    stackName === "FarmBoxStack"
+                        ? (props) => (
+                            <HeaderBackButton
+                                {...props}
+                                label="Voltar"
+                                onPress={() => {
+                                    navigation.navigate("FarmBoxStack");
+                                }}
+                            />
+                        )
+                        : null,
             });
-            // Add logic specific to FarmBoxStack screen
         });
 
-        return unsubscribeFocus
-
+        return unsubscribeFocus;
     }, [navigation, route, farmData]);
-
-
-
-    const wait = (ms = 120) => new Promise((resolve) => setTimeout(resolve, ms));
 
     const handleShareCard = async (cardData) => {
         try {
             await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
 
-            const ref = cardShareRefs.current[cardData.code];
-            if (!ref) {
+            const shotRef = cardShareRefs.current[cardData.cardKey];
+            if (!shotRef) {
                 Alert.alert("Atenção", "Não foi possível gerar a imagem deste card.");
                 return;
             }
 
             await wait(180);
 
-            const tmpUri = await captureRef(ref, {
+            const tmpUri = await captureRef(shotRef, {
                 format: "png",
                 quality: 1,
                 result: "tmpfile",
@@ -198,7 +560,11 @@ const CardFarmBox = ({ route, navigation }) => {
                 return;
             }
 
-            const fileName = getShareFileName(cardData?.farmName, cardData?.code);
+            const fileName = getShareFileName(
+                cardData?.farmName,
+                getDisplayCodeForShare(cardData)
+            );
+
             const basePath = FileSystem.cacheDirectory || FileSystem.documentDirectory;
             const finalUri = `${basePath}${fileName}`;
 
@@ -218,173 +584,91 @@ const CardFarmBox = ({ route, navigation }) => {
         }
     };
 
-
-    const formatNumber = (number, decimals = 2) => {
-        return number?.toLocaleString("pt-br", {
-            minimumFractionDigits: decimals,
-            maximumFractionDigits: decimals
-        })
-    }
-    const formatNumberProds = number => {
-        return number?.toLocaleString("pt-br", {
-            minimumFractionDigits: 3,
-            maximumFractionDigits: 3
-        })
-    }
-
-    const handleOpen = (code) => {
+    const handleOpen = (cardKey) => {
         setShowAps((prev) => {
             const next = { ...prev };
-            const isOpen = !!next[code];
+            const isOpen = !!next[cardKey];
 
             if (isOpen) {
-                delete next[code];
-                // se fechou o card ativo, limpa activeCode
-                if (activeCode === code) setActiveCode(null);
+                delete next[cardKey];
+                if (activeCardKey === cardKey) setActiveCardKey(null);
             } else {
-                next[code] = true;
-                setActiveCode(code);
+                next[cardKey] = true;
+                setActiveCardKey(cardKey);
             }
+
             return next;
         });
-
-        // REMOVER: isso é o que reseta tudo ao abrir outro card
-        // setSelectedParcelas([])
 
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
     };
 
-
-    const handleSelected = (code, parcela) => {
+    const handleSelected = (cardKey, parcela) => {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
 
-        setSelectedParcelasByCode((prev) => {
-            const current = prev[code] || [];
+        setSelectedParcelasByCardKey((prev) => {
+            const current = prev[cardKey] || [];
             const exists = current.some((item) => item.parcelaId === parcela.parcelaId);
 
             const nextArr = exists
                 ? current.filter((item) => item.parcelaId !== parcela.parcelaId)
                 : [...current, parcela];
 
-            return { ...prev, [code]: nextArr };
+            return { ...prev, [cardKey]: nextArr };
         });
     };
 
-    // totalSelected passa a ser do card ativo
     useEffect(() => {
-        if (!activeCode) {
+        if (!activeCardKey) {
             setTotalSelected(0);
             return;
         }
 
-        const selected = getSelectedFor(activeCode);
+        const selected = getSelectedFor(activeCardKey);
         const total =
             selected.length > 0
-                ? selected.reduce((acc, curr) => acc + (curr.areaSolicitada - curr.areaAplicada), 0)
+                ? selected.reduce(
+                    (acc, curr) => acc + (sumNumber(curr.areaSolicitada) - sumNumber(curr.areaAplicada)),
+                    0
+                )
                 : 0;
 
         setTotalSelected(total);
-    }, [activeCode, selectedParcelasByCode]);
+    }, [activeCardKey, selectedParcelasByCardKey]);
 
-
-
-    const iconDict = [
-        { cultura: "Feijão", icon: require('../../utils/assets/icons/beans2.png'), alt: "feijao" },
-        { cultura: "Arroz", icon: require('../../utils/assets/icons/rice.png'), alt: "arroz" },
-        { cultura: "Soja", icon: require('../../utils/assets/icons/soy.png'), alt: "soja" },
-        { cultura: undefined, icon: require('../../utils/assets/icons/question.png'), alt: "?" }
-    ];
-
-    const filteredIcon = (data) => {
-        const filtered = iconDict.filter((dictD) => dictD.cultura === data);
-
-        if (filtered.length > 0) {
-            return filtered[0].icon;
-        }
-        return iconDict[3].icon;
-        // return "";
-    };
-    const getCultura = (dataCult) => filteredIcon(dataCult.cultura)
-
-    const handleMapApi = (data) => {
+    const handleMapApi = (cardData) => {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
 
-        const selected = getSelectedFor(data.code); // seleção do card
         navigation.navigate("MapsCreenStack", {
-            data,
-            selectedParcelas: getSelectedFor(data.code),
+            data: cardData,
+            selectedParcelas: getSelectedFor(cardData.cardKey),
+            apsCodes: cardData?.codes || [],
         });
     };
 
-
-    const handleKmlGenerator = async (data, mapPlotData) => {
+    const handleKmlGenerator = async (cardData, mapPlotDataParam) => {
         if (isSharing) return;
         setIsSharing(true);
 
         try {
             await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
 
-            const ciclo = data?.ciclo;
-            const filteredMapPlotData = mapPlotData.filter(
+            const ciclo = cardData?.ciclo;
+            const filteredMapPlotData = mapPlotDataParam.filter(
                 (p) => Number(p.ciclo__ciclo) === Number(ciclo)
             );
 
-            const selected = getSelectedFor(data.code); // <-- pega a seleção do card
+            const selected = getSelectedFor(cardData.cardKey);
 
-            await exportPolygonsAsKML(data, filteredMapPlotData, selected);
+            await exportPolygonsAsKML(cardData, filteredMapPlotData, selected);
         } finally {
             setIsSharing(false);
         }
     };
 
-
-    const escapeFarmName = (s = '') =>
-        s.replace('Fazenda', 'Projeto').replace('Cacique', 'Cacíque');
-
-
-    const buildParcelasPayload = (data, mapPlotData, selectedParcelasParam = [], ciclo) => {
-        const selected = Array.isArray(selectedParcelasParam) ? selectedParcelasParam : [];
-
-        // Se selecionou algo, exporta só as selecionadas. Se não, exporta todas do card.
-        const filteredParcelas =
-            selected.length > 0
-                ? selected.map((p) => p.parcela)
-                : (data?.parcelas ?? []).map((p) => p.parcela);
-
-        const farmName = data?.farmName ?? "";
-        const dataFromMap = newMapArr(mapPlotData ?? []);
-
-        const filteredFarmArr = dataFromMap
-            .filter(
-                (d) =>
-                    (d?.farmName ?? "")
-                        .replace("Fazenda", "Projeto")
-                        .replace("Cacique", "Cacíque") ===
-                    escapeFarmName(farmName)
-            )
-            .filter((parc) => parc?.ciclo === ciclo && filteredParcelas.includes(parc?.talhao));
-
-
-
-        const parcelas = filteredFarmArr.map((item) => {
-            const coords = (item?.coords ?? []).map((p) => ({
-                latitude: Number(p.latitude),
-                longitude: Number(p.longitude),
-            }));
-
-            return {
-                talhao: item?.talhao ?? "Sem nome",
-                ciclo: item?.ciclo ?? 'Sem Ciclo',
-                coords,
-            };
-        });
-
-        return { parcelas };
-    };
-
     const handleKmlGeneratorUnique = async (
-        data,
-        mapPlotData,
+        cardData,
+        mapPlotDataParam,
         selectedParcelasParam,
         { tol_m = 35.0, corridor_width_m = 1.0 } = {}
     ) => {
@@ -394,16 +678,18 @@ const CardFarmBox = ({ route, navigation }) => {
         try {
             await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
 
-            // Se não vier seleção, usa a seleção do card (por code)
             const selected =
                 Array.isArray(selectedParcelasParam) && selectedParcelasParam.length >= 0
                     ? selectedParcelasParam
-                    : getSelectedFor(data.code);
+                    : getSelectedFor(cardData.cardKey);
 
-
-            const ciclo_selected = data?.ciclo
-            const { parcelas } = buildParcelasPayload(data, mapPlotData, selected, ciclo_selected);
-
+            const ciclo_selected = cardData?.ciclo;
+            const { parcelas } = buildParcelasPayload(
+                cardData,
+                mapPlotDataParam,
+                selected,
+                ciclo_selected
+            );
 
             if (!parcelas?.length) {
                 Alert.alert("Atenção", "Não há polígonos para exportar.");
@@ -411,18 +697,23 @@ const CardFarmBox = ({ route, navigation }) => {
             }
 
             const body = {
-                farmName: data?.farmName ?? "",
+                farmName: cardData?.farmName ?? "",
                 parcelas,
                 tol_m,
                 corridor_width_m,
+                apsCodes: cardData?.codes || [],
             };
 
             const kmlText = await postKmlMerge(LINK, EXPO_PUBLIC_REACT_APP_DJANGO_TOKEN, body);
 
             const basePath = FileSystem.cacheDirectory || FileSystem.documentDirectory;
-            const farmName = (data?.farmName || "fazenda").replace("Fazenda ", "Projeto ");
+            const farmName = (cardData?.farmName || "fazenda").replace("Fazenda ", "Projeto ");
             const farmSlug = slugify(farmName);
-            const codeSlug = slugify(String(data?.code || ""));
+            const codeSlug = slugify(
+                cardData?.isConsolidated
+                    ? `${cardData?.codes?.length || 0}_aps`
+                    : String(cardData?.code || "")
+            );
             const filename = codeSlug ? `${farmSlug}_${codeSlug}.kml` : `${farmSlug}.kml`;
             const filePath = `${basePath}${filename}`;
 
@@ -431,7 +722,9 @@ const CardFarmBox = ({ route, navigation }) => {
             });
 
             const mimeType =
-                Platform.OS === "android" ? "application/xml" : "application/vnd.google-earth.kml+xml";
+                Platform.OS === "android"
+                    ? "application/xml"
+                    : "application/vnd.google-earth.kml+xml";
 
             if (await Sharing.isAvailableAsync()) {
                 try {
@@ -458,53 +751,11 @@ const CardFarmBox = ({ route, navigation }) => {
         }
     };
 
-
-
-    // helper simples p/ tirar acentos e espaços
-    const slugify = (s = "") =>
-        s
-            .normalize("NFD")
-            .replace(/[\u0300-\u036f]/g, "")  // remove diacríticos
-            .replace(/\s+/g, "_")
-            .replace(/[^\w.-]/g, "")          // só letras, números, _ . -
-            .replace(/_+/g, "_")
-            .replace(/^_+|_+$/g, "");
-
-
-
-
-    useScrollToTop(ref);
-
-    useScrollToTop(
-        useRef({
-            scrollToTop: () => ref?.current?.scrollTo({ y: 0 })
-        })
-    );
-
-    const getShareFarmTitle = (farmName = "") => {
-        const clean = String(farmName || farm || "")
-            .replace(/^Fazenda\s*/i, "")
-            .trim();
-
-        return clean ? `${clean}` : "";
-    };
-
-    const getShareFileName = (farmName = "", code = "") => {
-        const farmPart = slugify(
-            String(farmName || farm || "fazenda")
-                .replace(/^Fazenda\s*/i, "")
-                .trim()
-        );
-
-        const codePart = slugify(String(code || ""));
-        return codePart ? `${farmPart}-${codePart}.png` : `${farmPart}.png`;
-    };
-
     const handleFilterProps = () => {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy)
-        dispatch(setFarmboxSearchBar(!showSearch))
-        dispatch(setFarmboxSearchQuery(""))
-    }
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+        dispatch(setFarmboxSearchBar(!showSearch));
+        dispatch(setFarmboxSearchQuery(""));
+    };
 
     useEffect(() => {
         function removeAccents(str) {
@@ -514,19 +765,20 @@ const CardFarmBox = ({ route, navigation }) => {
         const filterApplications = (applications) => {
             if (searchQuery?.trim() === "") {
                 if (data) {
-                    const newData = data.filter((farmName) => farmName.farmName === farm)
-                    setfarmData(newData)
+                    const newData = data.filter((farmName) => farmName.farmName === farm);
+                    setfarmData(newData);
                 }
-                // Return the full array if the search query is empty
-                // setfarmData(applications);
             } else {
                 const filteredData = applications
                     .filter((farmName) => farmName.farmName === farm)
                     .filter((data) =>
                         data.prods.some((prod) =>
-                            removeAccents(prod.product)?.toLowerCase().includes(removeAccents(searchQuery)?.toLowerCase())
+                            removeAccents(prod.product)
+                                ?.toLowerCase()
+                                .includes(removeAccents(searchQuery)?.toLowerCase())
                         )
-                    )
+                    );
+
                 setfarmData(filteredData);
             }
         };
@@ -534,148 +786,37 @@ const CardFarmBox = ({ route, navigation }) => {
         filterApplications(data);
     }, [searchQuery, data]);
 
-    // useEffect(() => {
-    //     if (data) {
-    //         const newData = data.filter((farmName) => farmName.farmName === farm)
-    //         setfarmData(newData)
-    //     }
-    // }, [data]);
-
-    // useEffect(() => {
-    //     if (data) {
-    //         const newData = data.filter((farmName) => farmName.farmName === farm)
-    //         setfarmData(newData)
-    //     }
-    // }, []);
-
     const getData = async () => {
         setIsLoading(true);
         try {
-            const response = await fetch(
-                `${NODELINK}/data-open-apps-fetch-app/`,
-                {
-                    headers: {
-                        Authorization: `Token ${EXPO_PUBLIC_REACT_APP_DJANGO_TOKEN}`,
-                        "Content-Type": "application/json"
-                    },
-                    method: "GET"
-                }
-            );
+            const response = await fetch(`${NODELINK}/data-open-apps-fetch-app/`, {
+                headers: {
+                    Authorization: `Token ${EXPO_PUBLIC_REACT_APP_DJANGO_TOKEN}`,
+                    "Content-Type": "application/json",
+                },
+                method: "GET",
+            });
+
             if (response.status === 200) {
-                console.log('atualização OK')
-                const data = await response.json();
-                dispatch(setFarmBoxData(data))
-                console.log('data here: ', data)
-                const newData = data.data.filter((farmName) => farmName.farmName === farm)
-                setfarmData(newData)
+                const payload = await response.json();
+                dispatch(setFarmBoxData(payload));
+                const newData = payload.data.filter((farmName) => farmName.farmName === farm);
+                setfarmData(newData);
             }
         } catch (error) {
             console.log("erro ao pegar os dados", error);
-            Alert.alert(
-                `Problema na API', 'possível erro de internet para pegar os dados ${error}`
-            );
+            Alert.alert(`Problema na API', 'possível erro de internet para pegar os dados ${error}`);
         } finally {
             setIsLoading(false);
         }
-    }
-
-    // ---------------------------
-    // Classificação do tipo do APP
-    // ---------------------------
-    const getAppKind = (app) => {
-        const prods = Array.isArray(app?.prods) ? app.prods : [];
-
-        // 1 insumo no array => Operação (como você definiu)
-        if (prods.length <= 1) return "Operação";
-
-        const semOperacao = prods.filter((p) => (p?.type || "") !== "Operação");
-
-        if (semOperacao.length === 1) return "Sólido";
-        return "Líquido";
     };
 
-    // ---------------------------
-    // Totais do header por grupo
-    // (áreas + quantidades por produto)
-    // ---------------------------
-    const sumNumber = (v) => {
-        const n = Number(v);
-        return Number.isFinite(n) ? n : 0;
-    };
-
-    const buildGroupTotals = (apps = []) => {
-        const totals = {
-            count: apps.length,
-            areaSolicitada: 0,
-            areaAplicada: 0,
-            saldoAreaAplicar: 0,
-            // totais de produtos (somando "quantidadeSolicitada" do payload)
-            products: {}, // key: `${product}|${unit}` => { product, unit, total }
-        };
-
-        for (const app of apps) {
-            totals.areaSolicitada += sumNumber(app?.areaSolicitada);
-            totals.areaAplicada += sumNumber(app?.areaAplicada);
-
-            // usa o campo pronto se existir; se não, calcula
-            const saldo =
-                app?.saldoAreaAplicar != null
-                    ? sumNumber(app?.saldoAreaAplicar)
-                    : Math.max(sumNumber(app?.areaSolicitada) - sumNumber(app?.areaAplicada), 0);
-
-            totals.saldoAreaAplicar += saldo;
-
-            const prods = Array.isArray(app?.prods) ? app.prods : [];
-            for (const p of prods) {
-                // se você NÃO quiser contabilizar "Operação" nas quantidades, mantenha esse filtro
-                if ((p?.type || "") === "Operação") continue;
-
-                const key = `${p?.product || "?"}|${p?.unit || ""}`;
-                if (!totals.products[key]) {
-                    totals.products[key] = { product: p?.product || "?", unit: p?.unit || "", total: 0 };
-                }
-                totals.products[key].total += sumNumber(p?.quantidadeSolicitada);
-            }
-        }
-
-        // vira array para renderizar
-        const productsArr = Object.values(totals.products).sort((a, b) =>
-            String(a.product).localeCompare(String(b.product))
-        );
-
-        return { ...totals, productsArr };
-    };
-
-    // ---------------------------
-    // Seções agrupadas (useMemo)
-    // ---------------------------
-    const sections = useMemo(() => {
-        const base = Array.isArray(farmData) ? farmData : [];
-
-        const groups = {
-            "Operação": [],
-            "Sólido": [],
-            "Líquido": [],
-        };
-
-        for (const app of base) {
-            const kind = getAppKind(app);
-            groups[kind].push(app);
-        }
-
-        const order = ["Operação", "Sólido", "Líquido"];
-
-        return order
-            .map((title) => {
-                const items = groups[title] || [];
-                return {
-                    title,
-                    items,
-                    totals: buildGroupTotals(items),
-                };
-            })
-            .filter((sec) => sec.items.length > 0);
-    }, [farmData]);
+    useScrollToTop(ref);
+    useScrollToTop(
+        useRef({
+            scrollToTop: () => ref?.current?.scrollTo({ y: 0 }),
+        })
+    );
 
     return (
         <>
@@ -687,12 +828,50 @@ const CardFarmBox = ({ route, navigation }) => {
                         onChangeText={(e) => dispatch(setFarmboxSearchQuery(e))}
                     />
                 )}
+
+                <View style={styles.modeSwitchWrap}>
+                    <Pressable
+                        style={[
+                            styles.modeButton,
+                            viewMode === "normal" && styles.modeButtonActive,
+                        ]}
+                        onPress={() => handleChangeViewMode("normal")}
+                    >
+                        <Text
+                            style={[
+                                styles.modeButtonText,
+                                viewMode === "normal" && styles.modeButtonTextActive,
+                            ]}
+                        >
+                            APs
+                        </Text>
+                    </Pressable>
+
+                    <Pressable
+                        style={[
+                            styles.modeButton,
+                            viewMode === "consolidated" && styles.modeButtonActive,
+                        ]}
+                        onPress={() => handleChangeViewMode("consolidated")}
+                    >
+                        <Text
+                            style={[
+                                styles.modeButtonText,
+                                viewMode === "consolidated" && styles.modeButtonTextActive,
+                            ]}
+                        >
+                            Consolidado
+                        </Text>
+                    </Pressable>
+                </View>
+
                 {isLoading && (
                     <View style={styles.customRefreshContainer}>
                         <ActivityIndicator size="large" color="#1E90FF" />
                         <Text style={styles.refreshText}>Atualizando...</Text>
                     </View>
                 )}
+
                 <SectionList
                     ref={ref}
                     sections={sections.map((s) => ({
@@ -700,7 +879,7 @@ const CardFarmBox = ({ route, navigation }) => {
                         totals: s.totals,
                         data: s.items,
                     }))}
-                    keyExtractor={(item, index) => item?.code || `${index}`}
+                    keyExtractor={(item, index) => item?.cardKey || `${index}`}
                     stickySectionHeadersEnabled
                     contentInsetAdjustmentBehavior="automatic"
                     style={{ marginBottom: Platform.OS === "android" ? 20 : 0 }}
@@ -716,16 +895,23 @@ const CardFarmBox = ({ route, navigation }) => {
                         paddingBottom: tabBarHeight + (showSearch ? 40 : -15),
                     }}
                     renderSectionHeader={({ section }) => (
-                        // STICKY SÓ ESTA LINHA
                         <View style={styles.sectionStickyRow}>
-                            <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "baseline" }}>
+                            <View
+                                style={{
+                                    flexDirection: "row",
+                                    justifyContent: "space-between",
+                                    alignItems: "baseline",
+                                }}
+                            >
                                 <Text style={styles.sectionTitle}>{section.title}</Text>
-                                <Text style={styles.sectionSubtitle}>{section.totals.count} aplicações</Text>
+                                <Text style={styles.sectionSubtitle}>
+                                    {section.totals.count} {viewMode === "consolidated" ? "grupos" : "aplicações"}
+                                </Text>
                             </View>
                         </View>
                     )}
-                    renderItem={({ item: data, index, section }) => {
-                        const selectedHere = getSelectedFor(data.code);
+                    renderItem={({ item: cardData, index, section }) => {
+                        const selectedHere = getSelectedFor(cardData.cardKey);
 
                         const totals = selectedHere.reduce(
                             (acc, curr) => {
@@ -748,15 +934,12 @@ const CardFarmBox = ({ route, navigation }) => {
                         const isLastItem =
                             isLastSection && index === (section?.data?.length || 0) - 1;
 
-                        const productsArr = Array.isArray(section?.totals?.productsArr) ? section.totals.productsArr : [];
-
                         return (
                             <Animated.View
                                 entering={FadeInRight.duration(300)}
                                 exiting={FadeOut.duration(300)}
                                 layout={Layout.springify()}
                             >
-                                {/* NÃO-STICKY: KPIs + chips aparecem 1x por grupo e rolam normalmente */}
                                 {index === 0 && (
                                     <View style={styles.sectionSummary}>
                                         <View style={styles.sectionKpis}>
@@ -781,28 +964,28 @@ const CardFarmBox = ({ route, navigation }) => {
                                         </View>
                                     </View>
                                 )}
+
                                 <ViewShot
-                                    ref={(ref) => {
-                                        if (ref) cardShareRefs.current[data.code] = ref;
+                                    ref={(shotRef) => {
+                                        if (shotRef) cardShareRefs.current[cardData.cardKey] = shotRef;
                                     }}
                                     options={{
                                         format: "png",
                                         quality: 1,
                                         result: "tmpfile",
                                     }}
-                                    style={{}}
                                 >
                                     <View style={styles.captureInner}>
-
-                                        {/* CARD ORIGINAL */}
                                         <Pressable
                                             collapsable={false}
-                                            style={({ pressed }) => [
+                                            style={[
                                                 styles.mainContainerAll,
                                                 {
                                                     marginTop: index !== 0 && 10,
-                                                    backgroundColor: !showAps[data.code] ? backgroundColorCard : Colors.secondary[200],
-                                                    opacity: !showAps[data.code] ? 0.8 : 1,
+                                                    backgroundColor: !showAps[cardData.cardKey]
+                                                        ? backgroundColorCard
+                                                        : Colors.secondary[200],
+                                                    opacity: !showAps[cardData.cardKey] ? 0.8 : 1,
                                                     marginBottom: isLastItem ? 80 : 0,
                                                 },
                                             ]}
@@ -810,20 +993,32 @@ const CardFarmBox = ({ route, navigation }) => {
                                             <View
                                                 style={[
                                                     styles.infoContainer,
-                                                    { backgroundColor: showAps[data.code] ? Colors.primary500 : Colors.primary800 },
+                                                    {
+                                                        backgroundColor: showAps[cardData.cardKey]
+                                                            ? Colors.primary500
+                                                            : Colors.primary800,
+                                                    },
                                                 ]}
                                             >
                                                 <Text style={{ color: "whitesmoke", fontWeight: "bold" }}>
                                                     Área:{" "}
-                                                    <Text style={{ color: Colors.secondary[300] }}>{formatNumber(data.areaSolicitada)}</Text>
+                                                    <Text style={{ color: Colors.secondary[300] }}>
+                                                        {formatNumber(cardData.areaSolicitada)}
+                                                    </Text>
                                                 </Text>
+
                                                 <Text style={{ color: "whitesmoke", fontWeight: "bold" }}>
                                                     Aplicado:{" "}
-                                                    <Text style={{ color: Colors.secondary[300] }}>{formatNumber(data.areaAplicada)}</Text>
+                                                    <Text style={{ color: Colors.secondary[300] }}>
+                                                        {formatNumber(cardData.areaAplicada)}
+                                                    </Text>
                                                 </Text>
+
                                                 <Text style={{ color: "whitesmoke", fontWeight: "bold" }}>
                                                     Saldo:{" "}
-                                                    <Text style={{ color: Colors.secondary[300] }}>{formatNumber(data.saldoAreaAplicar)}</Text>
+                                                    <Text style={{ color: Colors.secondary[300] }}>
+                                                        {formatNumber(cardData.saldoAreaAplicar)}
+                                                    </Text>
                                                 </Text>
                                             </View>
 
@@ -833,62 +1028,112 @@ const CardFarmBox = ({ route, navigation }) => {
                                                     pressed && styles.pressed,
                                                     {
                                                         marginTop: indexParent === 0 && 0,
-                                                        backgroundColor: !showAps[data.code] ? "whitesmoke" : Colors.secondary[200],
+                                                        backgroundColor: !showAps[cardData.cardKey]
+                                                            ? "whitesmoke"
+                                                            : Colors.secondary[200],
                                                     },
                                                 ]}
-                                                onPress={handleOpen.bind(this, data.code)}
+                                                onPress={() => handleOpen(cardData.cardKey)}
                                             >
                                                 <View style={styles.headerContainer}>
                                                     <View>
-                                                        <Text style={[styles.headerTitle, { color: Colors.primary[600] }]}>
-                                                            {" "}
-                                                            {data?.code?.split("AP")}
-                                                        </Text>
-                                                        <Text style={[styles.headerTitle, styles.dateTile]}>
-                                                            {" "}
-                                                            {data?.dateAp?.split("-").reverse().join("/")}
+                                                        <Text
+                                                            style={[
+                                                                styles.headerTitle,
+                                                                { color: Colors.primary[600] },
+                                                            ]}
+                                                        >
+                                                            {cardData?.isConsolidated
+                                                                ? cardData?.displayCode
+                                                                : getApCode(cardData?.code)}
                                                         </Text>
                                                     </View>
 
-                                                    <View style={{ alignItems: "center" }}>
-                                                        <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
-                                                            <Text style={styles.headerTitle}> {data.operation}</Text>
+                                                    <View style={{ alignItems: "center", flex: 1, paddingHorizontal: 8 }}>
+                                                        <View
+                                                            style={{
+                                                                flexDirection: "row",
+                                                                alignItems: "center",
+                                                                gap: 5,
+                                                            }}
+                                                        >
+                                                            {!cardData.isConsolidated && (
+                                                                <Text style={styles.headerTitle}>
+                                                                    {cardData.operation}
+                                                                </Text>
+                                                            )}
                                                             <View style={styles.shadowContainer}>
                                                                 <Image
-                                                                    source={getCultura(data)}
-                                                                    style={{ width: 20, height: 20, resizeMode: "contain" }}
+                                                                    source={getCultura(cardData)}
+                                                                    style={{
+                                                                        width: 20,
+                                                                        height: 20,
+                                                                        resizeMode: "contain",
+                                                                    }}
                                                                 />
                                                             </View>
                                                         </View>
 
                                                         <Text style={styles.headerFarmInline}>
-                                                            {getShareFarmTitle(data?.farmName)}
+                                                            {getShareFarmTitle(cardData?.farmName)}
                                                         </Text>
+
+                                                        {cardData?.isConsolidated && (
+                                                            <Text style={styles.apCodesPreview}>
+                                                                {(cardData?.aps || []).map((ap) => ap.code).join(" • ")}
+                                                            </Text>
+                                                        )}
                                                     </View>
 
                                                     <View style={styles.progressContainer}>
                                                         <Progress.Pie
                                                             size={30}
                                                             indeterminate={false}
-                                                            progress={data.percent}
-                                                            color={data.percentColor === "#E4D00A" ? Colors.gold[700] : data.percentColor}
+                                                            progress={cardData.percent}
+                                                            color={
+                                                                cardData.percentColor === "#E4D00A"
+                                                                    ? Colors.gold[700]
+                                                                    : cardData.percentColor || Colors.primary[500]
+                                                            }
                                                         />
                                                     </View>
                                                 </View>
                                             </Pressable>
 
-                                            {showAps[data.code] && (
+
+
+                                            {showAps[cardData.cardKey] && (
                                                 <Animated.View
                                                     entering={FadeInUp.duration(50)}
                                                     style={styles.bodyContainer}
                                                 >
+                                                    <Divider color="whitesmoke" style={{ marginHorizontal: 5, marginVertical: 10 }} />
                                                     <View style={styles.bodyContainer}>
-                                                        <View style={styles.parcelasContainer}>
-                                                            {data?.parcelas?.map((parcela) => {
-                                                                const uniKey = data.idAp + parcela.parcela;
+                                                        {cardData?.isConsolidated && (
+                                                            <View style={styles.codesContainer}>
+                                                                <Text style={styles.codesTitle}>APs consolidadas</Text>
 
-                                                                const selectedHere = getSelectedFor(data.code);
-                                                                const isSelected = selectedHere.some((f) => f.parcelaId === parcela.parcelaId);
+                                                                <View style={styles.codesWrap}>
+                                                                    {(cardData?.aps || []).map((ap) => (
+                                                                        <View key={ap.code} style={styles.apItemCard}>
+                                                                            <Text style={styles.apItemCode}>{ap.code}</Text>
+                                                                            <Text style={styles.apItemOperation}>{ap.operation}</Text>
+                                                                        </View>
+                                                                    ))}
+                                                                </View>
+                                                            </View>
+                                                        )}
+
+                                                        <View style={styles.parcelasContainer}>
+                                                            {cardData?.parcelas?.map((parcela) => {
+                                                                const uniKey =
+                                                                    cardData.cardKey +
+                                                                    "-" +
+                                                                    (parcela.parcelaId || parcela.parcela);
+
+                                                                const isSelected = selectedHere.some(
+                                                                    (f) => f.parcelaId === parcela.parcelaId
+                                                                );
 
                                                                 return (
                                                                     <Pressable
@@ -896,15 +1141,32 @@ const CardFarmBox = ({ route, navigation }) => {
                                                                         style={[
                                                                             styles.parcelasView,
                                                                             isSelected && styles.selectedParcelas,
-                                                                            { backgroundColor: parcela.fillColorParce },
+                                                                            {
+                                                                                backgroundColor:
+                                                                                    parcela.fillColorParce,
+                                                                            },
                                                                         ]}
-                                                                        onPress={() => handleSelected(data.code, parcela)}
+                                                                        onPress={() =>
+                                                                            handleSelected(
+                                                                                cardData.cardKey,
+                                                                                parcela
+                                                                            )
+                                                                        }
                                                                     >
-                                                                        {isSelected && <View style={styles.selectedOverlay} pointerEvents="none" />}
+                                                                        {isSelected && (
+                                                                            <View
+                                                                                style={styles.selectedOverlay}
+                                                                                pointerEvents="none"
+                                                                            />
+                                                                        )}
 
                                                                         <Text
                                                                             style={{
-                                                                                color: parcela.fillColorParce === "#E4D00A" ? "black" : "whitesmoke",
+                                                                                color:
+                                                                                    parcela.fillColorParce ===
+                                                                                        "#E4D00A"
+                                                                                        ? "black"
+                                                                                        : "whitesmoke",
                                                                                 fontWeight: "bold",
                                                                             }}
                                                                         >
@@ -912,14 +1174,22 @@ const CardFarmBox = ({ route, navigation }) => {
                                                                         </Text>
                                                                         <Text
                                                                             style={{
-                                                                                color: parcela.fillColorParce === "#E4D00A" ? "black" : "whitesmoke",
+                                                                                color:
+                                                                                    parcela.fillColorParce ===
+                                                                                        "#E4D00A"
+                                                                                        ? "black"
+                                                                                        : "whitesmoke",
                                                                             }}
                                                                         >
                                                                             -
                                                                         </Text>
                                                                         <Text
                                                                             style={{
-                                                                                color: parcela.fillColorParce === "#E4D00A" ? "black" : "whitesmoke",
+                                                                                color:
+                                                                                    parcela.fillColorParce ===
+                                                                                        "#E4D00A"
+                                                                                        ? "black"
+                                                                                        : "whitesmoke",
                                                                                 fontWeight: "bold",
                                                                             }}
                                                                         >
@@ -933,22 +1203,36 @@ const CardFarmBox = ({ route, navigation }) => {
                                                         <Divider width={1} color={"rgba(245,245,245,0.3)"} />
 
                                                         <View style={styles.produtosContainer}>
-                                                            {data?.prods
+                                                            {cardData?.prods
                                                                 ?.filter((pro) => pro.type !== "Operação")
-                                                                .map((produto, index) => {
-                                                                    const uniKey = data.cultura + data.idAp + produto.product;
+                                                                .map((produto, prodIndex) => {
+                                                                    const uniKey =
+                                                                        cardData.cardKey +
+                                                                        "-" +
+                                                                        produto.product +
+                                                                        "-" +
+                                                                        prodIndex;
 
                                                                     const abertoPadrao = Number(
-                                                                        data?.saldoAreaAplicar ??
-                                                                        (Number(data?.areaSolicitada || 0) - Number(data?.areaAplicada || 0))
+                                                                        cardData?.saldoAreaAplicar ??
+                                                                        (Number(cardData?.areaSolicitada || 0) -
+                                                                            Number(cardData?.areaAplicada || 0))
                                                                     );
 
-                                                                    const areaBase = selectedHere.length > 0 ? Number(abertoHere || 0) : abertoPadrao;
-                                                                    const totalProduto = Number(produto.doseSolicitada || 0) * areaBase;
+                                                                    const areaBase =
+                                                                        selectedHere.length > 0
+                                                                            ? Number(abertoHere || 0)
+                                                                            : abertoPadrao;
+
+                                                                    const totalProduto =
+                                                                        Number(produto.doseSolicitada || 0) *
+                                                                        areaBase;
 
                                                                     return (
                                                                         <Animated.View
-                                                                            entering={FadeInRight.duration(200 + index * 50)}
+                                                                            entering={FadeInRight.duration(
+                                                                                200 + prodIndex * 50
+                                                                            )}
                                                                             exiting={FadeOutUp.duration(20)}
                                                                             layout={Layout.springify()}
                                                                             key={uniKey}
@@ -956,7 +1240,8 @@ const CardFarmBox = ({ route, navigation }) => {
                                                                                 styles.prodsView,
                                                                                 {
                                                                                     backgroundColor:
-                                                                                        produto.colorChip === "rgb(255,255,255,0.1)"
+                                                                                        produto.colorChip ===
+                                                                                            "rgb(255,255,255,0.1)"
                                                                                             ? "whitesmoke"
                                                                                             : produto.colorChip,
                                                                                 },
@@ -967,13 +1252,16 @@ const CardFarmBox = ({ route, navigation }) => {
                                                                                     styles.textProds,
                                                                                     {
                                                                                         color:
-                                                                                            produto.colorChip === "rgb(255,255,255,0.1)"
+                                                                                            produto.colorChip ===
+                                                                                                "rgb(255,255,255,0.1)"
                                                                                                 ? "#455d7a"
                                                                                                 : "whitesmoke",
                                                                                     },
                                                                                 ]}
                                                                             >
-                                                                                {formatNumberProds(produto.doseSolicitada)}
+                                                                                {formatNumberProds(
+                                                                                    produto.doseSolicitada
+                                                                                )}
                                                                             </Text>
 
                                                                             <Text
@@ -981,7 +1269,8 @@ const CardFarmBox = ({ route, navigation }) => {
                                                                                     styles.textProdsName,
                                                                                     {
                                                                                         color:
-                                                                                            produto.colorChip === "rgb(255,255,255,0.1)"
+                                                                                            produto.colorChip ===
+                                                                                                "rgb(255,255,255,0.1)"
                                                                                                 ? "#455d7a"
                                                                                                 : "whitesmoke",
                                                                                     },
@@ -995,7 +1284,8 @@ const CardFarmBox = ({ route, navigation }) => {
                                                                                     styles.totalprods,
                                                                                     {
                                                                                         color:
-                                                                                            produto.colorChip === "rgb(255,255,255,0.1)"
+                                                                                            produto.colorChip ===
+                                                                                                "rgb(255,255,255,0.1)"
                                                                                                 ? "#455d7a"
                                                                                                 : "whitesmoke",
                                                                                     },
@@ -1011,24 +1301,41 @@ const CardFarmBox = ({ route, navigation }) => {
                                                         <View style={styles.footerContainer}>
                                                             {selectedHere.length > 0 && (
                                                                 <View style={styles.kpiRow}>
-                                                                    <View style={[styles.kpiCard, styles.kpiOpen]}>
+                                                                    <View
+                                                                        style={[styles.kpiCard, styles.kpiOpen]}
+                                                                    >
                                                                         <Text style={styles.kpiLabel}>Aberto</Text>
                                                                         <Text style={styles.kpiValue}>
-                                                                            {abertoHere > 0 ? `${formatNumber(abertoHere)} ha` : "-"}
+                                                                            {abertoHere > 0
+                                                                                ? `${formatNumber(abertoHere)} ha`
+                                                                                : "-"}
                                                                         </Text>
                                                                     </View>
 
-                                                                    <View style={[styles.kpiCard, styles.kpiApplied]}>
-                                                                        <Text style={styles.kpiLabel}>Aplicado</Text>
+                                                                    <View
+                                                                        style={[
+                                                                            styles.kpiCard,
+                                                                            styles.kpiApplied,
+                                                                        ]}
+                                                                    >
+                                                                        <Text style={styles.kpiLabel}>
+                                                                            Aplicado
+                                                                        </Text>
                                                                         <Text style={styles.kpiValue}>
-                                                                            {aplicadoHere > 0 ? `${formatNumber(aplicadoHere)} ha` : "-"}
+                                                                            {aplicadoHere > 0
+                                                                                ? `${formatNumber(aplicadoHere)} ha`
+                                                                                : "-"}
                                                                         </Text>
                                                                     </View>
 
-                                                                    <View style={[styles.kpiCard, styles.kpiTotal]}>
+                                                                    <View
+                                                                        style={[styles.kpiCard, styles.kpiTotal]}
+                                                                    >
                                                                         <Text style={styles.kpiLabel}>Total</Text>
                                                                         <Text style={styles.kpiValue}>
-                                                                            {totalHere > 0 ? `${formatNumber(totalHere)} ha` : "-"}
+                                                                            {totalHere > 0
+                                                                                ? `${formatNumber(totalHere)} ha`
+                                                                                : "-"}
                                                                         </Text>
                                                                     </View>
                                                                 </View>
@@ -1038,42 +1345,88 @@ const CardFarmBox = ({ route, navigation }) => {
                                                                 <View style={styles.buttonRowLeft}>
                                                                     <Pressable
                                                                         disabled={isSharingUnique}
-                                                                        style={({ pressed }) => [styles.mapBtn, pressed && styles.pressed]}
-                                                                        onPress={() => handleKmlGeneratorUnique(data, mapPlotData, getSelectedFor(data.code))}
+                                                                        style={({ pressed }) => [
+                                                                            styles.mapBtn,
+                                                                            pressed && styles.pressed,
+                                                                        ]}
+                                                                        onPress={() =>
+                                                                            handleKmlGeneratorUnique(
+                                                                                cardData,
+                                                                                mapPlotData,
+                                                                                getSelectedFor(cardData.cardKey)
+                                                                            )
+                                                                        }
                                                                     >
                                                                         {isSharingUnique ? (
-                                                                            <ActivityIndicator size={22} color={Colors.primary[500]} />
+                                                                            <ActivityIndicator
+                                                                                size={22}
+                                                                                color={Colors.primary[500]}
+                                                                            />
                                                                         ) : (
-                                                                            <FontAwesome5 name="layer-group" size={24} color={Colors.primary[500]} />
+                                                                            <FontAwesome5
+                                                                                name="layer-group"
+                                                                                size={24}
+                                                                                color={Colors.primary[500]}
+                                                                            />
                                                                         )}
                                                                     </Pressable>
 
                                                                     <Pressable
                                                                         disabled={isSharing}
-                                                                        style={({ pressed }) => [styles.mapBtn, pressed && styles.pressed]}
-                                                                        onPress={handleKmlGenerator.bind(this, data, mapPlotData)}
+                                                                        style={({ pressed }) => [
+                                                                            styles.mapBtn,
+                                                                            pressed && styles.pressed,
+                                                                        ]}
+                                                                        onPress={() =>
+                                                                            handleKmlGenerator(
+                                                                                cardData,
+                                                                                mapPlotData
+                                                                            )
+                                                                        }
                                                                     >
                                                                         {isSharing ? (
-                                                                            <ActivityIndicator size={22} color={Colors.primary[500]} />
+                                                                            <ActivityIndicator
+                                                                                size={22}
+                                                                                color={Colors.primary[500]}
+                                                                            />
                                                                         ) : (
-                                                                            <FontAwesome5 name="object-ungroup" size={24} color={Colors.succes[600]} />
+                                                                            <FontAwesome5
+                                                                                name="object-ungroup"
+                                                                                size={24}
+                                                                                color={Colors.succes[600]}
+                                                                            />
                                                                         )}
                                                                     </Pressable>
 
                                                                     <Pressable
-                                                                        style={({ pressed }) => [styles.mapBtn, pressed && styles.pressed]}
-                                                                        onPress={handleMapApi.bind(this, data)}
+                                                                        style={({ pressed }) => [
+                                                                            styles.mapBtn,
+                                                                            pressed && styles.pressed,
+                                                                        ]}
+                                                                        onPress={() => handleMapApi(cardData)}
                                                                     >
-                                                                        <FontAwesome5 name="map-marked-alt" size={24} color={Colors.primary[600]} />
+                                                                        <FontAwesome5
+                                                                            name="map-marked-alt"
+                                                                            size={24}
+                                                                            color={Colors.primary[600]}
+                                                                        />
                                                                     </Pressable>
                                                                 </View>
 
-                                                                {showAps[data.code] && (
+                                                                {showAps[cardData.cardKey] && (
                                                                     <Pressable
-                                                                        style={({ pressed }) => [styles.mapBtn, styles.shareBtn, pressed && styles.pressed]}
-                                                                        onPress={() => handleShareCard(data)}
+                                                                        style={({ pressed }) => [
+                                                                            styles.mapBtn,
+                                                                            styles.shareBtn,
+                                                                            pressed && styles.pressed,
+                                                                        ]}
+                                                                        onPress={() => handleShareCard(cardData)}
                                                                     >
-                                                                        <FontAwesome5 name="share-alt" size={22} color={Colors.primary[600]} />
+                                                                        <FontAwesome5
+                                                                            name="share-alt"
+                                                                            size={22}
+                                                                            color={Colors.primary[600]}
+                                                                        />
                                                                     </Pressable>
                                                                 )}
                                                             </View>
@@ -1090,190 +1443,262 @@ const CardFarmBox = ({ route, navigation }) => {
                 />
             </SafeAreaView>
 
-
             <View style={styles.fabContainer}>
                 <FAB
                     style={styles.fab}
                     icon={showSearch ? "close" : "magnify"}
-                    color="black" // Icon color
+                    color="black"
                     onPress={handleFilterProps}
                 />
             </View>
-            {/* {
-                modalVisible &&
-                <FilterModalApps
-                    modalVisible={modalVisible}
-                    setModalVisible={setModalVisible}
-                    data={data}
-                    farm={farm}
-                />
-            } */}
         </>
-    )
-}
+    );
+};
 
-export default CardFarmBox
-
+export default CardFarmBox;
 
 const styles = StyleSheet.create({
     shadowContainer: {
-        shadowColor: "#000",  // Shadow color
-        shadowOffset: { width: 3, height: 5 },  // Offset for drop shadow effect
-        shadowOpacity: 0.4,  // Opacity of shadow
-        shadowRadius: 4,  // Spread of shadow
-        elevation: 6,  // Required for Android
+        shadowColor: "#000",
+        shadowOffset: { width: 3, height: 5 },
+        shadowOpacity: 0.4,
+        shadowRadius: 4,
+        elevation: 6,
     },
+
     fabContainer: {
         position: "absolute",
         right: 20,
-        bottom: 20
+        bottom: 20,
     },
+
     fab: {
         position: "absolute",
         right: 30,
         bottom: 90,
-        backgroundColor: "rgba(200, 200, 200, 0.3)", // Grey, almost transparent
+        backgroundColor: "rgba(200, 200, 200, 0.3)",
         width: 50,
         height: 50,
-        borderRadius: 25, // Makes it perfectly circular
+        borderRadius: 25,
         borderColor: Colors.primary[300],
         borderWidth: 1,
         justifyContent: "center",
         alignItems: "center",
-        elevation: 4
+        elevation: 4,
     },
-    textTotalSelected: {
-        fontWeight: 'bold',
+
+    modeSwitchWrap: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 10,
+        paddingHorizontal: 12,
+        paddingTop: 10,
+        paddingBottom: 10,
+        // backgroundColor: "rgba(255,255,255,0.85)",
+        backgroundColor: Colors.primary[600]
+    },
+
+    modeButton: {
+        flex: 1,
+        paddingVertical: 10,
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: "rgba(255,255,255,0.2)",
+        backgroundColor: "transparent", // 🔥 importante
+        alignItems: "center",
+        justifyContent: "center",
+    },
+    modeButtonActive: {
+        backgroundColor: Colors.succes[500],
+        borderColor: Colors.succes[100],
+        elevation: 4,
+    },
+
+    modeButtonText: {
+        fontSize: 13,
+        fontWeight: "800",
+        color: "rgba(255,255,255,0.6)", // 🔥 muda isso
+    },
+    modeButtonTextActive: {
+        color: Colors.primary[100],
     },
 
     selectedParcelas: {
         borderWidth: 2,
-        borderColor: 'blue',      // navy escuro, não compete com o label branco
+        borderColor: "blue",
         shadowColor: "#000",
         shadowOpacity: 0.25,
         shadowRadius: 5,
         shadowOffset: { width: 0, height: 3 },
         elevation: 6,
     },
+
     mainContainer: {
         backgroundColor: Colors.secondary[200],
         marginTop: 30,
     },
+
     mainContainerAll: {
         backgroundColor: Colors.secondary[200],
         paddingBottom: 5,
         flex: 1,
-        shadowColor: '#000', // Shadow color
+        shadowColor: "#000",
         shadowOffset: {
-            width: 0, // No horizontal shadow
-            height: 4, // Bottom shadow
+            width: 0,
+            height: 4,
         },
-        shadowOpacity: 0.25, // Adjust opacity
-        shadowRadius: 4, // Adjust the blur radius
-        elevation: 5, // Add elevation for Android (optional, see below)
+        shadowOpacity: 0.25,
+        shadowRadius: 4,
+        elevation: 5,
+    },
 
-    },
     headerContainer: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        paddingVertical: 5
+        flexDirection: "row",
+        justifyContent: "space-between",
+        alignItems: "center",
+        paddingVertical: 5,
     },
+
     headerTitle: {
-        fontWeight: 'bold'
+        fontWeight: "bold",
+        marginLeft: 8
     },
+
     dateTile: {
-        fontSize: 8
+        fontSize: 8,
     },
+
     progressContainer: {
-        marginRight: 10
+        marginRight: 10,
     },
-    bodyContainer: {
-        // backgroundColor:Colors. secondary[400]
-        // flex: 1,
-        // flexDirection: 'row'
+
+    bodyContainer: {},
+
+    codesContainer: {
+        paddingHorizontal: 10,
+        marginTop: 6,
+        marginBottom: 4,
     },
+
+    codesTitle: {
+        fontSize: 11,
+        fontWeight: "800",
+        color: Colors.primary[800],
+        marginBottom: 6,
+    },
+
+    codesWrap: {
+        flexDirection: "row",
+        flexWrap: "wrap",
+        gap: 6,
+    },
+
+    codeChip: {
+        paddingVertical: 4,
+        paddingHorizontal: 8,
+        borderRadius: 999,
+        backgroundColor: "rgba(30,144,255,0.12)",
+        borderWidth: 1,
+        borderColor: "rgba(30,144,255,0.22)",
+    },
+
+    codeChipText: {
+        fontSize: 11,
+        fontWeight: "700",
+        color: Colors.primary[700],
+    },
+
+    apCodesPreview: {
+        marginTop: 2,
+        textAlign: "center",
+        fontSize: 9,
+        fontWeight: "700",
+        color: "rgba(0,0,0,0.55)",
+    },
+
     parcelasContainer: {
         marginTop: 6,
         gap: 5,
-        flexDirection: 'row',
+        flexDirection: "row",
         paddingHorizontal: 4,
-        flexWrap: 'wrap',
+        flexWrap: "wrap",
         marginBottom: 10,
-        justifyContent: 'flex-start'
+        justifyContent: "flex-start",
     },
+
     parcelasView: {
-        flexDirection: 'row',
+        flexDirection: "row",
         gap: 1,
         width: 91,
         borderRadius: 6,
         paddingHorizontal: 3,
         paddingVertical: 6,
-        backgroundColor: 'green',
-        justifyContent: 'space-around',
-
+        backgroundColor: "green",
+        justifyContent: "space-around",
     },
+
     infoContainer: {
         flex: 1,
         backgroundColor: Colors.primary800,
-        flexDirection: 'row',
-        justifyContent: 'space-between',
+        flexDirection: "row",
+        justifyContent: "space-between",
         marginBottom: 10,
         paddingVertical: 7,
-        paddingHorizontal: 15
+        paddingHorizontal: 15,
     },
+
     produtosContainer: {
-        justifyContent: 'center',
-        alignItems: 'center',
+        justifyContent: "center",
+        alignItems: "center",
         gap: 5,
-        marginTop: 10
+        marginTop: 10,
     },
+
     prodsView: {
-        flexDirection: 'row',
+        flexDirection: "row",
         width: 300,
-        backgroundColor: 'blue',
+        backgroundColor: "blue",
         gap: 10,
         borderRadius: 6,
         justifyContent: "flex-start",
-        padding: 2
+        padding: 2,
     },
+
     textProds: {
         marginLeft: 10,
-        color: 'whitesmoke',
-        fontWeight: 'bold'
+        color: "whitesmoke",
+        fontWeight: "bold",
     },
+
     totalprods: {
-        textAlign: 'right',
+        textAlign: "right",
         marginRight: 10,
-        marginLeft: 'auto',
-        color: 'whitesmoke',
-        fontWeight: 'bold'
+        marginLeft: "auto",
+        color: "whitesmoke",
+        fontWeight: "bold",
     },
+
     textProdsName: {
-        color: 'whitesmoke',
-        fontWeight: 'bold'
+        color: "whitesmoke",
+        fontWeight: "bold",
     },
+
     pressed: {
         opacity: 0.3,
-        // backgroundColor: Colors.secondary[200],
-
     },
 
     selectedOverlay: {
         ...StyleSheet.absoluteFillObject,
-        backgroundColor: Colors.primary[902],  // rgba(3,22,51,0.6) -> se ficar forte, use 0.18 abaixo
+        backgroundColor: Colors.primary[902],
         opacity: 0.48,
-        borderRadius: 6, // mesmo radius do chip
+        borderRadius: 6,
     },
-
 
     totalSelected: {
         marginLeft: 15,
-        flex: 1,                    // importante: ocupar espaço da esquerda
+        flex: 1,
         marginRight: 8,
     },
-
-
 
     kpiLabel: {
         fontSize: 11,
@@ -1288,7 +1713,6 @@ const styles = StyleSheet.create({
         fontWeight: "800",
     },
 
-    // Variantes visuais (consistentes com seu tema)
     kpiOpen: {
         backgroundColor: Colors.gold[100],
         borderColor: Colors.gold[400],
@@ -1326,37 +1750,24 @@ const styles = StyleSheet.create({
         borderWidth: 1,
     },
 
-    mapBtn: {
-        paddingVertical: 10,
-        paddingHorizontal: 10,
-        borderRadius: 10,
-    },
-
-    sectionHeader: {
-        // marginTop: 8,
-        // marginBottom: 6,
-        paddingHorizontal: 12,
-        paddingVertical: 10,
-        backgroundColor: Colors.primary[902],
-        borderTopWidth: 1,
-        borderBottomWidth: 1,
-        borderColor: "rgba(0,0,0,0.08)",
-    },
     sectionTitle: {
         fontSize: 14,
         fontWeight: "800",
         color: Colors.primary[100],
     },
+
     sectionSubtitle: {
         fontSize: 11,
         fontWeight: "700",
         color: Colors.secondary[100],
     },
+
     sectionKpis: {
         flexDirection: "row",
         gap: 8,
         marginTop: 10,
     },
+
     sectionKpiCard: {
         flexGrow: 1,
         flexBasis: 0,
@@ -1367,42 +1778,18 @@ const styles = StyleSheet.create({
         borderColor: "rgba(0,0,0,0.10)",
         backgroundColor: "rgba(255,255,255,0.65)",
     },
+
     sectionKpiLabel: {
         fontSize: 10,
         fontWeight: "800",
         color: Colors.secondary[700],
         marginBottom: 2,
     },
+
     sectionKpiValue: {
         fontSize: 12,
         fontWeight: "900",
         color: Colors.primary[900],
-    },
-    sectionProdsWrap: {
-        marginTop: 10,
-        flexDirection: "row",
-        flexWrap: "wrap",
-        gap: 6,
-        alignItems: "center",
-    },
-    sectionProdChip: {
-        paddingVertical: 4,
-        paddingHorizontal: 8,
-        borderRadius: 999,
-        backgroundColor: "rgba(255,255,255,0.7)",
-        borderWidth: 1,
-        borderColor: "rgba(0,0,0,0.08)",
-    },
-    sectionProdText: {
-        fontSize: 10,
-        fontWeight: "700",
-        color: Colors.primary[900],
-    },
-    sectionMoreText: {
-        fontSize: 10,
-        fontWeight: "800",
-        color: Colors.primary[700],
-        marginLeft: 4,
     },
 
     sectionStickyRow: {
@@ -1415,6 +1802,7 @@ const styles = StyleSheet.create({
         zIndex: 20,
         elevation: 20,
     },
+
     sectionSummary: {
         paddingHorizontal: 12,
         paddingBottom: 10,
@@ -1454,14 +1842,16 @@ const styles = StyleSheet.create({
     shareBtn: {
         marginLeft: 12,
     },
+
     headerFarmInline: {
         marginTop: 2,
-        textAlign: 'center',
-        justifyContent: 'center',
+        textAlign: "center",
+        justifyContent: "center",
         fontSize: 10,
         fontWeight: "900",
         color: "rgba(0,0,0,0.55)",
     },
+
     customRefreshContainer: {
         paddingVertical: 20,
         alignItems: "center",
@@ -1474,6 +1864,28 @@ const styles = StyleSheet.create({
         fontSize: 12,
         fontWeight: "600",
         color: "#1E90FF",
-    }
+    },
+    apItemCard: {
+        minWidth: 110,
+        maxWidth: "48%",
+        paddingVertical: 8,
+        paddingHorizontal: 10,
+        borderRadius: 10,
+        backgroundColor: "rgba(30,144,255,0.10)",
+        borderWidth: 1,
+        borderColor: "rgba(30,144,255,0.20)",
+    },
 
-})
+    apItemCode: {
+        fontSize: 12,
+        fontWeight: "800",
+        color: Colors.primary[700],
+        marginBottom: 2,
+    },
+
+    apItemOperation: {
+        fontSize: 11,
+        fontWeight: "600",
+        color: "rgba(0,0,0,0.65)",
+    },
+});
