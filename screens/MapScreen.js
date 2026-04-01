@@ -1,7 +1,7 @@
 import MapView, { PROVIDER_GOOGLE, Marker, Polygon } from "react-native-maps";
 import { View, Text, StyleSheet, Platform, Linking, Alert } from "react-native";
 import IconButton from "../components/ui/IconButton";
-import { useState, useEffect, createRef, useRef, useMemo } from "react";
+import { useState, useEffect, createRef, useRef, useMemo, memo, useCallback } from "react";
 import * as Haptics from "expo-haptics";
 import * as Location from "expo-location";
 
@@ -13,10 +13,49 @@ import Legend from "../components/MapComp/Legends";
 import { Colors } from "../constants/styles";
 
 
+
+
+const MapParcelLabel = memo(function MapParcelLabel({
+	talhao,
+	area,
+	isSelected,
+	showArea,
+}) {
+	return (
+		<View
+			collapsable={false}
+			style={[
+				styles.labelWrap,
+				isSelected && styles.labelWrapSelected,
+			]}
+		>
+			<Text
+				style={[styles.labelTitle, isSelected && styles.labelTitleSelected]}
+				numberOfLines={1}
+			>
+				{talhao}
+			</Text>
+
+			<Text
+				style={[
+					styles.labelSubtitle,
+					isSelected && styles.labelSubtitleSelected,
+					showArea ? styles.labelSubtitleVisible : styles.labelSubtitleHidden,
+				]}
+				numberOfLines={1}
+			>
+				{Number(area || 0).toLocaleString("pt-br", {
+					minimumFractionDigits: 0,
+					maximumFractionDigits: 2,
+				})} ha
+			</Text>
+		</View>
+	);
+});
 const MapScreen = ({ navigation, route }) => {
 	const mapPlotData = useSelector(selectMapDataPlot);
 
-	const mapRef = createRef();
+	const mapRef = useRef(null);
 	const refRBSheet = useRef();
 
 	const { data, selectedParcelas = [] } = route?.params || {};
@@ -39,6 +78,25 @@ const MapScreen = ({ navigation, route }) => {
 
 	// Modo foco: quando ON, só selecionados mostram cores originais
 	const [focusSelected, setFocusSelected] = useState(false);
+
+
+
+	const [currentRegion, setCurrentRegion] = useState(null);
+
+	const [trackMarkers, setTrackMarkers] = useState(true);
+	const [mapReady, setMapReady] = useState(false);
+
+	const showDetailedLabels = useMemo(() => {
+		return (currentRegion?.latitudeDelta ?? 999) < 0.12;
+	}, [currentRegion]);
+
+	const refreshMarkers = useCallback(() => {
+		setTrackMarkers(true);
+
+		setTimeout(() => {
+			setTrackMarkers(false);
+		}, 700);
+	}, []);
 
 	// Set de talhões selecionados (via params)
 	const selectedSet = useMemo(() => {
@@ -79,7 +137,9 @@ const MapScreen = ({ navigation, route }) => {
 	// Região inicial baseada nas coords da fazenda
 	useEffect(() => {
 		if (mapPlotData.length > 0 && farmName && data?.ciclo != null) {
+			console.log('ajustando a data aqui')
 			const dataFromMap = newMapArr(mapPlotData);
+			console.log('dataFromMap: ', dataFromMap[0])
 
 			const filteredFarm = dataFromMap
 				.filter((p) => Number(data?.ciclo) === Number(p.ciclo))
@@ -178,6 +238,11 @@ const MapScreen = ({ navigation, route }) => {
 		getLocationPermission();
 	}, []);
 
+	useEffect(() => {
+		if (!mapReady) return;
+		refreshMarkers();
+	}, [selectedParcelas, mapReady, refreshMarkers]);
+
 	const handleSetLocation = () => {
 		if (!location) return;
 
@@ -190,6 +255,9 @@ const MapScreen = ({ navigation, route }) => {
 	};
 
 	const handleCloseSheet = () => setIsPressed(null);
+
+	const normalizeTalhao = (value) =>
+		String(value || "").replace(/\s+/g, "").trim().toLowerCase();
 
 	if (!data) return <Text>Loading..</Text>;
 	if (filteredFarmArr.length === 0) return <Text>Loading..</Text>;
@@ -205,11 +273,15 @@ const MapScreen = ({ navigation, route }) => {
 	return (
 		<View style={styles.container}>
 			<MapView
-				onRegionChangeComplete={() => { }}
-				provider={Platform.OS === "android" ? PROVIDER_GOOGLE : undefined}
+				onRegionChangeComplete={(region) => setCurrentRegion(region)}
+				provider={Platform.OS === "android" ? PROVIDER_GOOGLE : PROVIDER_GOOGLE}
 				ref={mapRef}
 				showsUserLocation={true}
 				style={styles.map}
+				onMapReady={() => {
+					setMapReady(true);
+					refreshMarkers();
+				}}
 				initialRegion={{
 					latitude: mapCoordsInit.latitude,
 					longitude: mapCoordsInit.longitude,
@@ -227,6 +299,11 @@ const MapScreen = ({ navigation, route }) => {
 							String(parc.parcela || "").split(" ").join("") ===
 							talhaoKey.split(" ").join("")
 					);
+					const areaLabel =
+						canPress?.areaSolicitada ??
+						coordArr?.area ??
+						coordArr?.areaSolicitada ??
+						0;
 
 					const isSelected = selectedSet.has(talhaoKey);
 
@@ -289,16 +366,22 @@ const MapScreen = ({ navigation, route }) => {
 							/>
 
 							<Marker
-								key={i + "m"}
+								// key={`${i}-m-${showDetailedLabels ? "detail" : "simple"}`}
+								key={`${i}-m`}
 								hideCallout={true}
-								showCallout={true}
-								tracksViewChanges={false}
+								tracksViewChanges={true}
 								coordinate={{
 									latitude: coordArr.talhaoCenterGeo.lat,
 									longitude: coordArr.talhaoCenterGeo.lng,
 								}}
+								anchor={{ x: 0.5, y: 0.5 }}
 							>
-								<Text>{coordArr.talhao}</Text>
+								<MapParcelLabel
+									talhao={coordArr.talhao}
+									area={areaLabel}
+									isSelected={isSelected}
+									showArea={showDetailedLabels || isSelected}
+								/>
 							</Marker>
 						</View>
 					);
@@ -431,6 +514,57 @@ const styles = StyleSheet.create({
 		borderRadius: 12,
 		justifyContent: "center",
 		alignItems: "center",
+	},
+	labelWrap: {
+		alignItems: "center",
+		justifyContent: "center",
+		paddingHorizontal: 2,
+		paddingVertical: 1,
+		maxWidth: 110,
+	},
+
+	labelWrapSelected: {
+		transform: [{ scale: 1.03 }],
+	},
+
+	labelTitle: {
+		fontSize: 11,
+		fontWeight: "800",
+		color: "white",
+		textAlign: "center",
+		textShadowColor: "rgba(0,0,0,0.85)",
+		textShadowOffset: { width: 0, height: 1 },
+		textShadowRadius: 3,
+	},
+
+	labelTitleSelected: {
+		color: "#FFD54A",
+	},
+
+	labelSubtitle: {
+		fontSize: 9,
+		fontWeight: "700",
+		color: "rgba(255,255,255,0.95)",
+		textAlign: "center",
+		marginTop: 0,
+		textShadowColor: "rgba(0,0,0,0.85)",
+		textShadowOffset: { width: 0, height: 1 },
+		textShadowRadius: 3,
+	},
+
+	labelSubtitleSelected: {
+		color: "#FFF4C2",
+	},
+	labelSubtitleVisible: {
+		opacity: 1,
+		height: 12,
+		marginTop: 0,
+	},
+
+	labelSubtitleHidden: {
+		opacity: 0,
+		height: 0,
+		marginTop: 0,
 	},
 });
 

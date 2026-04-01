@@ -12,7 +12,7 @@ import {
 import { Colors } from "../../constants/styles";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import { useState, useRef, useEffect, useMemo } from "react";
+import { useState, useRef, useEffect, useMemo, useLayoutEffect } from "react";
 import { Divider } from "@rneui/themed";
 
 import * as Progress from "react-native-progress";
@@ -493,48 +493,48 @@ const CardFarmBox = ({ route, navigation }) => {
         };
 
         dispatch(exportPdf(params));
-        navigation.navigate("FarmBoxFilterApps", { data: data, farm: farm });
+
+        navigation.navigate("FarmBoxFilterApps", {
+            data,
+            farm,
+            viewMode,
+        });
     };
 
-    useEffect(() => {
-        const unsubscribeFocus = navigation.addListener("focus", () => {
-            const currentStack = navigation.getState();
-            const stackName = currentStack.routes[0]["name"];
 
-            stackNavigator.setOptions({
-                title: stackName !== "FarmBoxStack" ? "FarmBox" : farm?.replace("Fazenda ", ""),
-                headerShadowVisible: false,
-                headerRight: ({ tintColor }) => (
-                    <View style={{ flexDirection: "row", alignItems: "center", paddingRight: 20, flex: 1 }}>
-                        <IconButton
-                            type={"awesome"}
-                            icon={"print"}
-                            color={tintColor}
-                            size={22}
+    useLayoutEffect(() => {
+        const currentStack = navigation.getState();
+        const stackName = currentStack.routes[0]["name"];
+
+        stackNavigator.setOptions({
+            title: stackName !== "FarmBoxStack" ? "FarmBox" : farm?.replace("Fazenda ", ""),
+            headerShadowVisible: false,
+            headerRight: ({ tintColor }) => (
+                <View style={{ flexDirection: "row", alignItems: "center", paddingRight: 20, flex: 1 }}>
+                    <IconButton
+                        type={"awesome"}
+                        icon={"print"}
+                        color={tintColor}
+                        size={22}
+                        onPress={handleExprotData}
+                        btnStyles={{ marginLeft: 5, marginTop: 10 }}
+                    />
+                </View>
+            ),
+            headerLeft:
+                stackName === "FarmBoxStack"
+                    ? (props) => (
+                        <HeaderBackButton
+                            {...props}
+                            label="Voltar"
                             onPress={() => {
-                                handleExprotData();
+                                navigation.navigate("FarmBoxStack");
                             }}
-                            btnStyles={{ marginLeft: 5, marginTop: 10 }}
                         />
-                    </View>
-                ),
-                headerLeft:
-                    stackName === "FarmBoxStack"
-                        ? (props) => (
-                            <HeaderBackButton
-                                {...props}
-                                label="Voltar"
-                                onPress={() => {
-                                    navigation.navigate("FarmBoxStack");
-                                }}
-                            />
-                        )
-                        : null,
-            });
+                    )
+                    : null,
         });
-
-        return unsubscribeFocus;
-    }, [navigation, route, farmData]);
+    }, [navigation, stackNavigator, farm, viewMode, farmData]);
 
     const handleShareCard = async (cardData) => {
         try {

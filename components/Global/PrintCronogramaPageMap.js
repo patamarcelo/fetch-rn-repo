@@ -10,52 +10,45 @@ import { iconDict } from "../../utils/assets/icon-dict.js";
 import { Platform } from "react-native";
 
 console.log('typeof [].at →', typeof [].at);
-export const createApplicationPdfMap = async (data, farm, plotMap) => {
+export const createApplicationPdfMap = async (data, farm, plotMap, options = {}) => {
+    const { viewMode = "normal" } = options;
 
-    // console.log('data: ', data)
-    // console.log('farm: ', farm)
-    // console.log('farm: ', plotMap)
-    const dataFromJson = plotMap.data;               // já é objeto JS
-    console.log('data from json::::', dataFromJson[0])
+    const dataFromJson = plotMap?.data ?? [];
 
+    const sumNumber = (v) => {
+        const n = Number(v);
+        return Number.isFinite(n) ? n : 0;
+    };
 
+    const formatNumber = (number) =>
+        Number(number || 0).toLocaleString("pt-br", {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+        });
 
-    const formatNumber = number => number?.toLocaleString("pt-br", {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2
-    });
+    const formatDoseNumber = (number) =>
+        Number(number || 0).toLocaleString("pt-br", {
+            minimumFractionDigits: 3,
+            maximumFractionDigits: 3,
+        });
 
-
-    const formatDoseNumber = number => number?.toLocaleString("pt-br", {
-        minimumFractionDigits: 3,
-        maximumFractionDigits: 3
-    });
-
-
+    const formatDate = (dateString) => {
+        if (!dateString) return "-";
+        const [year, month, day] = dateString.split("-");
+        return `${day}/${month}/${year}`;
+    };
 
     const getDap = (date) => {
         const today = new Date();
         const planted = new Date(date);
-
         const differenceInTime = today - planted;
-        const differenceInDays = Math.floor(differenceInTime / (1000 * 60 * 60 * 24));
-        return differenceInDays
-    }
-
-    const formatDate = (dateString) => {
-        if (!dateString) {
-            return '-'
-        }
-        const [year, month, day] = dateString.split('-');
-        return `${day}/${month}/${year}`;
-    }
-
+        return Math.floor(differenceInTime / (1000 * 60 * 60 * 24));
+    };
 
     const pickMapForApp = (allPlots, app) => {
         const safra = String(app?.safra ?? "");
         const ciclo = String(app?.ciclo ?? "");
 
-        // Os campos vêm da API como "safra__safra" e "ciclo__ciclo"
         return (allPlots ?? []).filter((p) => {
             const pSafra = String(p?.["safra__safra"] ?? "");
             const pCiclo = String(p?.["ciclo__ciclo"] ?? "");
@@ -63,117 +56,204 @@ export const createApplicationPdfMap = async (data, farm, plotMap) => {
         });
     };
 
+    const getFirstAp = (card) => {
+        if (card?.isConsolidated) return card?.aps?.[0] || {};
+        return card || {};
+    };
+
+    const getAppTitle = (card) => {
+        if (card?.isConsolidated) {
+            return `${card?.codes?.length || 0} AP${(card?.codes?.length || 0) > 1 ? "s" : ""}`;
+        }
+        return String(card?.code || "").replace("AP", "AP ");
+    };
+
+    const getAppOperation = (card) => {
+        if (card?.isConsolidated) return "Consolidado de Aplicações";
+        return card?.operation || "-";
+    };
+
+    const getAppDateStart = (card) => {
+        if (card?.isConsolidated) {
+            const dates = (card?.aps || [])
+                .map((ap) => ap?.dateAp)
+                .filter(Boolean)
+                .sort();
+            return dates[0] || null;
+        }
+        return card?.dateAp;
+    };
+
+    const getAppDateEnd = (card) => {
+        if (card?.isConsolidated) {
+            const dates = (card?.aps || [])
+                .map((ap) => ap?.endDateAp)
+                .filter(Boolean)
+                .sort();
+            return dates[dates.length - 1] || null;
+        }
+        return card?.endDateAp;
+    };
+
+    const getMergedProducts = (card) => {
+        const sourceApps = card?.isConsolidated ? card?.aps || [] : [card];
+
+        const grouped = new Map();
+
+        for (const ap of sourceApps) {
+            for (const prod of ap?.prods || []) {
+                if (prod?.type === "Operação") continue;
+
+                const key = [
+                    prod?.product || "",
+                    prod?.type || "",
+                    prod?.unit || "",
+                    prod?.doseSolicitada || "",
+                    prod?.colorChip || "",
+                ].join("||");
+
+                if (!grouped.has(key)) {
+                    grouped.set(key, {
+                        ...prod,
+                        quantidadeSolicitada: sumNumber(prod?.quantidadeSolicitada),
+                    });
+                } else {
+                    const current = grouped.get(key);
+                    current.quantidadeSolicitada += sumNumber(prod?.quantidadeSolicitada);
+                }
+            }
+        }
+
+        return Array.from(grouped.values()).sort((a, b) =>
+            String(a.type || "").localeCompare(String(b.type || ""))
+        );
+    };
 
 
 
-    const totalAplicar = data.filter((op) => !op.operation.toLowerCase().includes('Colheita de Grãos')).reduce((acc, curr) => acc += curr.saldoAreaAplicar, 0)
-    const apCotainer = data.filter((op) => !op.operation.toLowerCase().includes('Colheita de Grãos')).map((app) => {
+    const totalAplicar = (data || []).reduce(
+        (acc, curr) => acc + sumNumber(curr?.saldoAreaAplicar),
+        0
+    );
 
-        const talhoesParaPintar = app.parcelas.map((parcela) => parcela.parcela)
-        const cultura = app.parcelas?.[0]?.cultura ?? 'unknown';
+    const apCotainer = (data || []).map((app) => {
+        const baseAp = getFirstAp(app);
 
-        // console.log('[PDF] - gerando os mapas com a funcao getMapSvgBase64: ')
+        const talhoesParaPintar = (app?.parcelas || []).map((parcela) => parcela.parcela);
+        const cultura = app?.parcelas?.[0]?.cultura ?? "unknown";
 
-        const mapForThisApp = pickMapForApp(dataFromJson, app);
-
-        // console.log("[PDF] app:", app?.code, "safra:", app?.safra, "ciclo:", app?.ciclo, "plots:", mapForThisApp.length);
-
+        const mapForThisApp = pickMapForApp(dataFromJson, baseAp);
         const base64Image = getMapSvgBase64(talhoesParaPintar, mapForThisApp, cultura);
-        // const base64Image = getMapSvgBase64(talhoesParaPintar, dataFromJson, cultura);
-        // console.log('[PDF] - Finalizado os mapas com a funcao... ')
 
-        const culturaAtual = app.parcelas?.[0]?.cultura ?? undefined;
-        // procura no iconDict; se não achar, usa o “?” (último item)
-        // console.log('[PDF] - pegando os icones com a funcao: iconBase64 ')
+        const culturaAtual = app?.parcelas?.[0]?.cultura ?? undefined;
         const { base64: iconBase64, alt } =
-            iconDict.find(i => i.cultura === culturaAtual) ?? iconDict[iconDict.length - 1];
+            iconDict.find((i) => i.cultura === culturaAtual) ??
+            iconDict[iconDict.length - 1];
 
-        // console.log('[PDF] - Finalizando os icones com a funcao: iconBase64 ')
-        // console.log('iconBase: ', iconBase64)
-
-        // tag pronta para colar
         const iconTag = `<img src="${iconBase64}" alt="${alt}"
-                        style="width:16px;height:16px;margin-right:4px;vertical-align:middle" />`;
+        style="width:16px;height:16px;margin-right:4px;vertical-align:middle" />`;
 
-        const appsCards = app.parcelas.map((parcela) => {
+        const appsCards = (app?.parcelas || [])
+            .map((parcela) => {
+                const { base64: iconBase64Inside, alt: altInside } =
+                    iconDict.find((i) => i.cultura === parcela.cultura) ??
+                    iconDict[iconDict.length - 1];
 
-            // console.log('[PDF] - pegando os icones com a funcao: iconBase64 ')
-            const { base64: iconBase64, alt } = iconDict.find(i => i.cultura === parcela.cultura) ?? iconDict[iconDict.length - 1];
+                const iconTagInside = `<img src="${iconBase64Inside}" alt="${altInside}"
+                style="width:8px;height:8px;margin-left:3px;padding-bottom:2px;vertical-align:middle" />`;
 
-            // console.log('[PDF] - Finalizando os icones com a funcao: iconBase64 ')
-            // console.log('iconBase: ', iconBase64)
+                const areaAplicada = `<span><b>Aplicado:</b> ${formatNumber(parcela.areaAplicada)} há</span>`;
 
-            const iconTagInside = `<img src="${iconBase64}" alt="${alt}"
-                        style="width:8px;height:8px;margin-left: 3px;padding-bottom: 2px;vertical-align:middle" />`;
-
-            const areaAplicada = `<span><b>Aplicado:</b> ${formatNumber(parcela.areaAplicada)} há</span>`
-            return `
-                <div class="${Platform.OS === 'ios' ? 'parcela-detail-container' : 'parcela-detail-container-android'} bordered ${parcela.areaSolicitada == parcela.areaAplicada && 'finish-parcela'}">
-                    <div class="detail-variedade-area ${Platform.OS === 'android' && 'detail-variedade-area-android'}">
+                return `
+                <div class="${Platform.OS === "ios" ? "parcela-detail-container" : "parcela-detail-container-android"} bordered ${parcela.areaSolicitada == parcela.areaAplicada ? "finish-parcela" : ""}">
+                    <div class="detail-variedade-area ${Platform.OS === "android" ? "detail-variedade-area-android" : ""}">
                         <b class="parcela-code">${parcela.parcela}${iconTagInside}</b>
                         <span class="parcela-area">${formatNumber(parcela.areaSolicitada)} há</span>
                     </div>
-                    <div class="detail-variedade-dap ${Platform.OS !== 'ios' ? 'font-mini' : ''}">
-                        <p class="variedade-text">${parcela.variedade || '?'}</p>
+                    <div class="detail-variedade-dap ${Platform.OS !== "ios" ? "font-mini" : ""}">
+                        <p class="variedade-text">${parcela.variedade || "?"}</p>
                         <p class="dap-text">${getDap(parcela.date)} dias</p>
                     </div>
-                    <div class="detail-variedade-status ${Platform.OS === 'android' && 'detail-variedade-status-android'}">
-                        ${parcela.areaAplicada > 0 ? areaAplicada : ''}
+                    <div class="detail-variedade-status ${Platform.OS === "android" ? "detail-variedade-status-android" : ""}">
+                        ${parcela.areaAplicada > 0 ? areaAplicada : ""}
                     </div>
                 </div>
-            `
-        }).join('');
+            `;
+            })
+            .join("");
 
         function withOpacity(rgb, alpha = 0.3) {
-            // aceita "rgb(69,133,255)" ou "rgba(69,133,255,1)"
-            const nums = rgb.match(/\d+(\.\d+)?/g);     // → ["69","133","255"]
-            if (!nums || nums.length < 3) return rgb;   // formato inesperado
+            const nums = String(rgb || "").match(/\d+(\.\d+)?/g);
+            if (!nums || nums.length < 3) return rgb;
             const [r, g, b] = nums;
             return `rgba(${r},${g},${b},${alpha})`;
         }
 
-        const prodsCards = app.prods.filter((prodType) => prodType.type !== 'Operação').sort((a, b) => a.type.localeCompare(b.type)).map((prod, i) => {
+        const mergedProducts = getMergedProducts(app);
 
-            return `
-                <div class="grid-produtos detail-prod-container ${i === 0 && 'first-prod-here'} ${i % 2 !== 0 && 'even-row-prod'}" style="background-color: ${withOpacity(prod.colorChip)}">
-                    <span style="margin-left: 0px; padding-left: 2px;justify-self: start">${formatDoseNumber(prod.doseSolicitada).toString().trim()} <small style="margin-left: 3px; color: #777777">${prod?.unit}</small></span>
-                    <span>${prod.type.replace('/Vegetal', '')}</span>
+        const prodsCards = mergedProducts
+            .map((prod, i) => {
+                return `
+                <div class="grid-produtos detail-prod-container ${i === 0 ? "first-prod-here" : ""} ${i % 2 !== 0 ? "even-row-prod" : ""}" style="background-color: ${withOpacity(prod.colorChip)}">
+                    <span style="margin-left:0px;padding-left:2px;justify-self:start">
+                        ${formatDoseNumber(prod.doseSolicitada).toString().trim()}
+                        <small style="margin-left:3px;color:#777777">${prod?.unit}</small>
+                    </span>
+                    <span>${String(prod.type || "").replace("/Vegetal", "")}</span>
                     <span>${prod.product}</span>
-                    <span style="justify-self: end; padding-right: 1px;">${formatNumber(prod.quantidadeSolicitada)}</span>
+                    <span style="justify-self:end;padding-right:1px;">
+                        ${formatNumber(prod.quantidadeSolicitada)}
+                    </span>
                 </div>
-            `
-        }).join('');
+            `;
+            })
+            .join("");
 
-        const totalRealizado = app?.areaSolicitada - app?.saldoAreaAplicar
+        const totalRealizado = sumNumber(app?.areaSolicitada) - sumNumber(app?.saldoAreaAplicar);
         const imgTag = `<img src="data:image/svg+xml;base64,${base64Image}" style="width:90%;max-height:100vh"/>`;
+
+        const consolidatedCodesBlock = app?.isConsolidated
+            ? `
+            <div style="padding:4px 6px;border-top:0.5px solid black;background:rgba(0,0,0,0.04);">
+                <b>APs consolidadas:</b> ${(app?.aps || [])
+                .map((ap) => `${ap.code} - ${ap.operation}`)
+                .join(" • ")}
+            </div>
+        `
+            : "";
+
         return `
         <div class="resume-header-container">
             <div>
-                <span><b>${farm.replace('Fazenda ', 'Projeto ')}</b></span>
+                <span><b>${farm.replace("Fazenda ", "Projeto ")}</b></span>
             </div>
             <div>
-                <span><b>${app?.code.replace('AP', "AP ")}</b></span>
+                <span><b>${getAppTitle(app)}</b></span>
             </div>
         </div>
+
         <div class="ap-container bordered">
             <div class="resumo-container bordered">
                 <div class="resumo-container-app-number">
-                    <span>${iconTag}<b>${app?.code.replace('AP', "AP ")}</b></span>
-                    <span><b>${app?.operation}</b></span>
+                    <span>${iconTag}<b>${getAppTitle(app)}</b></span>
+                    <span><b>${getAppOperation(app)}</b></span>
                 </div>
                 <div class="resumo-container-app-date">
-                    <span><b>Início:</b> ${formatDate(app?.dateAp)}</span>
-                    <span><b>Limite:</b> ${formatDate(app?.endDateAp)}</span>
+                    <span><b>Início:</b> ${formatDate(getAppDateStart(app))}</span>
+                    <span><b>Limite:</b> ${formatDate(getAppDateEnd(app))}</span>
                 </div>
                 <div class="resumo-container-app-area">
                     <span><b>Área:</b> ${formatNumber(app?.areaSolicitada)} há</span>
-                    <span><b>Relizado:</b> ${formatNumber(totalRealizado)} há</span>
+                    <span><b>Realizado:</b> ${formatNumber(totalRealizado)} há</span>
                     <span><b>Saldo:</b> ${formatNumber(app?.saldoAreaAplicar)} há</span>
                 </div>
             </div>
+
+            ${consolidatedCodesBlock}
+
             <div class="bordered details-container">
                 <div class="left-side-container">
-                    <div class="${Platform.OS === 'ios' ? 'parcelas-container' : 'parcelas-container-android'}">
+                    <div class="${Platform.OS === "ios" ? "parcelas-container" : "parcelas-container-android"}">
                         ${appsCards}
                     </div>
                     <div class="prods-container-containing-map-new-order">
@@ -186,10 +266,11 @@ export const createApplicationPdfMap = async (data, farm, plotMap) => {
                         ${prodsCards}
                     </div>
                 </div>
+
                 <div class="bordered-left produtos-conatiner">
                     <div class="prods-container-containing-map">
-                        <div style="width:95%; height:100%; margin-top:10px;">
-                        ${imgTag}
+                        <div style="width:95%;height:100%;margin-top:10px;">
+                            ${imgTag}
                         </div>
                         <div class="obs-container">
                             <span>Observações</span>
@@ -198,8 +279,8 @@ export const createApplicationPdfMap = async (data, farm, plotMap) => {
                 </div>
             </div>
         </div>
-        `
-    }).join('');
+    `;
+    }).join("");
 
     const htmlContent = `
     <html lang="en">

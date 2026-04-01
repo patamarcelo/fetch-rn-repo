@@ -12,7 +12,8 @@ export const newMapArr = (mapPlot) => {
             farmCenterGeo: data?.talhao__fazenda__map_centro_id,
             farmName: data?.talhao__fazenda__nome,
             coords: newArr,
-            ciclo: data?.ciclo__ciclo
+            ciclo: data?.ciclo__ciclo,
+            area: Number(data?.area_colheita ?? 0),
         };
     });
 
