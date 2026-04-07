@@ -95,6 +95,15 @@ const CardFarmBox = ({ route, navigation }) => {
 
     const wait = (ms = 120) => new Promise((resolve) => setTimeout(resolve, ms));
 
+    const formatDate = (date) => {
+        if (!date) return '';
+        return new Date(date).toLocaleDateString('pt-BR', {
+            day: '2-digit',
+            month: '2-digit',
+            year: '2-digit',
+        });
+    };
+
     const VIEW_MODE_STORAGE_KEY = "@farmbox_card_view_mode";
 
     useEffect(() => {
@@ -934,6 +943,7 @@ const CardFarmBox = ({ route, navigation }) => {
                         const isLastItem =
                             isLastSection && index === (section?.data?.length || 0) - 1;
 
+                        // console.log('cardData', cardData)
                         return (
                             <Animated.View
                                 entering={FadeInRight.duration(300)}
@@ -1037,16 +1047,24 @@ const CardFarmBox = ({ route, navigation }) => {
                                             >
                                                 <View style={styles.headerContainer}>
                                                     <View>
-                                                        <Text
-                                                            style={[
-                                                                styles.headerTitle,
-                                                                { color: Colors.primary[600] },
-                                                            ]}
-                                                        >
-                                                            {cardData?.isConsolidated
-                                                                ? cardData?.displayCode
-                                                                : getApCode(cardData?.code)}
-                                                        </Text>
+                                                        <View>
+                                                            <Text
+                                                                style={[
+                                                                    styles.headerTitle,
+                                                                    { color: Colors.primary[600] },
+                                                                ]}
+                                                            >
+                                                                {cardData?.isConsolidated
+                                                                    ? cardData?.displayCode
+                                                                    : getApCode(cardData?.code)}
+                                                            </Text>
+
+                                                            {!!cardData?.dateAp && !cardData.isConsolidatedxx && (
+                                                                <Text style={styles.headerSubtitle}>
+                                                                    {formatDate(cardData?.dateAp)}
+                                                                </Text>
+                                                            )}
+                                                        </View>
                                                     </View>
 
                                                     <View style={{ alignItems: "center", flex: 1, paddingHorizontal: 8 }}>
@@ -1560,7 +1578,7 @@ const styles = StyleSheet.create({
     },
 
     headerTitle: {
-        fontWeight: "bold",
+        fontWeight: "900",
         marginLeft: 8
     },
 
@@ -1888,4 +1906,11 @@ const styles = StyleSheet.create({
         fontWeight: "600",
         color: "rgba(0,0,0,0.65)",
     },
+    headerSubtitle: {
+        fontSize: 9,
+        color: '#6B7280',
+        marginTop: 2,
+        fontWeight: '900',
+        paddingLeft: 8
+    }
 });
