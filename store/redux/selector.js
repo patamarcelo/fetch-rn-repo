@@ -123,3 +123,124 @@ export const selectColheitaData = createSelector(
         };
     }
 );
+
+export const selectNavigationMapData = (state) => state.geral.navigationMapData;
+
+export const selectNavigationMapFilters = (state) => state.geral.navigationMapFilters;
+
+export const selectNavigationMapTotals = (state) => state.geral.navigationMapTotals;
+
+export const selectNavigationMapStatus = (state) => state.geral.navigationMapStatus;
+
+export const selectNavigationMapError = (state) => state.geral.navigationMapError;
+
+export const selectNavigationMapCurrentSafra = (state) =>
+	state.geral.navigationMapCurrentSafra;
+
+export const selectNavigationMapCurrentCiclo = (state) =>
+	state.geral.navigationMapCurrentCiclo;
+
+export const selectNavigationMapSelectedFarm = (state) =>
+	state.geral.navigationMapSelectedFarm;
+
+export const selectNavigationMapSelectedProject = (state) =>
+	state.geral.navigationMapSelectedProject;
+
+export const selectNavigationMapFilterSelected = (state) =>
+	state.geral.navigationMapFilterSelected;
+
+export const selectNavigationMapSelectedParcels = (state) =>
+	state.geral.navigationMapSelectedParcels;
+
+export const selectNavigationMapByKey = (state) => state.geral.navigationMapByKey;
+
+export const selectNavigationMapCurrentKey = createSelector(
+	[selectNavigationMapCurrentSafra, selectNavigationMapCurrentCiclo],
+	(safra, ciclo) => {
+		if (!safra || !ciclo) return null;
+		return `${safra}__${ciclo}`;
+	}
+);
+
+export const selectNavigationMapCurrentCache = createSelector(
+	[selectNavigationMapByKey, selectNavigationMapCurrentKey],
+	(byKey, key) => {
+		if (!key) return null;
+		return byKey?.[key] || null;
+	}
+);
+
+export const selectFilteredNavigationMapData = createSelector(
+	[
+		selectNavigationMapData,
+		selectNavigationMapSelectedFarm,
+		selectNavigationMapSelectedProject,
+		selectNavigationMapFilterSelected,
+	],
+	(data, selectedFarm, selectedProject, filters) => {
+		if (!data) return [];
+
+		let filtered = [...data];
+
+		if (selectedFarm) {
+			filtered = filtered.filter((item) => item.fazenda_grupo === selectedFarm);
+		}
+
+		if (selectedProject) {
+			filtered = filtered.filter((item) => item.projeto === selectedProject);
+		}
+
+		if (filters?.fazenda?.length > 0) {
+			filtered = filtered.filter((item) =>
+				filters.fazenda.includes(item.fazenda_grupo)
+			);
+		}
+
+		if (filters?.projeto?.length > 0) {
+			filtered = filtered.filter((item) =>
+				filters.projeto.includes(item.projeto)
+			);
+		}
+
+		if (filters?.cultura?.length > 0) {
+			filtered = filtered.filter((item) =>
+				filters.cultura.includes(item.cultura)
+			);
+		}
+
+		if (filters?.variedade?.length > 0) {
+			filtered = filtered.filter((item) =>
+				filters.variedade.includes(item.variedade)
+			);
+		}
+
+		if (filters?.status?.length > 0) {
+			filtered = filtered.filter((item) =>
+				filters.status.includes(item.status)
+			);
+		}
+
+		return filtered;
+	}
+);
+
+export const selectNavigationSelectedParcelsData = createSelector(
+	[selectNavigationMapData, selectNavigationMapSelectedParcels],
+	(data, selectedParcels) => {
+		if (!data || !selectedParcels?.length) return [];
+
+		return data.filter((item) => {
+			const id = item.id_farmbox || item.id;
+			return selectedParcels.includes(id);
+		});
+	}
+);
+
+export const selectNavigationSelectedAreaTotal = createSelector(
+	[selectNavigationSelectedParcelsData],
+	(selectedData) => {
+		return selectedData.reduce((total, item) => {
+			return total + Number(item.area || 0);
+		}, 0);
+	}
+);

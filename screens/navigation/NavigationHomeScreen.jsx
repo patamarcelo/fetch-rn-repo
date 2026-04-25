@@ -1,9 +1,6 @@
 // screens/navigation/NavigationHomeScreen.jsx
 
-import { useMemo, useState } from "react";
-import { useCallback } from "react";
-import { StatusBar, setStatusBarStyle, setStatusBarBackgroundColor } from "expo-status-bar";
-import { useFocusEffect } from "@react-navigation/native";
+import { useCallback, useMemo, useState } from "react";
 import {
 	View,
 	Text,
@@ -11,318 +8,27 @@ import {
 	StyleSheet,
 	ScrollView,
 	Platform,
-
+	ActivityIndicator,
 } from "react-native";
 
+import { setStatusBarStyle, setStatusBarBackgroundColor } from "expo-status-bar";
+import { useFocusEffect } from "@react-navigation/native";
 import { SafeAreaView } from "react-native-safe-area-context";
+
+import { useDispatch, useSelector } from "react-redux";
 
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { Colors } from "../../constants/styles";
 
-const FARMS_DATA = [
-	{
-		fazenda_id: 4,
-		fazenda_nome: "Fazenda Benção de Deus",
-		fazenda_id_d: 4,
-		capacidade_plantio_ha_dia: 80,
-		projetos: [
-			{
-				projeto_id: 2,
-				projeto_nome: "Projeto Benção de Deus",
-				id_farmbox: 11946,
-				storage_id_farmbox: 12742,
-				area_produtiva: 4844.53,
-				area_carr: 174.21,
-				area_total: 8474.86,
-				map_centro_id: {
-					lat: -11.179872960526678,
-					lng: -49.62888243146445,
-				},
-				map_zoom: 12.55,
-			},
-		],
-	},
-	{
-		fazenda_id: 14,
-		fazenda_nome: "Fazenda Biguá",
-		fazenda_id_d: 14,
-		capacidade_plantio_ha_dia: 30,
-		projetos: [
-			{
-				projeto_id: 3,
-				projeto_nome: "Projeto Biguá",
-				id_farmbox: 12105,
-				storage_id_farmbox: null,
-				area_produtiva: 617,
-				area_carr: null,
-				area_total: null,
-				map_centro_id: {
-					lat: -10.4915414,
-					lng: -49.61823509999999,
-				},
-				map_zoom: null,
-			},
-		],
-	},
-	{
-		fazenda_id: 5,
-		fazenda_nome: "Fazenda Campo Guapo",
-		fazenda_id_d: 5,
-		capacidade_plantio_ha_dia: 60,
-		projetos: [
-			{
-				projeto_id: 4,
-				projeto_nome: "Projeto Cacíque",
-				id_farmbox: 11945,
-				storage_id_farmbox: null,
-				area_produtiva: 460.98,
-				area_carr: 27.2,
-				area_total: 689.42,
-				map_centro_id: {
-					lat: -10.878758519256559,
-					lng: -49.951596323401986,
-				},
-				map_zoom: 15,
-			},
-			{
-				projeto_id: 5,
-				projeto_nome: "Projeto Campo Guapo",
-				id_farmbox: 11944,
-				storage_id_farmbox: 12741,
-				area_produtiva: 2617.52,
-				area_carr: 294.19,
-				area_total: 5394.38,
-				map_centro_id: {
-					lat: -10.866807436913602,
-					lng: -49.92217688505893,
-				},
-				map_zoom: 12.9,
-			},
-			{
-				projeto_id: 18,
-				projeto_nome: "Projeto Safira",
-				id_farmbox: 11936,
-				storage_id_farmbox: null,
-				area_produtiva: 1047.9,
-				area_carr: null,
-				area_total: 1436.69,
-				map_centro_id: {
-					lat: -10.938202,
-					lng: -49.9104749,
-				},
-				map_zoom: null,
-			},
-		],
-	},
-	{
-		fazenda_id: 1,
-		fazenda_nome: "Fazenda Diamante",
-		fazenda_id_d: 1,
-		capacidade_plantio_ha_dia: 60,
-		projetos: [
-			{
-				projeto_id: 6,
-				projeto_nome: "Projeto Capivara",
-				id_farmbox: 11939,
-				storage_id_farmbox: null,
-				area_produtiva: 702.84,
-				area_carr: null,
-				area_total: 1008.06,
-				map_centro_id: {
-					lat: -10.643900691239134,
-					lng: -49.819540325334195,
-				},
-				map_zoom: 14.4,
-			},
-			{
-				projeto_id: 7,
-				projeto_nome: "Projeto Cervo",
-				id_farmbox: 11941,
-				storage_id_farmbox: 12733,
-				area_produtiva: 1628.78,
-				area_carr: null,
-				area_total: 2336.1,
-				map_centro_id: {
-					lat: -10.612383947499765,
-					lng: -49.82730771743541,
-				},
-				map_zoom: 13.7,
-			},
-			{
-				projeto_id: 8,
-				projeto_nome: "Projeto Diamante",
-				id_farmbox: 11929,
-				storage_id_farmbox: null,
-				area_produtiva: null,
-				area_carr: null,
-				area_total: 7703.36,
-				map_centro_id: null,
-				map_zoom: null,
-			},
-			{
-				projeto_id: 11,
-				projeto_nome: "Projeto Jacaré",
-				id_farmbox: 11938,
-				storage_id_farmbox: null,
-				area_produtiva: 1549.98,
-				area_carr: null,
-				area_total: 2223.08,
-				map_centro_id: {
-					lat: -10.6689228,
-					lng: -49.8262853,
-				},
-				map_zoom: null,
-			},
-			{
-				projeto_id: 17,
-				projeto_nome: "Projeto Praia Alta",
-				id_farmbox: 11943,
-				storage_id_farmbox: null,
-				area_produtiva: 1039.99,
-				area_carr: null,
-				area_total: 3108.82,
-				map_centro_id: null,
-				map_zoom: null,
-			},
-			{
-				projeto_id: 21,
-				projeto_nome: "Projeto Tucano",
-				id_farmbox: 11937,
-				storage_id_farmbox: null,
-				area_produtiva: 793.97,
-				area_carr: null,
-				area_total: 1138.76,
-				map_centro_id: {
-					lat: -10.689890455977272,
-					lng: -49.81424317481932,
-				},
-				map_zoom: 14,
-			},
-			{
-				projeto_id: 22,
-				projeto_nome: "Projeto Tuiuiu",
-				id_farmbox: 11940,
-				storage_id_farmbox: null,
-				area_produtiva: 695.38,
-				area_carr: null,
-				area_total: 997.36,
-				map_centro_id: {
-					lat: -10.64811106026552,
-					lng: -49.8667839980361,
-				},
-				map_zoom: 14.2,
-			},
-		],
-	},
-	{
-		fazenda_id: 8,
-		fazenda_nome: "Fazenda Eldorado",
-		fazenda_id_d: 8,
-		capacidade_plantio_ha_dia: 30,
-		projetos: [
-			{
-				projeto_id: 9,
-				projeto_nome: "Projeto Eldorado",
-				id_farmbox: 11948,
-				storage_id_farmbox: 12745,
-				area_produtiva: 866.82,
-				area_carr: 217.19,
-				area_total: 1679.55,
-				map_centro_id: {
-					lat: -11.016782916298087,
-					lng: -49.79276597544605,
-				},
-				map_zoom: 13.85,
-			},
-		],
-	},
-	{
-		fazenda_id: 9,
-		fazenda_nome: "Fazenda Fazendinha",
-		fazenda_id_d: 9,
-		capacidade_plantio_ha_dia: 50,
-		projetos: [
-			{
-				projeto_id: 10,
-				projeto_nome: "Projeto Fazendinha",
-				id_farmbox: 11949,
-				storage_id_farmbox: null,
-				area_produtiva: 318.05,
-				area_carr: 3.33,
-				area_total: 321.39,
-				map_centro_id: {
-					lat: -10.8103889,
-					lng: -49.6605793,
-				},
-				map_zoom: 16,
-			},
-		],
-	},
-	{
-		fazenda_id: 6,
-		fazenda_nome: "Fazenda Lago Verde",
-		fazenda_id_d: 6,
-		capacidade_plantio_ha_dia: 30,
-		projetos: [
-			{
-				projeto_id: 13,
-				projeto_nome: "Projeto Lago Verde",
-				id_farmbox: 11942,
-				storage_id_farmbox: 12744,
-				area_produtiva: 1109.04,
-				area_carr: 106.57,
-				area_total: 3048.34,
-				map_centro_id: {
-					lat: -10.9113323,
-					lng: -49.7673034,
-				},
-				map_zoom: 13.2,
-			},
-		],
-	},
-	{
-		fazenda_id: 10,
-		fazenda_nome: "Fazenda Novo Acordo",
-		fazenda_id_d: 10,
-		capacidade_plantio_ha_dia: 50,
-		projetos: [
-			{
-				projeto_id: 14,
-				projeto_nome: "Projeto Novo Acordo",
-				id_farmbox: 11950,
-				storage_id_farmbox: null,
-				area_produtiva: 281.22,
-				area_carr: 11.29,
-				area_total: 292.51,
-				map_centro_id: {
-					lat: -10.7756202,
-					lng: -49.6209239,
-				},
-				map_zoom: 15.5,
-			},
-		],
-	},
-	{
-		fazenda_id: 7,
-		fazenda_nome: "Fazenda Santa Maria",
-		fazenda_id_d: 7,
-		capacidade_plantio_ha_dia: 40,
-		projetos: [
-			{
-				projeto_id: 19,
-				projeto_nome: "Projeto Santa Maria",
-				id_farmbox: 11947,
-				storage_id_farmbox: 12743,
-				area_produtiva: 685.06,
-				area_carr: 122.57,
-				area_total: 923.97,
-				map_centro_id: null,
-				map_zoom: null,
-			},
-		],
-	},
-];
-
+import { geralActions } from "../../store/redux/geral";
+import {
+	selectNavigationMapData,
+	selectNavigationMapStatus,
+	selectNavigationMapError,
+	selectNavigationMapTotals,
+	selectNavigationMapCurrentSafra,
+	selectNavigationMapCurrentCiclo,
+} from "../../store/redux/selector";
 
 const formatHa = (value) => {
 	if (value === null || value === undefined || Number.isNaN(Number(value))) {
@@ -335,19 +41,85 @@ const formatHa = (value) => {
 	})} ha`;
 };
 
-const sumProjectsArea = (projects, field) => {
-	return projects.reduce((total, item) => {
-		const value = Number(item?.[field] || 0);
-		return total + value;
-	}, 0);
+const normalizeProjectName = (name) => {
+	if (!name) return "Projeto";
+	return String(name).replace("Projeto ", "");
+};
+
+const groupNavigationDataByFarm = (data = []) => {
+	const safeData = Array.isArray(data) ? data : [];
+	const grouped = {};
+
+	safeData.forEach((item) => {
+		const farmName = item?.fazenda_grupo || "Sem fazenda";
+		const projectName = item?.projeto || "Sem projeto";
+
+		if (!grouped[farmName]) {
+			grouped[farmName] = {
+				fazenda_nome: farmName,
+				fazenda_id: farmName,
+				total_area: 0,
+				total_parcelas: 0,
+				projetosMap: {},
+			};
+		}
+
+		if (!grouped[farmName].projetosMap[projectName]) {
+			grouped[farmName].projetosMap[projectName] = {
+				projeto_nome: projectName,
+				projeto_id: item?.projeto_id || projectName,
+				id_farmbox: item?.projeto_id_farmbox || null,
+				map_centro_id: item?.map?.projeto_center || item?.map?.center || null,
+				map_zoom: item?.map?.projeto_zoom || null,
+				area_produtiva: 0,
+				total_parcelas: 0,
+				parcelas: [],
+			};
+		}
+
+		const area = Number(item?.area || 0);
+
+		grouped[farmName].total_area += area;
+		grouped[farmName].total_parcelas += 1;
+
+		grouped[farmName].projetosMap[projectName].area_produtiva += area;
+		grouped[farmName].projetosMap[projectName].total_parcelas += 1;
+		grouped[farmName].projetosMap[projectName].parcelas.push(item);
+	});
+
+	return Object.values(grouped)
+		.map((farm) => ({
+			...farm,
+			projetos: Object.values(farm.projetosMap).sort((a, b) =>
+				String(a.projeto_nome).localeCompare(String(b.projeto_nome))
+			),
+		}))
+		.sort((a, b) => String(a.fazenda_nome).localeCompare(String(b.fazenda_nome)));
 };
 
 const NavigationHomeScreen = ({ navigation }) => {
+	const dispatch = useDispatch();
+
+	const navigationMapDataRaw = useSelector(selectNavigationMapData);
+	const navigationMapStatus = useSelector(selectNavigationMapStatus);
+	const navigationMapError = useSelector(selectNavigationMapError);
+	const navigationMapTotals = useSelector(selectNavigationMapTotals);
+	const currentSafra = useSelector(selectNavigationMapCurrentSafra);
+	const currentCiclo = useSelector(selectNavigationMapCurrentCiclo);
+
+	const navigationMapData = Array.isArray(navigationMapDataRaw)
+		? navigationMapDataRaw
+		: [];
+
 	const [expandedFarmId, setExpandedFarmId] = useState(null);
 
+	const farmsData = useMemo(() => {
+		return groupNavigationDataByFarm(navigationMapData);
+	}, [navigationMapData]);
+
 	const summary = useMemo(() => {
-		const totalFarms = FARMS_DATA.length;
-		const totalProjects = FARMS_DATA.reduce(
+		const totalFarms = farmsData.length;
+		const totalProjects = farmsData.reduce(
 			(total, farm) => total + farm.projetos.length,
 			0
 		);
@@ -355,12 +127,16 @@ const NavigationHomeScreen = ({ navigation }) => {
 		return {
 			totalFarms,
 			totalProjects,
+			totalParcels:
+				navigationMapTotals?.total_parcelas || navigationMapData.length || 0,
+			totalArea: navigationMapTotals?.area_total || 0,
 		};
-	}, []);
-
+	}, [farmsData, navigationMapData.length, navigationMapTotals]);
 
 	useFocusEffect(
 		useCallback(() => {
+			dispatch(geralActions.hydrateNavigationMapState());
+
 			setStatusBarStyle("dark");
 			setStatusBarBackgroundColor("#D6E3F3", true);
 
@@ -368,7 +144,7 @@ const NavigationHomeScreen = ({ navigation }) => {
 				setStatusBarStyle("light");
 				setStatusBarBackgroundColor(Colors.primary[901], true);
 			};
-		}, [])
+		}, [dispatch])
 	);
 
 	const handleToggleDetails = (farmId) => {
@@ -376,21 +152,46 @@ const NavigationHomeScreen = ({ navigation }) => {
 	};
 
 	const handleOpenFarmMap = (farm) => {
-		const projectsWithMapCenter = farm.projetos.filter(
-			(project) => !!project?.map_centro_id?.lat && !!project?.map_centro_id?.lng
-		);
+		dispatch(geralActions.setNavigationMapSelectedFarm(farm.fazenda_nome));
+		dispatch(geralActions.setNavigationMapSelectedProject(null));
+		dispatch(geralActions.clearNavigationMapSelectedParcels());
 
 		const parentNavigation = navigation.getParent();
-		const rootNavigation = parentNavigation?.getParent?.() || parentNavigation || navigation;
+		const rootNavigation =
+			parentNavigation?.getParent?.() || parentNavigation || navigation;
 
 		rootNavigation.navigate("NavigationMapScreen", {
-			farm,
-			farmId: farm.fazenda_id,
 			farmName: farm.fazenda_nome,
-			projects: farm.projetos,
-			projectsWithMapCenter,
+			selectedFarm: farm.fazenda_nome,
+			selectedProject: null,
+			safra: currentSafra,
+			ciclo: currentCiclo,
 		});
 	};
+
+	const handleOpenProjectMap = (farm, project) => {
+		dispatch(geralActions.setNavigationMapSelectedFarm(farm.fazenda_nome));
+		dispatch(geralActions.setNavigationMapSelectedProject(project.projeto_nome));
+		dispatch(geralActions.clearNavigationMapSelectedParcels());
+
+		const parentNavigation = navigation.getParent();
+		const rootNavigation =
+			parentNavigation?.getParent?.() || parentNavigation || navigation;
+
+		rootNavigation.navigate("NavigationMapScreen", {
+			farmName: farm.fazenda_nome,
+			projectName: project.projeto_nome,
+			selectedFarm: farm.fazenda_nome,
+			selectedProject: project.projeto_nome,
+			safra: currentSafra,
+			ciclo: currentCiclo,
+		});
+	};
+
+	const hasData = farmsData.length > 0;
+	const isFirstLoading = navigationMapStatus === "pending" && !hasData;
+	const isRefreshing = navigationMapStatus === "pending" && hasData;
+	const hasError = navigationMapStatus === "failed" || !!navigationMapError;
 
 	return (
 		<SafeAreaView style={styles.safeArea} edges={["top"]}>
@@ -398,6 +199,7 @@ const NavigationHomeScreen = ({ navigation }) => {
 				<View style={styles.header}>
 					<View style={styles.headerTextBox}>
 						<Text style={styles.title}>Navegação</Text>
+
 						<Text style={styles.subtitle}>
 							Selecione uma fazenda para abrir o mapa operacional.
 						</Text>
@@ -405,157 +207,207 @@ const NavigationHomeScreen = ({ navigation }) => {
 
 					<View style={styles.summaryPill}>
 						<Ionicons name="map-outline" size={16} color={Colors.primary[700]} />
+
 						<Text style={styles.summaryPillText}>
 							{summary.totalFarms} fazendas · {summary.totalProjects} projetos
 						</Text>
 					</View>
+
+					<View style={styles.filterInfoPill}>
+						<Text style={styles.filterInfoText}>
+							Safra {currentSafra || "—"} · Ciclo {currentCiclo || "—"} ·{" "}
+							{summary.totalParcels} parcelas · {formatHa(summary.totalArea)}
+						</Text>
+					</View>
+
+					{isRefreshing && (
+						<View style={styles.refreshPill}>
+							<ActivityIndicator size="small" color={Colors.primary[700]} />
+							<Text style={styles.refreshPillText}>Atualizando dados...</Text>
+						</View>
+					)}
 				</View>
 
-				<ScrollView
-					style={styles.scroll}
-					contentContainerStyle={styles.scrollContent}
-					showsVerticalScrollIndicator={false}
-				>
-					{FARMS_DATA.map((farm) => {
-						const isExpanded = expandedFarmId === farm.fazenda_id;
+				{isFirstLoading ? (
+					<View style={styles.loadingBox}>
+						<ActivityIndicator size="large" color={Colors.primary[700]} />
+						<Text style={styles.loadingText}>Carregando dados do mapa...</Text>
+					</View>
+				) : hasError && !hasData ? (
+					<View style={styles.emptyBox}>
+						<Ionicons name="warning-outline" size={30} color="#B45309" />
+						<Text style={styles.emptyTitle}>Não foi possível carregar</Text>
+						<Text style={styles.emptyText}>
+							{navigationMapError || "Erro ao carregar dados de navegação."}
+						</Text>
+					</View>
+				) : !hasData ? (
+					<View style={styles.emptyBox}>
+						<Ionicons name="map-outline" size={30} color={Colors.primary[700]} />
+						<Text style={styles.emptyTitle}>Nenhum dado encontrado</Text>
+						<Text style={styles.emptyText}>
+							Não há parcelas disponíveis para a safra/ciclo atual.
+						</Text>
+					</View>
+				) : (
+					<ScrollView
+						style={styles.scroll}
+						contentContainerStyle={styles.scrollContent}
+						showsVerticalScrollIndicator={false}
+					>
+						{farmsData.map((farm) => {
+							const isExpanded = expandedFarmId === farm.fazenda_id;
 
-						const totalProductiveArea = sumProjectsArea(
-							farm.projetos,
-							"area_produtiva"
-						);
+							const visibleProjects = farm.projetos.slice(0, 3);
+							const hiddenProjectsCount = Math.max(farm.projetos.length - 3, 0);
 
-						const totalArea = sumProjectsArea(farm.projetos, "area_total");
-
-						const visibleProjects = farm.projetos.slice(0, 3);
-						const hiddenProjectsCount = Math.max(farm.projetos.length - 3, 0);
-
-						return (
-							<View key={farm.fazenda_id} style={styles.farmCard}>
-								<TouchableOpacity
-									activeOpacity={0.88}
-									onPress={() => handleOpenFarmMap(farm)}
-									style={styles.farmMainButton}
-								>
-									<View style={styles.farmIconBox}>
-										<Ionicons name="navigate-outline" size={21} color="#FFFFFF" />
-									</View>
-
-									<View style={styles.farmContent}>
-										<Text style={styles.farmName} numberOfLines={1}>
-											{farm.fazenda_nome}
-										</Text>
-
-										<Text style={styles.farmMeta} numberOfLines={1}>
-											{farm.projetos.length}{" "}
-											{farm.projetos.length === 1 ? "projeto" : "projetos"} ·{" "}
-											{farm.capacidade_plantio_ha_dia || "—"} ha/dia
-										</Text>
-
-										<View style={styles.projectPreviewRow}>
-											{visibleProjects.map((project) => (
-												<View key={project.projeto_id} style={styles.projectMiniChip}>
-													<Text style={styles.projectMiniChipText} numberOfLines={1}>
-														{project.projeto_nome.replace("Projeto ", "")}
-													</Text>
-												</View>
-											))}
-
-											{hiddenProjectsCount > 0 && (
-												<View style={styles.projectMoreChip}>
-													<Text style={styles.projectMoreChipText}>
-														+{hiddenProjectsCount}
-													</Text>
-												</View>
-											)}
-										</View>
-									</View>
-
-									<Ionicons
-										name="chevron-forward"
-										size={22}
-										color="rgba(15,23,42,0.38)"
-									/>
-								</TouchableOpacity>
-
-								<View style={styles.cardFooter}>
-									<TouchableOpacity
-										activeOpacity={0.82}
-										onPress={() => handleToggleDetails(farm.fazenda_id)}
-										style={styles.detailsButton}
-									>
-										<Text style={styles.detailsButtonText}>
-											{isExpanded ? "Ocultar detalhes" : "Ver detalhes"}
-										</Text>
-
-										<Ionicons
-											name={isExpanded ? "chevron-up" : "chevron-down"}
-											size={16}
-											color={Colors.primary[700]}
-										/>
-									</TouchableOpacity>
-
+							return (
+								<View key={farm.fazenda_id} style={styles.farmCard}>
 									<TouchableOpacity
 										activeOpacity={0.88}
 										onPress={() => handleOpenFarmMap(farm)}
-										style={styles.openButton}
+										style={styles.farmMainButton}
 									>
-										<Text style={styles.openButtonText}>Abrir mapa</Text>
-									</TouchableOpacity>
-								</View>
-
-								{isExpanded && (
-									<View style={styles.expandedBox}>
-										<View style={styles.expandedMetricsRow}>
-											<View style={styles.expandedMetric}>
-												<Text style={styles.expandedMetricLabel}>Área produtiva</Text>
-												<Text style={styles.expandedMetricValue}>
-													{formatHa(totalProductiveArea)}
-												</Text>
-											</View>
-
-											<View style={styles.expandedMetric}>
-												<Text style={styles.expandedMetricLabel}>Área total</Text>
-												<Text style={styles.expandedMetricValue}>
-													{formatHa(totalArea)}
-												</Text>
-											</View>
+										<View style={styles.farmIconBox}>
+											<Ionicons
+												name="navigate-outline"
+												size={21}
+												color="#FFFFFF"
+											/>
 										</View>
 
-										<View style={styles.expandedProjects}>
-											{farm.projetos.map((project) => {
-												const hasMapCenter =
-													!!project?.map_centro_id?.lat && !!project?.map_centro_id?.lng;
+										<View style={styles.farmContent}>
+											<Text style={styles.farmName} numberOfLines={1}>
+												{farm.fazenda_nome}
+											</Text>
 
-												return (
-													<View key={project.projeto_id} style={styles.expandedProjectRow}>
-														<View
-															style={[
-																styles.projectDot,
-																{
-																	backgroundColor: hasMapCenter
-																		? "#16A34A"
-																		: "#CBD5E1",
-																},
-															]}
-														/>
+											<Text style={styles.farmMeta} numberOfLines={1}>
+												{farm.projetos.length}{" "}
+												{farm.projetos.length === 1 ? "projeto" : "projetos"} ·{" "}
+												{farm.total_parcelas} parcelas · {formatHa(farm.total_area)}
+											</Text>
 
-														<Text style={styles.expandedProjectName} numberOfLines={1}>
-															{project.projeto_nome}
-														</Text>
-
-														<Text style={styles.expandedProjectArea}>
-															{formatHa(project.area_produtiva)}
+											<View style={styles.projectPreviewRow}>
+												{visibleProjects.map((project) => (
+													<View
+														key={project.projeto_id}
+														style={styles.projectMiniChip}
+													>
+														<Text
+															style={styles.projectMiniChipText}
+															numberOfLines={1}
+														>
+															{normalizeProjectName(project.projeto_nome)}
 														</Text>
 													</View>
-												);
-											})}
+												))}
+
+												{hiddenProjectsCount > 0 && (
+													<View style={styles.projectMoreChip}>
+														<Text style={styles.projectMoreChipText}>
+															+{hiddenProjectsCount}
+														</Text>
+													</View>
+												)}
+											</View>
 										</View>
+
+										<Ionicons
+											name="chevron-forward"
+											size={22}
+											color="rgba(15,23,42,0.38)"
+										/>
+									</TouchableOpacity>
+
+									<View style={styles.cardFooter}>
+										<TouchableOpacity
+											activeOpacity={0.82}
+											onPress={() => handleToggleDetails(farm.fazenda_id)}
+											style={styles.detailsButton}
+										>
+											<Text style={styles.detailsButtonText}>
+												{isExpanded ? "Ocultar detalhes" : "Ver detalhes"}
+											</Text>
+
+											<Ionicons
+												name={isExpanded ? "chevron-up" : "chevron-down"}
+												size={16}
+												color={Colors.primary[700]}
+											/>
+										</TouchableOpacity>
+
+										<TouchableOpacity
+											activeOpacity={0.88}
+											onPress={() => handleOpenFarmMap(farm)}
+											style={styles.openButton}
+										>
+											<Text style={styles.openButtonText}>Abrir mapa</Text>
+										</TouchableOpacity>
 									</View>
-								)}
-							</View>
-						);
-					})}
-				</ScrollView>
+
+									{isExpanded && (
+										<View style={styles.expandedBox}>
+											<View style={styles.expandedMetricsRow}>
+												<View style={styles.expandedMetric}>
+													<Text style={styles.expandedMetricLabel}>Área total</Text>
+													<Text style={styles.expandedMetricValue}>
+														{formatHa(farm.total_area)}
+													</Text>
+												</View>
+
+												<View style={styles.expandedMetric}>
+													<Text style={styles.expandedMetricLabel}>Parcelas</Text>
+													<Text style={styles.expandedMetricValue}>
+														{farm.total_parcelas}
+													</Text>
+												</View>
+											</View>
+
+											<View style={styles.expandedProjects}>
+												{farm.projetos.map((project) => {
+													const hasMapCenter =
+														!!project?.map_centro_id?.lat ||
+														!!project?.map_centro_id?.latitude;
+
+													return (
+														<TouchableOpacity
+															key={project.projeto_id}
+															activeOpacity={0.84}
+															onPress={() => handleOpenProjectMap(farm, project)}
+															style={styles.expandedProjectRow}
+														>
+															<View
+																style={[
+																	styles.projectDot,
+																	{
+																		backgroundColor: hasMapCenter
+																			? "#16A34A"
+																			: "#CBD5E1",
+																	},
+																]}
+															/>
+
+															<Text
+																style={styles.expandedProjectName}
+																numberOfLines={1}
+															>
+																{project.projeto_nome}
+															</Text>
+
+															<Text style={styles.expandedProjectArea}>
+																{formatHa(project.area_produtiva)}
+															</Text>
+														</TouchableOpacity>
+													);
+												})}
+											</View>
+										</View>
+									)}
+								</View>
+							);
+						})}
+					</ScrollView>
+				)}
 			</View>
 		</SafeAreaView>
 	);
@@ -610,6 +462,66 @@ const styles = StyleSheet.create({
 		color: Colors.primary[800],
 		fontSize: 12,
 		fontWeight: "800",
+	},
+	filterInfoPill: {
+		alignSelf: "flex-start",
+		marginTop: 8,
+		backgroundColor: "rgba(15,23,42,0.06)",
+		borderRadius: 999,
+		paddingHorizontal: 11,
+		paddingVertical: 6,
+	},
+	filterInfoText: {
+		color: "rgba(15,23,42,0.64)",
+		fontSize: 11,
+		fontWeight: "800",
+	},
+	refreshPill: {
+		alignSelf: "flex-start",
+		marginTop: 8,
+		flexDirection: "row",
+		alignItems: "center",
+		gap: 7,
+		backgroundColor: "rgba(255,255,255,0.82)",
+		borderRadius: 999,
+		paddingHorizontal: 11,
+		paddingVertical: 6,
+	},
+	refreshPillText: {
+		color: Colors.primary[800],
+		fontSize: 11,
+		fontWeight: "800",
+	},
+	loadingBox: {
+		flex: 1,
+		alignItems: "center",
+		justifyContent: "center",
+		paddingHorizontal: 28,
+	},
+	loadingText: {
+		marginTop: 12,
+		color: Colors.primary[800],
+		fontSize: 13,
+		fontWeight: "800",
+	},
+	emptyBox: {
+		flex: 1,
+		alignItems: "center",
+		justifyContent: "center",
+		paddingHorizontal: 28,
+	},
+	emptyTitle: {
+		marginTop: 10,
+		color: "#0F172A",
+		fontSize: 16,
+		fontWeight: "900",
+	},
+	emptyText: {
+		marginTop: 4,
+		color: "rgba(15,23,42,0.56)",
+		fontSize: 13,
+		fontWeight: "700",
+		textAlign: "center",
 	},
 	scroll: {
 		flex: 1,
@@ -763,7 +675,7 @@ const styles = StyleSheet.create({
 	expandedProjectRow: {
 		flexDirection: "row",
 		alignItems: "center",
-		minHeight: 26,
+		minHeight: 30,
 	},
 	projectDot: {
 		width: 7,

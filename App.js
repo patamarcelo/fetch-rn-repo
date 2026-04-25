@@ -1,40 +1,48 @@
-import 'react-native-gesture-handler';
-import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import "react-native-gesture-handler";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 
 import { StatusBar } from "expo-status-bar";
-import { StyleSheet, Text, View, Button, Alert } from "react-native";
+import { StyleSheet } from "react-native";
 
 import { Provider } from "react-redux";
 import { PersistGate } from "redux-persist/integration/react";
 import { store, persistor } from "./store/redux/store";
 
-import HomeStack from "./stacks/HomeStack";
 import MainStack from "./stacks/MainStack";
-
-import { useSelector, useDispatch } from 'react-redux';
 import LoginStack from "./stacks/LoginStack";
 
-import { useEffect, useState } from "react";
-
+import { useSelector, useDispatch } from "react-redux";
+import { useEffect, useRef } from "react";
 
 import { checkUserStatus } from "./store/firebase/logged-checked";
+import AppSplash from "./components/Splash/AppSplash";
 
-import AppSplash from './components/Splash/AppSplash';
 
-
+import { fetchNavigationMapData, geralActions } from "./store/redux/geral";
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
 
 const Navigation = () => {
 	const isAuthenticated = useSelector((state) => state.auth.isAuthenticated);
+	const user = useSelector((state) => state.auth.user);
+
+
+
+	const navigationMapData = useSelector(
+		(state) => state.geral.navigationMapData
+	);
+
+	const navigationMapStatus = useSelector(
+		(state) => state.geral.navigationMapStatus
+	);
 
 	const dispatch = useDispatch();
-	const user = useSelector((state) => state.auth.user); // Get user from Redux
 
+	const didRequestNavigationDataRef = useRef(false);
 
 	useEffect(() => {
 		const initializeApp = async () => {
@@ -44,13 +52,54 @@ const Navigation = () => {
 		initializeApp();
 	}, []);
 
+
+	useEffect(() => {
+		if (!isAuthenticated) return;
+
+		dispatch(geralActions.resetNavigationMapLoadingState());
+	}, [isAuthenticated, dispatch]);
+
+
+
+	useEffect(() => {
+		if (!isAuthenticated) return;
+		if (didRequestNavigationDataRef.current) return;
+
+		const alreadyLoaded = Array.isArray(navigationMapData) && navigationMapData.length > 0;
+
+		if (alreadyLoaded) return;
+
+		didRequestNavigationDataRef.current = true;
+
+		console.log("Buscando dados iniciais de navegação...");
+
+		dispatch(fetchNavigationMapData({}))
+			.unwrap()
+			.then((data) => {
+				console.log("Dados de navegação carregados:", {
+					total: data?.response?.data?.length,
+					safra: data?.response?.safra,
+					ciclo: data?.response?.ciclo,
+				});
+			})
+			.catch((error) => {
+				console.log("Erro ao carregar dados de navegação:", error);
+			});
+	}, [isAuthenticated, navigationMapData?.length, dispatch]);
+
+	
+
+	useEffect(() => {
+		console.log("APP NAVIGATION DEBUG:", {
+			isAuthenticated,
+			navigationMapStatus,
+			navigationMapDataLength: navigationMapData?.length,
+		});
+	}, [isAuthenticated, navigationMapStatus, navigationMapData?.length]);
+
 	return (
 		<NavigationContainer>
-			{!isAuthenticated ? (
-				<LoginStack />
-			) : (
-				<MainStack />
-			)}
+			{!isAuthenticated ? <LoginStack /> : <MainStack />}
 		</NavigationContainer>
 	);
 };
@@ -60,10 +109,6 @@ const Root = () => {
 };
 
 export default function App() {
-	const handleRefresh = () => {
-		console.log("atualizando");
-	};
-
 	return (
 		<GestureHandlerRootView style={{ flex: 1 }}>
 			<StatusBar style="light" />
@@ -83,8 +128,7 @@ const styles = StyleSheet.create({
 		height: 100,
 		width: "100%",
 		justifyContent: "center",
-		alignItems: "center"
-		// backgroundColor: "red"
+		alignItems: "center",
 	},
 	BottomView: {
 		paddingTop: 50,
@@ -92,7 +136,7 @@ const styles = StyleSheet.create({
 		backgroundColor: "blue",
 		width: "100%",
 		justifyContent: "flex-start",
-		alignItems: "center"
+		alignItems: "center",
 	},
 	container: {
 		flexDirection: "column",
@@ -100,6 +144,6 @@ const styles = StyleSheet.create({
 		flex: 1,
 		backgroundColor: "#fff",
 		alignItems: "center",
-		justifyContent: "center"
-	}
+		justifyContent: "center",
+	},
 });
