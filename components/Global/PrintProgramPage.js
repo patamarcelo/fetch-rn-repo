@@ -4,8 +4,8 @@ import * as FileSystem from 'expo-file-system/legacy';
 
 const PrintProgramPage = async (program, product, estagio, areaTotal) => {
 
-  const totalArea = areaTotal.total
-  console.log('AreaTotal geral: ', totalArea);
+    const totalArea = Number(areaTotal?.total ?? 0);
+    console.log('AreaTotal geral: ', totalArea);
   
   const formatNumber = number => number?.toLocaleString("pt-br", {
     minimumFractionDigits: 2,

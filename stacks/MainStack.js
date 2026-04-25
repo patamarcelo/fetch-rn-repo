@@ -7,10 +7,12 @@ import HomeStack from "./HomeStack";
 import FarmsScreen from "../screens/FarmsScreen";
 import MapStack from "./MapStack";
 import PolygonFlowStack from "./PolygonFlowStack";
+import NavigationMapScreen from "../screens/navigation/NavigationMapScreen";
 
 const MainStack = () => {
 	return (
 		<Stack.Navigator
+			id="MainStack"
 			screenOptions={{
 				headerShown: false,
 				headerTintColor: "white",
@@ -47,6 +49,15 @@ const MainStack = () => {
 				component={PolygonFlowStack}
 				options={{
 					presentation: "card",
+				}}
+			/>
+
+			<Stack.Screen
+				name="NavigationMapScreen"
+				component={NavigationMapScreen}
+				options={{
+					presentation: "card",
+					headerShown: false,
 				}}
 			/>
 		</Stack.Navigator>

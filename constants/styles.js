@@ -62,5 +62,6 @@ export const Colors = {
 	primary500: "#0d6efd",
 	primary800: "#031633",
 	error100: "#fcdcbf",
-	error500: "#f37c13"
+	error500: "#f37c13",
+	bgBlue: "#D6E3F3"
 };

@@ -12,6 +12,7 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 
 import FarmBoxStack from "./FarmBoxStack";
 import PlantioStack from "./PlantioStack";
+import NavigationHomeScreen from "../screens/navigation/NavigationHomeScreen";
 
 const Tab = createBottomTabNavigator();
 
@@ -40,6 +41,18 @@ const HomeStack = () => {
 					title: "Programas",
 					tabBarIcon: ({ color, size }) => (
 						<Ionicons name="book" color={color} size={size} />
+					),
+				}}
+			/>
+			
+			<Tab.Screen
+				name="NavigationTab"
+				component={NavigationHomeScreen}
+				options={{
+					title: "Navegação",
+					headerShown: false,
+					tabBarIcon: ({ color, size }) => (
+						<Ionicons name="navigate-outline" color={color} size={size} />
 					),
 				}}
 			/>
