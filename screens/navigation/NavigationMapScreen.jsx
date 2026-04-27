@@ -1,6 +1,7 @@
 // screens/navigation/NavigationMapScreen.jsx
 
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+
 import {
 	View,
 	Text,
@@ -13,6 +14,7 @@ import {
 	Linking,
 	PanResponder,
 	Animated,
+	Image,
 } from "react-native";
 
 import MapView, { Polygon, Marker, PROVIDER_GOOGLE } from "react-native-maps";
@@ -41,6 +43,87 @@ const DEFAULT_REGION = {
 	longitude: -49.85,
 	latitudeDelta: 0.25,
 	longitudeDelta: 0.25,
+};
+
+
+const CULTURE_ICONS = {
+	feijao: require("../../utils/assets/icons/beans2.png"),
+	"feijão": require("../../utils/assets/icons/beans2.png"),
+	arroz: require("../../utils/assets/icons/rice.png"),
+	soja: require("../../utils/assets/icons/soy.png"),
+};
+
+const getCultureIconSource = (culture) => {
+	const key = normalizeVarietyName(culture);
+
+	return CULTURE_ICONS[key] || require("../../utils/assets/icons/question.png");
+};
+
+const formatDateBr = (value) => {
+	if (!value) return "—";
+
+	const raw = String(value);
+
+	if (raw.includes("/")) return raw;
+
+	const [year, month, day] = raw.split("-");
+
+	if (!year || !month || !day) return raw;
+
+	return `${day}/${month}/${year}`;
+};
+
+const getWeightKg = (item) => {
+	return (
+		item?.peso_kg ??
+		item?.peso ??
+		item?.peso_total_kg ??
+		item?.peso_colheita_kg ??
+		null
+	);
+};
+
+const getWeightScs = (item) => {
+	return (
+		item?.peso_scs ??
+		item?.peso_sacas ??
+		item?.sacas ??
+		item?.peso_sc ??
+		null
+	);
+};
+
+const getProductivityValue = (item) => {
+	return (
+		item?.produtividade ??
+		item?.produtividade_scs_ha ??
+		item?.produtividade_sc_ha ??
+		item?.produtividade_ha ??
+		null
+	);
+};
+
+const InfoMiniMetric = ({ label, value, icon, highlight }) => {
+	return (
+		<View style={[styles.infoMiniMetric, highlight && styles.infoMiniMetricHighlight]}>
+			<View style={styles.infoMiniMetricHeader}>
+				{!!icon && (
+					<Ionicons
+						name={icon}
+						size={13}
+						color={highlight ? Colors.primary[800] : Colors.primary[700]}
+					/>
+				)}
+				<Text style={[styles.infoMiniMetricLabel, highlight && styles.infoMiniMetricLabelHighlight]}>
+					{label}
+				</Text>
+			</View>
+
+			<Text style={[styles.infoMiniMetricValue, highlight && styles.infoMiniMetricValueHighlight]} numberOfLines={1}>
+				{value}
+			</Text>
+		</View>
+	);
 };
 
 const formatHa = (value) => {
@@ -560,19 +643,85 @@ const MapParcelLabel = memo(function MapParcelLabel({
 const ParcelInfoCard = ({ item, onClose, onSelect, isSelected }) => {
 	if (!item) return null;
 
+	const culture = item?.cultura || "—";
+	const variety = item?.variedade || item?.variedade_nome || "—";
+	const cultureIcon = getCultureIconSource(culture);
+
+	const plantioDate = item?.data_plantio || item?.data_prevista_plantio || null;
+	const colheitaDate =
+		item?.data_colheita ||
+		item?.data_prevista_colheita ||
+		item?.harvestPredictionDate ||
+		null;
+
+	const pesoKg = getWeightKg(item);
+	const pesoScs = getWeightScs(item);
+	const produtividade = getProductivityValue(item);
+
+	const dapValue = getParcelDap(item);
+
 	return (
 		<View style={styles.infoCard}>
 			<View style={styles.infoHeader}>
 				<View style={styles.infoTitleBox}>
-					<Text style={styles.infoTitle}>Parcela {item.parcela || "—"}</Text>
-					<Text style={styles.infoSubtitle} numberOfLines={1}>
-						{item.projeto || "Projeto não informado"}
-					</Text>
+					<View style={styles.infoTitleRow}>
+						<View style={styles.infoCultureIconBox}>
+							<Image
+								source={cultureIcon}
+								style={styles.infoCultureIcon}
+								resizeMode="contain"
+							/>
+						</View>
+
+						<View style={styles.infoTitleTextBox}>
+							<Text style={styles.infoTitle}>Parcela {item.parcela || "—"}</Text>
+
+							<Text style={styles.infoSubtitle} numberOfLines={1}>
+								{item.projeto || "Projeto não informado"}
+							</Text>
+						</View>
+					</View>
 				</View>
 
 				<TouchableOpacity activeOpacity={0.82} onPress={onClose} style={styles.infoClose}>
 					<Ionicons name="close" size={18} color="#0F172A" />
 				</TouchableOpacity>
+			</View>
+
+			<View style={styles.infoCropBanner}>
+				<View style={styles.infoCropRow}>
+					<View style={styles.infoCropTextBox}>
+						<Text style={styles.infoCropLabel}>Cultura</Text>
+						<Text style={styles.infoCropValue} numberOfLines={1}>
+							{culture}
+						</Text>
+					</View>
+
+					<View style={styles.infoCropDivider} />
+
+					<View style={styles.infoCropTextBox}>
+						<Text style={styles.infoCropLabel}>Variedade</Text>
+						<Text style={styles.infoCropValue} numberOfLines={1}>
+							{variety}
+						</Text>
+					</View>
+				</View>
+
+				<View style={styles.infoCropMetaRow}>
+					<View style={styles.infoCropMetaPill}>
+						<Ionicons name="leaf-outline" size={12} color={Colors.primary[700]} />
+						<Text style={styles.infoCropMetaText}>
+							Safra {item?.safra || "—"}
+						</Text>
+					</View>
+
+					<View style={styles.infoCropMetaPill}>
+						<Ionicons name="repeat-outline" size={12} color={Colors.primary[700]} />
+						<Text style={styles.infoCropMetaText}>
+							Ciclo {item?.ciclo || "—"}
+						</Text>
+					</View>
+				</View>
 			</View>
 
 			<View style={styles.infoGrid}>
@@ -583,35 +732,64 @@ const ParcelInfoCard = ({ item, onClose, onSelect, isSelected }) => {
 
 				<View style={styles.infoMetric}>
 					<Text style={styles.infoMetricLabel}>Status</Text>
-					<Text style={styles.infoMetricValue}>{item.status_label || item.status || "—"}</Text>
-				</View>
-
-				<View style={styles.infoMetric}>
-					<Text style={styles.infoMetricLabel}>Cultura</Text>
-					<Text style={styles.infoMetricValue}>{item.cultura || "—"}</Text>
-				</View>
-
-				<View style={styles.infoMetric}>
-					<Text style={styles.infoMetricLabel}>Variedade</Text>
-					<Text style={styles.infoMetricValue}>{item.variedade || item.variedade_nome || "—"}</Text>
+					<Text style={styles.infoMetricValue}>
+						{item.status_label || item.status || "—"}
+					</Text>
 				</View>
 			</View>
 
-			<View style={styles.infoRows}>
-				<Text style={styles.infoRowText}>
-					Plantio: {item.data_plantio || item.data_prevista_plantio || "—"}
-				</Text>
-				<Text style={styles.infoRowText}>
-					Colheita prevista: {item.data_prevista_colheita || "—"}
-				</Text>
-				<Text style={styles.infoRowText}>
-					Peso: {formatNumber(item.peso_scs, 2)} scs · {formatNumber(item.peso_kg, 2)} kg
-				</Text>
-				<Text style={styles.infoRowText}>
-					Produtividade: {formatNumber(item.produtividade, 2)}
-				</Text>
+			<View style={styles.infoSection}>
+				<Text style={styles.infoSectionTitle}>Datas</Text>
+
+				<View style={styles.infoMiniGrid}>
+					<InfoMiniMetric
+						label="Plantio"
+						value={formatDateBr(plantioDate)}
+						icon="calendar-outline"
+					/>
+
+					<InfoMiniMetric
+						label="Colheita"
+						value={formatDateBr(colheitaDate)}
+						icon="flag-outline"
+					/>
+
+					<InfoMiniMetric
+						label="DAP"
+						value={dapValue !== null && dapValue !== undefined ? `${dapValue} dias` : "—"}
+						icon="time-outline"
+					/>
+				</View>
 			</View>
 
+			<View style={styles.infoSection}>
+				<Text style={styles.infoSectionTitle}>Pesos e produtividade</Text>
+
+				<View style={styles.infoMiniGrid}>
+					<InfoMiniMetric
+						label="Peso"
+						value={`${formatNumber(pesoKg, 2)} kg`}
+						icon="scale-outline"
+					/>
+
+					<InfoMiniMetric
+						label="Peso scs"
+						value={`${formatNumber(pesoScs, 2)} scs`}
+						icon="cube-outline"
+					/>
+
+					<InfoMiniMetric
+						label="Produtividade"
+						value={
+							produtividade !== null && produtividade !== undefined
+								? formatNumber(produtividade, 2)
+								: "—"
+						}
+						icon="trending-up-outline"
+						highlight
+					/>
+				</View>
+			</View>
 			<TouchableOpacity
 				activeOpacity={0.86}
 				onPress={onSelect}
@@ -622,6 +800,7 @@ const ParcelInfoCard = ({ item, onClose, onSelect, isSelected }) => {
 					size={18}
 					color="#FFFFFF"
 				/>
+
 				<Text style={styles.infoSelectButtonText}>
 					{isSelected ? "Selecionada" : "Selecionar parcela"}
 				</Text>
@@ -2762,15 +2941,15 @@ const styles = StyleSheet.create({
 
 	infoCardFloatingWrap: {
 		position: "absolute",
-		left: 12,
-		right: 12,
+		left: 10,
+		right: 10,
 		zIndex: 23,
 	},
 
 	infoCard: {
 		backgroundColor: "rgba(255,255,255,0.97)",
 		borderRadius: 24,
-		padding: 14,
+		padding: 13,
 		borderWidth: 1,
 		borderColor: "rgba(15,23,42,0.08)",
 		shadowColor: "#000",
@@ -3016,6 +3195,168 @@ const styles = StyleSheet.create({
 		marginLeft: 4,
 		borderWidth: 1,
 		borderColor: "rgba(255,255,255,0.18)",
+	},
+	infoTitleRow: {
+		flexDirection: "row",
+		alignItems: "center",
+		gap: 10,
+	},
+
+	infoTitleTextBox: {
+		flex: 1,
+	},
+
+	infoCultureIconBox: {
+		width: 42,
+		height: 42,
+		borderRadius: 16,
+		backgroundColor: "rgba(22,101,52,0.10)",
+		alignItems: "center",
+		justifyContent: "center",
+		borderWidth: 1,
+		borderColor: "rgba(22,101,52,0.12)",
+	},
+
+	infoCultureIcon: {
+		width: 27,
+		height: 27,
+	},
+
+	infoCropBanner: {
+		backgroundColor: "rgba(22,101,52,0.08)",
+		borderRadius: 18,
+		paddingHorizontal: 12,
+		paddingVertical: 10,
+		borderWidth: 1,
+		borderColor: "rgba(22,101,52,0.12)",
+		marginBottom: 10,
+	},
+
+	infoCropTextBox: {
+		flex: 1,
+	},
+
+	infoCropLabel: {
+		color: "rgba(15,23,42,0.46)",
+		fontSize: 10,
+		fontWeight: "900",
+		textTransform: "uppercase",
+		letterSpacing: 0.6,
+	},
+
+	infoCropValue: {
+		marginTop: 2,
+		color: "#0F172A",
+		fontSize: 13,
+		fontWeight: "950",
+	},
+
+	infoCropDivider: {
+		width: 1,
+		height: 30,
+		backgroundColor: "rgba(15,23,42,0.10)",
+		marginHorizontal: 10,
+	},
+
+	infoSection: {
+		marginTop: 12,
+	},
+
+	infoSectionTitle: {
+		color: "rgba(15,23,42,0.50)",
+		fontSize: 10,
+		fontWeight: "950",
+		textTransform: "uppercase",
+		letterSpacing: 0.7,
+		marginBottom: 7,
+	},
+
+	infoMiniGrid: {
+		flexDirection: "row",
+		flexWrap: "wrap",
+		gap: 8,
+	},
+
+	infoMiniMetric: {
+		width: "31.5%",
+		minHeight: 62,
+		backgroundColor: "rgba(15,23,42,0.045)",
+		borderRadius: 15,
+		paddingHorizontal: 9,
+		paddingVertical: 9,
+		borderWidth: 1,
+		borderColor: "rgba(15,23,42,0.055)",
+	},
+
+
+
+	infoMiniMetricHeader: {
+		flexDirection: "row",
+		alignItems: "center",
+		gap: 4,
+		marginBottom: 5,
+	},
+
+	infoMiniMetricLabel: {
+		color: "rgba(15,23,42,0.48)",
+		fontSize: 9,
+		fontWeight: "950",
+		textTransform: "uppercase",
+		letterSpacing: 0.35,
+	},
+
+
+
+	infoMiniMetricValue: {
+		color: "#0F172A",
+		fontSize: 12,
+		fontWeight: "950",
+	},
+
+	infoMiniMetricHighlight: {
+		backgroundColor: "rgba(34,197,94,0.12)",
+		borderColor: "rgba(22,163,74,0.22)",
+	},
+
+	infoMiniMetricLabelHighlight: {
+		color: Colors.primary[800],
+	},
+
+	infoMiniMetricValueHighlight: {
+		color: Colors.primary[900],
+	},
+
+	infoCropRow: {
+		flexDirection: "row",
+		alignItems: "center",
+	},
+
+	infoCropMetaRow: {
+		flexDirection: "row",
+		alignItems: "center",
+		gap: 8,
+		marginTop: 10,
+		paddingTop: 9,
+		borderTopWidth: 1,
+		borderTopColor: "rgba(15,23,42,0.08)",
+	},
+
+	infoCropMetaPill: {
+		flexDirection: "row",
+		alignItems: "center",
+		gap: 5,
+		backgroundColor: "rgba(255,255,255,0.72)",
+		borderRadius: 999,
+		paddingHorizontal: 9,
+		paddingVertical: 5,
+		borderWidth: 1,
+		borderColor: "rgba(15,23,42,0.06)",
+	},
+
+	infoCropMetaText: {
+		color: Colors.primary[800],
+		fontSize: 10.5,
+		fontWeight: "900",
 	},
 
 });
