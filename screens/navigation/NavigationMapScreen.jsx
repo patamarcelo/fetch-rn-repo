@@ -462,14 +462,52 @@ const applyContextFilters = (data = [], filters = {}, ignoreKey = null) => {
 	});
 };
 
+const getDaysBetweenToday = (dateValue) => {
+	if (!dateValue) return null;
+
+	const [year, month, day] = String(dateValue).split("-").map(Number);
+
+	if (!year || !month || !day) return null;
+
+	const startDate = new Date(year, month - 1, day);
+	const today = new Date();
+
+	startDate.setHours(0, 0, 0, 0);
+	today.setHours(0, 0, 0, 0);
+
+	const diffMs = today.getTime() - startDate.getTime();
+	const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+	if (Number.isNaN(diffDays) || diffDays < 0) return null;
+
+	return diffDays;
+};
+
+const getParcelDap = (item) => {
+	const directDap =
+		item?.dapToday ??
+		item?.dap_today ??
+		item?.dap ??
+		null;
+
+	if (directDap !== null && directDap !== undefined && !Number.isNaN(Number(directDap))) {
+		return Number(directDap);
+	}
+
+	return getDaysBetweenToday(item?.data_plantio);
+};
+
 const MapParcelLabel = memo(function MapParcelLabel({
 	parcela,
 	area,
 	cultureText,
+	status,
 	statusLabel,
+	dap,
 	isSelected,
 	showDetails,
 }) {
+	const shouldShowDap = status === "plantado" && dap !== null && dap !== undefined;
 	return (
 		<View
 			collapsable={false}
@@ -506,11 +544,15 @@ const MapParcelLabel = memo(function MapParcelLabel({
 				</Text>
 			)}
 
-			{!!statusLabel && isSelected && (
+			{shouldShowDap ? (
+				<Text style={styles.labelStatus} numberOfLines={1}>
+					{dap} DAP
+				</Text>
+			) : !!statusLabel && isSelected ? (
 				<Text style={styles.labelStatus} numberOfLines={1}>
 					{statusLabel}
 				</Text>
-			)}
+			) : null}
 		</View>
 	);
 });
@@ -626,8 +668,8 @@ const NavigationMapScreen = ({ navigation, route }) => {
 	const [selectedCiclo, setSelectedCiclo] = useState(ciclo ? normalizeCiclo(ciclo) : null);
 	const [filtersVisible, setFiltersVisible] = useState(false);
 	const [selectedStatus, setSelectedStatus] = useState([]);
-	const [selectedCulture, setSelectedCulture] = useState(null);
-	const [selectedVariety, setSelectedVariety] = useState(null);
+	const [selectedCultures, setSelectedCultures] = useState([]);
+	const [selectedVarieties, setSelectedVarieties] = useState([]);
 	const [selectedProjectLocal, setSelectedProjectLocal] = useState(
 		selectedProjectParam || null
 	);
@@ -815,16 +857,16 @@ const NavigationMapScreen = ({ navigation, route }) => {
 			projeto: selectedProjectLocal || null,
 			safra: selectedSafra || null,
 			ciclo: selectedCiclo || null,
-			cultura: selectedCulture || null,
-			variedade: selectedVariety || null,
+			culturas: selectedCultures,
+			variedades: selectedVarieties,
 		};
 	}, [
 		selectedFarmParam,
 		selectedProjectLocal,
 		selectedSafra,
 		selectedCiclo,
-		selectedCulture,
-		selectedVariety,
+		selectedCultures,
+		selectedVarieties,
 	]);
 
 	useEffect(() => {
@@ -909,6 +951,7 @@ const NavigationMapScreen = ({ navigation, route }) => {
 		].sort((a, b) => String(a).localeCompare(String(b)));
 	}, [filterIndexRows, selectedSafra, selectedCiclo]);
 
+
 	const varietyOptions = useMemo(() => {
 		return [
 			...new Set(
@@ -922,8 +965,13 @@ const NavigationMapScreen = ({ navigation, route }) => {
 							return false;
 						}
 
-						if (selectedCulture && String(item.cultura).trim() !== String(selectedCulture).trim()) {
-							return false;
+						if (selectedCultures.length > 0) {
+							const itemCulture = normalizeTextFilter(item.cultura);
+							const matchesCulture = selectedCultures.some(
+								(culture) => normalizeTextFilter(culture) === itemCulture
+							);
+
+							if (!matchesCulture) return false;
 						}
 
 						return true;
@@ -932,7 +980,7 @@ const NavigationMapScreen = ({ navigation, route }) => {
 					.filter(Boolean)
 			),
 		].sort((a, b) => String(a).localeCompare(String(b)));
-	}, [filterIndexRows, selectedSafra, selectedCiclo, selectedCulture]);
+	}, [filterIndexRows, selectedSafra, selectedCiclo, selectedCultures]);
 
 	useEffect(() => {
 		if (selectedSafra && safraOptions.length > 0 && !safraOptions.includes(selectedSafra)) {
@@ -947,16 +995,16 @@ const NavigationMapScreen = ({ navigation, route }) => {
 	}, [selectedCiclo, cicloOptions]);
 
 	useEffect(() => {
-		if (selectedCulture && cultureOptions.length > 0 && !cultureOptions.includes(selectedCulture)) {
-			setSelectedCulture(null);
-		}
-	}, [selectedCulture, cultureOptions]);
+		setSelectedCultures((current) =>
+			current.filter((culture) => cultureOptions.includes(culture))
+		);
+	}, [cultureOptions]);
 
 	useEffect(() => {
-		if (selectedVariety && varietyOptions.length > 0 && !varietyOptions.includes(selectedVariety)) {
-			setSelectedVariety(null);
-		}
-	}, [selectedVariety, varietyOptions]);
+		setSelectedVarieties((current) =>
+			current.filter((variety) => varietyOptions.includes(variety))
+		);
+	}, [varietyOptions]);
 
 	const statusOptions = useMemo(() => {
 		if (navigationMapFilters?.statuses?.length > 0) {
@@ -1031,20 +1079,25 @@ const NavigationMapScreen = ({ navigation, route }) => {
 			data = data.filter((item) => selectedStatus.includes(item.status));
 		}
 
-		if (selectedCulture) {
-			data = data.filter(
-				(item) =>
-					normalizeTextFilter(item.cultura) === normalizeTextFilter(selectedCulture)
-			);
+		if (selectedCultures.length > 0) {
+			data = data.filter((item) => {
+				const itemCulture = normalizeTextFilter(item.cultura);
+
+				return selectedCultures.some(
+					(culture) => normalizeTextFilter(culture) === itemCulture
+				);
+			});
 		}
 
-		if (selectedVariety) {
+		if (selectedVarieties.length > 0) {
 			data = data.filter((item) => {
 				const itemVariety = normalizeTextFilter(
 					item.variedade || item.variedade_nome
 				);
 
-				return itemVariety === normalizeTextFilter(selectedVariety);
+				return selectedVarieties.some(
+					(variety) => normalizeTextFilter(variety) === itemVariety
+				);
 			});
 		}
 
@@ -1057,8 +1110,8 @@ const NavigationMapScreen = ({ navigation, route }) => {
 		selectedFarmParam,
 		selectedProjectLocal,
 		selectedStatus,
-		selectedCulture,
-		selectedVariety,
+		selectedCultures,
+		selectedVarieties,
 	]);
 
 
@@ -1121,29 +1174,6 @@ const NavigationMapScreen = ({ navigation, route }) => {
 				: 68
 			: floatingBottom;
 
-	useEffect(() => {
-		const nextBottom =
-			showOperationalSheet && !applicationsParcel
-				? sheetExpanded
-					? FAB_BOTTOM_WITH_SHEET_EXPANDED
-					: FAB_BOTTOM_WITH_SHEET_COLLAPSED
-				: FAB_BOTTOM_WITHOUT_SHEET;
-
-		Animated.spring(animatedFabBottom, {
-			toValue: nextBottom,
-			useNativeDriver: false,
-			bounciness: 5,
-			speed: 16,
-		}).start();
-	}, [
-		showOperationalSheet,
-		applicationsParcel,
-		sheetExpanded,
-		animatedFabBottom,
-		FAB_BOTTOM_WITH_SHEET_EXPANDED,
-		FAB_BOTTOM_WITH_SHEET_COLLAPSED,
-		FAB_BOTTOM_WITHOUT_SHEET,
-	]);
 
 
 	const polygonsData = useMemo(() => {
@@ -1219,8 +1249,8 @@ const NavigationMapScreen = ({ navigation, route }) => {
 
 	useEffect(() => {
 		setSelectedStatus([]);
-		setSelectedCulture(null);
-		setSelectedVariety(null);
+		setSelectedCultures([]);
+		setSelectedVarieties([]);
 		setInfoParcel(null);
 		dispatch(geralActions.clearNavigationMapSelectedParcels());
 	}, [dispatch, selectedSafra, selectedCiclo]);
@@ -1272,8 +1302,8 @@ const NavigationMapScreen = ({ navigation, route }) => {
 
 	const hasAnyFilter =
 		selectedStatus.length > 0 ||
-		!!selectedCulture ||
-		!!selectedVariety ||
+		selectedCultures.length > 0 ||
+		selectedVarieties.length > 0 ||
 		!!selectedProjectLocal;
 
 	const handleToggleStatus = (statusKey) => {
@@ -1287,20 +1317,22 @@ const NavigationMapScreen = ({ navigation, route }) => {
 	};
 
 	const handleToggleCulture = (culture) => {
-		setSelectedCulture((current) => {
-			const next = current === culture ? null : culture;
-
-			if (next !== current) {
-				setSelectedVariety(null);
+		setSelectedCultures((current) => {
+			if (current.includes(culture)) {
+				return current.filter((item) => item !== culture);
 			}
 
-			return next;
+			return [...current, culture];
 		});
 	};
 
 	const handleToggleVariety = (variety) => {
-		setSelectedVariety((current) => {
-			return current === variety ? null : variety;
+		setSelectedVarieties((current) => {
+			if (current.includes(variety)) {
+				return current.filter((item) => item !== variety);
+			}
+
+			return [...current, variety];
 		});
 	};
 
@@ -1339,8 +1371,8 @@ const NavigationMapScreen = ({ navigation, route }) => {
 
 	const handleClearFilters = () => {
 		setSelectedStatus([]);
-		setSelectedCulture(null);
-		setSelectedVariety(null);
+		setSelectedCultures([]);
+		setSelectedVarieties([]);
 		setSelectedProjectLocal(null);
 		setInfoParcel(null);
 		dispatch(geralActions.clearNavigationMapSelectedParcels());
@@ -1443,6 +1475,78 @@ const NavigationMapScreen = ({ navigation, route }) => {
 
 	const hasSelectedArea = selectedParcels.length > 0 && Number(selectedAreaTotal || 0) > 0;
 
+	const appliedFiltersText = useMemo(() => {
+		const filters = [];
+
+		if (selectedProjectLocal) {
+			filters.push(normalizeProjectName(selectedProjectLocal));
+		}
+
+		if (selectedStatus.length > 0) {
+			const labels = selectedStatus.map((statusKey) => {
+				const found = statusOptions.find((option) => option.key === statusKey);
+				return found?.label || statusKey;
+			});
+
+			filters.push(labels.join(", "));
+		}
+
+		if (selectedCultures.length > 0) {
+			filters.push(selectedCultures.join(", "));
+		}
+
+		if (selectedVarieties.length > 0) {
+			filters.push(selectedVarieties.join(", "));
+		}
+
+		if (filters.length === 0) {
+			return "Sem filtros adicionais";
+		}
+
+		return filters.join(" · ");
+	}, [selectedProjectLocal, selectedStatus, statusOptions, selectedCultures, selectedVarieties]);
+
+
+	const hasAppliedExtraFilters =
+		!!selectedProjectLocal ||
+		selectedStatus.length > 0 ||
+		selectedCultures.length > 0 ||
+		selectedVarieties.length > 0;
+
+	const fabFilterOffset =
+		hasAppliedExtraFilters && !showOperationalSheet && !applicationsParcel
+			? 30
+			: 0;
+
+
+	useEffect(() => {
+		const baseBottom =
+			showOperationalSheet && !applicationsParcel
+				? sheetExpanded
+					? FAB_BOTTOM_WITH_SHEET_EXPANDED
+					: FAB_BOTTOM_WITH_SHEET_COLLAPSED
+				: FAB_BOTTOM_WITHOUT_SHEET;
+
+		const nextBottom = baseBottom + fabFilterOffset;
+
+		Animated.spring(animatedFabBottom, {
+			toValue: nextBottom,
+			useNativeDriver: false,
+			bounciness: 5,
+			speed: 16,
+		}).start();
+	}, [
+		showOperationalSheet,
+		applicationsParcel,
+		sheetExpanded,
+		animatedFabBottom,
+		FAB_BOTTOM_WITH_SHEET_EXPANDED,
+		FAB_BOTTOM_WITH_SHEET_COLLAPSED,
+		FAB_BOTTOM_WITHOUT_SHEET,
+		fabFilterOffset,
+	]);
+
+
 	return (
 		<View style={styles.container}>
 			<MapView
@@ -1489,6 +1593,7 @@ const NavigationMapScreen = ({ navigation, route }) => {
 					const isSelected = selectedParcels.includes(parcelId);
 					const cultureText = getCultureText(item);
 					const shouldShowDetails = showDetailedLabels || isSelected || infoMode;
+					const dapValue = getParcelDap(item);
 
 					return (
 						<Marker
@@ -1502,7 +1607,9 @@ const NavigationMapScreen = ({ navigation, route }) => {
 								parcela={item.parcela}
 								area={item.area}
 								cultureText={cultureText}
+								status={item.status}
 								statusLabel={item.status_label}
+								dap={dapValue}
 								isSelected={isSelected}
 								showDetails={shouldShowDetails}
 							/>
@@ -1772,7 +1879,7 @@ const NavigationMapScreen = ({ navigation, route }) => {
 									contentContainerStyle={styles.chipsRow}
 								>
 									{cultureOptions.map((culture) => {
-										const isSelected = selectedCulture === culture;
+										const isSelected = selectedCultures.includes(culture);
 
 										return (
 											<TouchableOpacity
@@ -1809,7 +1916,7 @@ const NavigationMapScreen = ({ navigation, route }) => {
 									contentContainerStyle={styles.chipsRow}
 								>
 									{varietyOptions.map((variety) => {
-										const isSelected = selectedVariety === variety;
+										const isSelected = selectedVarieties.includes(variety);
 
 										return (
 											<TouchableOpacity
@@ -1877,10 +1984,24 @@ const NavigationMapScreen = ({ navigation, route }) => {
 			) : null}
 
 			{!showOperationalSheet && !applicationsParcel && (
-				<View style={styles.mapFilterFooter}>
-					<Text style={styles.mapFilterFooterText} numberOfLines={1}>
-						{selectedSafra || "—"} · {selectedCiclo || "—"}
-					</Text>
+				<View style={styles.mapFooterStack}>
+					<View style={styles.mapFilterFooter}>
+						<Text style={styles.mapFilterFooterText} numberOfLines={1}>
+							{selectedSafra || "—"} · {selectedCiclo || "—"}
+						</Text>
+					</View>
+
+					<View style={styles.appliedFiltersFooter}>
+						<Ionicons
+							name="filter"
+							size={10}
+							color="rgba(255,255,255,0.72)"
+						/>
+
+						<Text style={styles.appliedFiltersFooterText} numberOfLines={1}>
+							{appliedFiltersText}
+						</Text>
+					</View>
 				</View>
 			)}
 
@@ -2747,11 +2868,17 @@ const styles = StyleSheet.create({
 		zIndex: 22,
 		gap: 10,
 	},
-	mapFilterFooter: {
+	mapFooterStack: {
 		position: "absolute",
 		bottom: Platform.OS === "ios" ? 24 : 16,
 		alignSelf: "center",
 		zIndex: 21,
+		alignItems: "center",
+		gap: 5,
+		maxWidth: "86%",
+	},
+
+	mapFilterFooter: {
 		minHeight: 42,
 		borderRadius: 999,
 		backgroundColor: "rgba(10,16,12,0.82)",
@@ -2766,6 +2893,36 @@ const styles = StyleSheet.create({
 		shadowRadius: 16,
 		shadowOffset: { width: 0, height: 8 },
 		elevation: 8,
+	},
+
+	mapFilterFooterText: {
+		color: "#FFFFFF",
+		fontSize: 13,
+		fontWeight: "900",
+		letterSpacing: 0.2,
+	},
+
+	appliedFiltersFooter: {
+		maxWidth: "100%",
+		minHeight: 25,
+		flexDirection: "row",
+		alignItems: "center",
+		justifyContent: "center",
+		gap: 5,
+		borderRadius: 999,
+		backgroundColor: "rgba(10,16,12,0.62)",
+		borderWidth: 1,
+		borderColor: "rgba(255,255,255,0.10)",
+		paddingHorizontal: 10,
+		paddingVertical: 5,
+	},
+
+	appliedFiltersFooterText: {
+		flexShrink: 1,
+		color: "rgba(255,255,255,0.74)",
+		fontSize: 9.8,
+		fontWeight: "800",
+		letterSpacing: 0.15,
 	},
 
 	mapFilterFooterText: {
