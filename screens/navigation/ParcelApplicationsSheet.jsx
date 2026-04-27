@@ -6,7 +6,6 @@ import {
     TouchableOpacity,
     StyleSheet,
     ScrollView,
-    ActivityIndicator,
     Platform,
     Animated,
     Dimensions,
@@ -115,17 +114,125 @@ const formatAreaBR = (value) => {
     });
 };
 
+const formatDap = (value) => {
+    if (value === null || value === undefined || value === "" || Number.isNaN(Number(value))) {
+        return "—";
+    }
+
+    return `${Number(value)} DAP`;
+};
+
 const getStatusColor = (status) => {
     if (status === "finalized") return "#166534";
     if (status === "sought") return "#92400E";
     return "#475569";
 };
 
+const addDaysToDate = (dateValue, daysValue) => {
+    if (!dateValue || daysValue === null || daysValue === undefined || daysValue === "") {
+        return null;
+    }
+
+    const days = Number(daysValue);
+
+    if (Number.isNaN(days)) {
+        return null;
+    }
+
+    const [year, month, day] = String(dateValue).split("-").map(Number);
+
+    if (!year || !month || !day) {
+        return null;
+    }
+
+    const date = new Date(year, month - 1, day);
+    date.setDate(date.getDate() + days);
+
+    const resultYear = date.getFullYear();
+    const resultMonth = String(date.getMonth() + 1).padStart(2, "0");
+    const resultDay = String(date.getDate()).padStart(2, "0");
+
+    return `${resultYear}-${resultMonth}-${resultDay}`;
+};
+
+const SkeletonBlock = ({ style }) => {
+    const opacity = useRef(new Animated.Value(0.45)).current;
+
+    useEffect(() => {
+        const animation = Animated.loop(
+            Animated.sequence([
+                Animated.timing(opacity, {
+                    toValue: 1,
+                    duration: 720,
+                    useNativeDriver: true,
+                }),
+                Animated.timing(opacity, {
+                    toValue: 0.45,
+                    duration: 720,
+                    useNativeDriver: true,
+                }),
+            ])
+        );
+
+        animation.start();
+
+        return () => animation.stop();
+    }, [opacity]);
+
+    return <Animated.View style={[styles.skeletonBlock, style, { opacity }]} />;
+};
+
 const ApplicationSkeleton = () => {
     return (
-        <View style={styles.skeletonBox}>
-            <ActivityIndicator size="small" color={Colors.primary[700]} />
-            <Text style={styles.skeletonText}>Buscando aplicações...</Text>
+        <View style={styles.skeletonContainer}>
+            <View style={styles.skeletonSummaryRow}>
+                {[0, 1, 2].map((item) => (
+                    <View key={item} style={styles.skeletonSummaryCard}>
+                        <SkeletonBlock style={styles.skeletonSummaryValue} />
+                        <SkeletonBlock style={styles.skeletonSummaryLabel} />
+                    </View>
+                ))}
+            </View>
+
+            <View style={styles.skeletonFilterRow}>
+                <SkeletonBlock style={styles.skeletonFilterChipLarge} />
+                <SkeletonBlock style={styles.skeletonFilterChip} />
+                <SkeletonBlock style={styles.skeletonFilterChip} />
+            </View>
+
+            <View style={styles.skeletonListArea}>
+                {[0, 1, 2].map((item) => (
+                    <View key={item} style={styles.skeletonApplicationCard}>
+                        <View style={styles.skeletonApplicationHeader}>
+                            <View>
+                                <SkeletonBlock style={styles.skeletonApCode} />
+                                <SkeletonBlock style={styles.skeletonApDate} />
+                            </View>
+
+                            <SkeletonBlock style={styles.skeletonStatusPill} />
+                        </View>
+
+                        <View style={styles.skeletonOperationBox}>
+                            <SkeletonBlock style={styles.skeletonOperationLabel} />
+                            <SkeletonBlock style={styles.skeletonOperationText} />
+                        </View>
+
+                        <View style={styles.skeletonProductRow}>
+                            <SkeletonBlock style={styles.skeletonColorBar} />
+
+                            <View style={styles.skeletonProductInfo}>
+                                <SkeletonBlock style={styles.skeletonProductType} />
+                                <SkeletonBlock style={styles.skeletonProductName} />
+                            </View>
+
+                            <View style={styles.skeletonDoseBox}>
+                                <SkeletonBlock style={styles.skeletonDoseLabel} />
+                                <SkeletonBlock style={styles.skeletonDoseValue} />
+                            </View>
+                        </View>
+                    </View>
+                ))}
+            </View>
         </View>
     );
 };
@@ -181,6 +288,60 @@ const ParcelApplicationsSheet = ({
 
     const cropIcon = getCropIcon(cropValue, varietyValue);
     const fallbackCropColor = getFallbackCropColor(cropValue, varietyValue);
+
+    const plantingDateValue =
+        parcelData?.plantingDate ||
+        parcelData?.planting_date ||
+        parcelData?.activationDate ||
+        parcelData?.activation_date ||
+        parcel?.data_plantio ||
+        parcel?.data_prevista_plantio ||
+        null;
+
+    const harvestPredictionDateFromApi =
+        parcel?.data_prevista_colheita ||
+        parcel?.dados?.data_prevista_colheita ||
+        parcel?.harvestPredictionDate ||
+        parcel?.harvest_prediction_date ||
+        parcelData?.data_prevista_colheita ||
+        parcelData?.dados?.data_prevista_colheita ||
+        parcelData?.harvestPredictionDate ||
+        parcelData?.harvest_prediction_date ||
+        null;
+
+    const harvestPredictionDateCalculated = addDaysToDate(
+        parcel?.data_plantio ||
+        parcel?.dados?.data_plantio ||
+        parcel?.data_prevista_plantio ||
+        parcel?.dados?.data_prevista_plantio ||
+        parcelData?.plantingDate ||
+        parcelData?.planting_date ||
+        parcelData?.data_plantio ||
+        parcelData?.data_prevista_plantio ||
+        null,
+        parcel?.dias_ciclo ||
+        parcel?.dados?.dias_ciclo ||
+        parcelData?.dias_ciclo ||
+        parcelData?.cycleDays ||
+        null
+    );
+
+    const harvestPredictionDateValue =
+        harvestPredictionDateFromApi || harvestPredictionDateCalculated;
+
+    const dapValue =
+        parcelData?.dapToday ??
+        parcelData?.dap_today ??
+        parcelData?.dap ??
+        parcel?.dap ??
+        null;
+
+    const safraValue = parcelData?.safra || parcel?.safra || "—";
+
+    const cicloValue =
+        parcelData?.ciclo || parcel?.ciclo
+            ? `${parcelData?.ciclo || parcel?.ciclo}`
+            : "—";
 
 
     useEffect(() => {
@@ -261,7 +422,7 @@ const ParcelApplicationsSheet = ({
                 </TouchableOpacity>
 
                 <View style={styles.header}>
-                    <View style={styles.headerLeft}>
+                    <View style={styles.headerTopRow}>
                         <View style={styles.titleRow}>
                             {cropIcon ? (
                                 <View style={styles.cropIconWrap}>
@@ -278,34 +439,67 @@ const ParcelApplicationsSheet = ({
                                 </View>
                             )}
 
-                            <Text style={styles.title} numberOfLines={1}>
-                                {parcelData?.name || parcel?.parcela || "Parcela"}
+                            <View style={styles.titleTextRow}>
+                                <Text style={styles.title} numberOfLines={1}>
+                                    {parcelData?.name || parcel?.parcela || "Parcela"}
+                                </Text>
+
+                                <Text style={styles.titleArea} numberOfLines={1}>
+                                    {formatAreaBR(parcelData?.area ?? parcel?.area)} ha
+                                </Text>
+                            </View>
+                        </View>
+
+                        <View style={styles.headerActions}>
+                            <Text style={styles.harvestText} numberOfLines={1}>
+                                {safraValue} · {cicloValue}
+                            </Text>
+
+                            <TouchableOpacity
+                                activeOpacity={0.82}
+                                onPress={onClose}
+                                style={styles.closeButton}
+                            >
+                                <Ionicons name="close" size={18} color="#0F172A" />
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                    <View style={styles.metaCard}>
+                        <View style={styles.metaCardColumn}>
+                            <Text style={styles.metaCardLabel}>Cultura</Text>
+                            <Text style={styles.metaCardValue} numberOfLines={1}>
+                                {varietyValue || cropValue || "—"}
                             </Text>
                         </View>
 
-                        <Text style={styles.subtitle} numberOfLines={1}>
-                            {varietyValue || cropValue || "—"} ·{" "}
-                            {formatAreaBR(parcelData?.area ?? parcel?.area)} ha
-                        </Text>
+                        <View style={styles.metaCardDivider} />
+
+                        <View style={styles.metaCardColumn}>
+                            <Text style={styles.metaCardLabel}>Plantio</Text>
+                            <Text style={styles.metaCardValue} numberOfLines={1}>
+                                {formatDateBR(plantingDateValue)}
+                            </Text>
+                        </View>
+
+                        <View style={styles.metaCardDivider} />
+
+                        <View style={styles.metaCardColumn}>
+                            <Text style={styles.metaCardLabel}>DAP</Text>
+                            <Text style={styles.metaCardValue} numberOfLines={1}>
+                                {formatDap(dapValue)}
+                            </Text>
+                        </View>
+
+                        <View style={styles.metaCardDivider} />
+
+                        <View style={styles.metaCardColumn}>
+                            <Text style={styles.metaCardLabel}>Colheita</Text>
+                            <Text style={styles.metaCardValue} numberOfLines={1}>
+                                {formatDateBR(harvestPredictionDateValue)}
+                            </Text>
+                        </View>
                     </View>
 
-                    <View style={styles.headerRight}>
-                        <Text style={styles.harvestText}>
-                            {parcelData?.safra || parcel?.safra || "—"}
-                        </Text>
-
-                        <Text style={styles.cycleText}>
-                            {parcelData?.ciclo ? `${parcelData.ciclo}º Ciclo` : "—"}
-                        </Text>
-                    </View>
-
-                    <TouchableOpacity
-                        activeOpacity={0.82}
-                        onPress={onClose}
-                        style={styles.closeButton}
-                    >
-                        <Ionicons name="close" size={18} color="#0F172A" />
-                    </TouchableOpacity>
                 </View>
             </View>
 
@@ -378,7 +572,11 @@ const ParcelApplicationsSheet = ({
                     >
                         {filteredApplications.length === 0 ? (
                             <View style={styles.emptyBox}>
-                                <Ionicons name="leaf-outline" size={26} color="rgba(15,23,42,0.38)" />
+                                <Ionicons
+                                    name="leaf-outline"
+                                    size={26}
+                                    color="rgba(15,23,42,0.38)"
+                                />
                                 <Text style={styles.emptyTitle}>Nenhuma aplicação encontrada</Text>
                                 <Text style={styles.emptyText}>
                                     Essa parcela ainda não possui aplicações nesse filtro.
@@ -521,21 +719,22 @@ const styles = StyleSheet.create({
         fontSize: 20,
         fontWeight: "950",
     },
-    subtitle: {
-        marginTop: 4,
+    subtitleLeft: {
+        flex: 1,
         color: "rgba(15,23,42,0.68)",
         fontSize: 13,
         fontWeight: "800",
+        paddingRight: 8,
     },
-    headerRight: {
-        alignItems: "flex-end",
-        paddingTop: 2,
+
+    subtitleRight: {
+        flexShrink: 0,
+        color: "rgba(15,23,42,0.68)",
+        fontSize: 13,
+        fontWeight: "800",
+        textAlign: "right",
     },
-    harvestText: {
-        color: "#020617",
-        fontSize: 14,
-        fontWeight: "900",
-    },
+
     cycleText: {
         marginTop: 4,
         color: "#020617",
@@ -550,16 +749,161 @@ const styles = StyleSheet.create({
         alignItems: "center",
         justifyContent: "center",
     },
-    skeletonBox: {
-        paddingVertical: 28,
-        alignItems: "center",
-        justifyContent: "center",
+    skeletonContainer: {
+        flex: 1,
     },
-    skeletonText: {
-        marginTop: 10,
-        color: Colors.primary[800],
-        fontSize: 13,
-        fontWeight: "900",
+
+    skeletonBlock: {
+        backgroundColor: "rgba(15,23,42,0.075)",
+        borderRadius: 999,
+    },
+
+    skeletonSummaryRow: {
+        flexDirection: "row",
+        paddingHorizontal: 16,
+        paddingBottom: 12,
+        gap: 8,
+    },
+
+    skeletonSummaryCard: {
+        flex: 1,
+        backgroundColor: "rgba(15,23,42,0.035)",
+        borderRadius: 15,
+        paddingVertical: 12,
+        alignItems: "center",
+    },
+
+    skeletonSummaryValue: {
+        width: 34,
+        height: 18,
+    },
+
+    skeletonSummaryLabel: {
+        marginTop: 7,
+        width: 58,
+        height: 9,
+    },
+
+    skeletonFilterRow: {
+        flexDirection: "row",
+        paddingHorizontal: 16,
+        paddingBottom: 12,
+        gap: 8,
+    },
+
+    skeletonFilterChipLarge: {
+        width: 74,
+        height: 32,
+    },
+
+    skeletonFilterChip: {
+        width: 82,
+        height: 32,
+    },
+
+    skeletonListArea: {
+        flex: 1,
+        backgroundColor: "#E5EAF2",
+        borderTopWidth: 1,
+        borderTopColor: "rgba(15,23,42,0.06)",
+        padding: 14,
+    },
+
+    skeletonApplicationCard: {
+        backgroundColor: "#FFFFFF",
+        borderRadius: 18,
+        marginBottom: 12,
+        borderWidth: 1,
+        borderColor: "rgba(15,23,42,0.08)",
+        overflow: "hidden",
+    },
+
+    skeletonApplicationHeader: {
+        flexDirection: "row",
+        justifyContent: "space-between",
+        padding: 14,
+        borderBottomWidth: 1,
+        borderBottomColor: "rgba(15,23,42,0.07)",
+    },
+
+    skeletonApCode: {
+        width: 78,
+        height: 19,
+    },
+
+    skeletonApDate: {
+        marginTop: 9,
+        width: 92,
+        height: 13,
+    },
+
+    skeletonStatusPill: {
+        width: 74,
+        height: 27,
+    },
+
+    skeletonOperationBox: {
+        paddingHorizontal: 14,
+        paddingVertical: 12,
+        backgroundColor: "rgba(15,23,42,0.02)",
+    },
+
+    skeletonOperationLabel: {
+        width: 64,
+        height: 11,
+    },
+
+    skeletonOperationText: {
+        marginTop: 8,
+        width: "76%",
+        height: 14,
+    },
+
+    skeletonProductRow: {
+        minHeight: 74,
+        flexDirection: "row",
+        alignItems: "center",
+        paddingHorizontal: 14,
+        paddingVertical: 10,
+    },
+
+    skeletonColorBar: {
+        width: 6,
+        alignSelf: "stretch",
+        borderRadius: 999,
+        marginRight: 10,
+    },
+
+    skeletonProductInfo: {
+        flex: 1,
+        paddingRight: 10,
+    },
+
+    skeletonProductType: {
+        width: 82,
+        height: 12,
+    },
+
+    skeletonProductName: {
+        marginTop: 8,
+        width: "88%",
+        height: 15,
+    },
+
+    skeletonDoseBox: {
+        width: 112,
+        alignItems: "flex-end",
+    },
+
+    skeletonDoseLabel: {
+        width: 78,
+        height: 10,
+    },
+
+    skeletonDoseValue: {
+        marginTop: 8,
+        width: 64,
+        height: 14,
     },
     errorBox: {
         marginHorizontal: 16,
@@ -792,5 +1136,112 @@ const styles = StyleSheet.create({
         height: 18,
         resizeMode: "contain",
         opacity: 0.86,
+    },
+    metaRow: {
+        marginTop: 4,
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "space-between",
+        gap: 8,
+    },
+
+
+    headerRight: {
+        alignItems: "flex-end",
+        paddingTop: 5,
+        maxWidth: 132,
+    },
+
+    harvestText: {
+        color: "#020617",
+        fontSize: 12.5,
+        fontWeight: "900",
+    },
+    header: {
+        gap: 6,
+    },
+
+    headerTopRow: {
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "space-between",
+        gap: 10,
+    },
+
+    titleRow: {
+        flex: 1,
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 3,
+        minWidth: 0,
+    },
+
+    headerActions: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 8,
+        flexShrink: 0,
+    },
+    metaCard: {
+        marginTop: 8,
+        flexDirection: "row",
+        alignItems: "stretch",
+        backgroundColor: "rgba(15,23,42,0.045)",
+        borderRadius: 14,
+        borderWidth: 1,
+        borderColor: "rgba(15,23,42,0.06)",
+        paddingVertical: 8,
+        paddingHorizontal: 6,
+    },
+
+    metaCardColumn: {
+        flex: 1,
+        minWidth: 0,
+        alignItems: "center",
+        justifyContent: "center",
+        paddingHorizontal: 5,
+    },
+
+    metaCardLabel: {
+        color: "rgba(15,23,42,0.5)",
+        fontSize: 9,
+        fontWeight: "bold",
+        textTransform: "uppercase",
+        letterSpacing: 0.25,
+    },
+
+    metaCardValue: {
+        marginTop: 3,
+        color: "#0F172A",
+        fontSize: 11.5,
+        fontWeight: "850",
+        textAlign: "center",
+    },
+
+    metaCardDivider: {
+        width: 1,
+        backgroundColor: "rgba(15,23,42,0.08)",
+        marginVertical: 2,
+    },
+    titleTextRow: {
+        flex: 1,
+        flexDirection: "row",
+        alignItems: "baseline",
+        gap: 5,
+        minWidth: 0,
+    },
+
+    title: {
+        flexShrink: 1,
+        color: "#020617",
+        fontSize: 20,
+        fontWeight: "950",
+    },
+
+    titleArea: {
+        flexShrink: 0,
+        color: "rgba(15,23,42,0.56)",
+        fontSize: 12,
+        fontWeight: "900",
     },
 });
