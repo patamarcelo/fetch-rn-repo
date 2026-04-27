@@ -1,6 +1,7 @@
 // screens/navigation/NavigationHomeScreen.jsx
 
 import { useCallback, useMemo, useState } from "react";
+
 import {
 	View,
 	Text,
@@ -9,6 +10,7 @@ import {
 	ScrollView,
 	Platform,
 	ActivityIndicator,
+	RefreshControl,
 } from "react-native";
 
 import { setStatusBarStyle, setStatusBarBackgroundColor } from "expo-status-bar";
@@ -29,6 +31,10 @@ import {
 	selectNavigationMapCurrentSafra,
 	selectNavigationMapCurrentCiclo,
 } from "../../store/redux/selector";
+
+import { fetchNavigationMapData } from "../../store/redux/geral";
+
+
 
 const formatHa = (value) => {
 	if (value === null || value === undefined || Number.isNaN(Number(value))) {
@@ -97,6 +103,38 @@ const groupNavigationDataByFarm = (data = []) => {
 		.sort((a, b) => String(a.fazenda_nome).localeCompare(String(b.fazenda_nome)));
 };
 
+
+
+const NavigationHomeSkeleton = () => {
+	return (
+		<View style={styles.skeletonContainer}>
+			{[1, 2, 3, 4, 5].map((item) => (
+				<View key={item} style={styles.skeletonCard}>
+					<View style={styles.skeletonMainRow}>
+						<View style={styles.skeletonIcon} />
+
+						<View style={styles.skeletonContent}>
+							<View style={styles.skeletonTitle} />
+							<View style={styles.skeletonMeta} />
+
+							<View style={styles.skeletonChipRow}>
+								<View style={styles.skeletonChip} />
+								<View style={styles.skeletonChipSmall} />
+								<View style={styles.skeletonChipSmall} />
+							</View>
+						</View>
+					</View>
+
+					<View style={styles.skeletonFooter}>
+						<View style={styles.skeletonFooterText} />
+						<View style={styles.skeletonButton} />
+					</View>
+				</View>
+			))}
+		</View>
+	);
+};
+
 const NavigationHomeScreen = ({ navigation }) => {
 	const dispatch = useDispatch();
 
@@ -132,6 +170,10 @@ const NavigationHomeScreen = ({ navigation }) => {
 			totalArea: navigationMapTotals?.area_total || 0,
 		};
 	}, [farmsData, navigationMapData.length, navigationMapTotals]);
+
+	const handleRefreshNavigationData = useCallback(() => {
+		dispatch(fetchNavigationMapData());
+	}, [dispatch]);
 
 	useFocusEffect(
 		useCallback(() => {
@@ -222,17 +264,20 @@ const NavigationHomeScreen = ({ navigation }) => {
 
 					{isRefreshing && (
 						<View style={styles.refreshPill}>
-							<ActivityIndicator size="small" color={Colors.primary[700]} />
-							<Text style={styles.refreshPillText}>Atualizando dados...</Text>
+							<View style={styles.refreshSpinnerBox}>
+								<ActivityIndicator size="small" color={Colors.primary[700]} />
+							</View>
+
+							<View>
+								<Text style={styles.refreshPillText}>Atualizando dados</Text>
+								<Text style={styles.refreshPillSubText}>Sincronizando parcelas e projetos...</Text>
+							</View>
 						</View>
 					)}
 				</View>
 
 				{isFirstLoading ? (
-					<View style={styles.loadingBox}>
-						<ActivityIndicator size="large" color={Colors.primary[700]} />
-						<Text style={styles.loadingText}>Carregando dados do mapa...</Text>
-					</View>
+					<NavigationHomeSkeleton />
 				) : hasError && !hasData ? (
 					<View style={styles.emptyBox}>
 						<Ionicons name="warning-outline" size={30} color="#B45309" />
@@ -254,6 +299,15 @@ const NavigationHomeScreen = ({ navigation }) => {
 						style={styles.scroll}
 						contentContainerStyle={styles.scrollContent}
 						showsVerticalScrollIndicator={false}
+						refreshControl={
+							<RefreshControl
+								refreshing={isRefreshing}
+								onRefresh={handleRefreshNavigationData}
+								tintColor={Colors.primary[700]}
+								colors={[Colors.primary[700]]}
+								progressBackgroundColor="#FFFFFF"
+							/>
+						}
 					>
 						{farmsData.map((farm) => {
 							const isExpanded = expandedFarmId === farm.fazenda_id;
@@ -481,16 +535,23 @@ const styles = StyleSheet.create({
 		marginTop: 8,
 		flexDirection: "row",
 		alignItems: "center",
-		gap: 7,
-		backgroundColor: "rgba(255,255,255,0.82)",
-		borderRadius: 999,
-		paddingHorizontal: 11,
-		paddingVertical: 6,
+		gap: 9,
+		backgroundColor: "rgba(255,255,255,0.86)",
+		borderWidth: 1,
+		borderColor: "rgba(15,23,42,0.07)",
+		borderRadius: 16,
+		paddingHorizontal: 10,
+		paddingVertical: 8,
+		shadowColor: "#000",
+		shadowOpacity: 0.06,
+		shadowRadius: 10,
+		shadowOffset: { width: 0, height: 5 },
+		elevation: 1,
 	},
 	refreshPillText: {
 		color: Colors.primary[800],
-		fontSize: 11,
-		fontWeight: "800",
+		fontSize: 11.5,
+		fontWeight: "900",
 	},
 	loadingBox: {
 		flex: 1,
@@ -694,5 +755,103 @@ const styles = StyleSheet.create({
 		fontSize: 11,
 		fontWeight: "800",
 		marginLeft: 8,
+	},
+	skeletonContainer: {
+		flex: 1,
+		paddingHorizontal: 14,
+		paddingTop: 2,
+		paddingBottom: Platform.OS === "ios" ? 110 : 90,
+	},
+	skeletonCard: {
+		backgroundColor: "rgba(255,255,255,0.74)",
+		borderRadius: 20,
+		marginBottom: 10,
+		borderWidth: 1,
+		borderColor: "rgba(15,23,42,0.06)",
+		overflow: "hidden",
+	},
+	skeletonMainRow: {
+		flexDirection: "row",
+		alignItems: "center",
+		paddingHorizontal: 14,
+		paddingTop: 14,
+		paddingBottom: 12,
+	},
+	skeletonIcon: {
+		width: 42,
+		height: 42,
+		borderRadius: 16,
+		backgroundColor: "rgba(15,23,42,0.08)",
+		marginRight: 11,
+	},
+	skeletonContent: {
+		flex: 1,
+	},
+	skeletonTitle: {
+		width: "62%",
+		height: 15,
+		borderRadius: 999,
+		backgroundColor: "rgba(15,23,42,0.09)",
+	},
+	skeletonMeta: {
+		width: "82%",
+		height: 10,
+		borderRadius: 999,
+		backgroundColor: "rgba(15,23,42,0.065)",
+		marginTop: 8,
+	},
+	skeletonChipRow: {
+		flexDirection: "row",
+		alignItems: "center",
+		gap: 6,
+		marginTop: 10,
+	},
+	skeletonChip: {
+		width: 78,
+		height: 20,
+		borderRadius: 999,
+		backgroundColor: "rgba(15,23,42,0.06)",
+	},
+	skeletonChipSmall: {
+		width: 54,
+		height: 20,
+		borderRadius: 999,
+		backgroundColor: "rgba(15,23,42,0.055)",
+	},
+	skeletonFooter: {
+		flexDirection: "row",
+		alignItems: "center",
+		justifyContent: "space-between",
+		borderTopWidth: 1,
+		borderTopColor: "rgba(15,23,42,0.05)",
+		paddingHorizontal: 14,
+		paddingVertical: 10,
+		backgroundColor: "rgba(248,250,252,0.54)",
+	},
+	skeletonFooterText: {
+		width: 94,
+		height: 12,
+		borderRadius: 999,
+		backgroundColor: "rgba(15,23,42,0.06)",
+	},
+	skeletonButton: {
+		width: 86,
+		height: 28,
+		borderRadius: 999,
+		backgroundColor: "rgba(22,101,52,0.12)",
+	},
+	refreshSpinnerBox: {
+		width: 28,
+		height: 28,
+		borderRadius: 999,
+		alignItems: "center",
+		justifyContent: "center",
+		backgroundColor: "rgba(255,255,255,0.86)",
+	},
+	refreshPillSubText: {
+		marginTop: 1,
+		color: "rgba(15,23,42,0.46)",
+		fontSize: 10.5,
+		fontWeight: "700",
 	},
 });
