@@ -154,6 +154,9 @@ export const selectNavigationMapSelectedParcels = (state) =>
 
 export const selectNavigationMapByKey = (state) => state.geral.navigationMapByKey;
 
+export const selectNavigationMapFiltersIndex = (state) =>
+	state.geral.navigationMapFiltersIndex || [];
+
 export const selectNavigationMapCurrentKey = createSelector(
 	[selectNavigationMapCurrentSafra, selectNavigationMapCurrentCiclo],
 	(safra, ciclo) => {
@@ -242,5 +245,43 @@ export const selectNavigationSelectedAreaTotal = createSelector(
 		return selectedData.reduce((total, item) => {
 			return total + Number(item.area || 0);
 		}, 0);
+	}
+);
+
+
+export const selectNavigationMapFiltersIndexFromCache = createSelector(
+	[selectNavigationMapByKey, selectNavigationMapFiltersIndex],
+	(byKey, currentIndex) => {
+		const rows = [];
+
+		if (Array.isArray(currentIndex)) {
+			rows.push(...currentIndex);
+		}
+
+		Object.values(byKey || {}).forEach((cacheItem) => {
+			if (Array.isArray(cacheItem?.filters_index)) {
+				rows.push(...cacheItem.filters_index);
+			}
+		});
+
+		const map = new Map();
+
+		rows.forEach((item) => {
+			const key = [
+				item?.fazenda_grupo || "fazenda",
+				item?.projeto || "projeto",
+				item?.safra || "safra",
+				item?.ciclo || "ciclo",
+				item?.cultura || "cultura",
+				item?.variedade || "variedade",
+				item?.status || "status",
+			].join("__");
+
+			if (!map.has(key)) {
+				map.set(key, item);
+			}
+		});
+
+		return Array.from(map.values());
 	}
 );

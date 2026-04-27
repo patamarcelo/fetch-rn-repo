@@ -11,6 +11,8 @@ import {
 	ActivityIndicator,
 	Alert,
 	Linking,
+	PanResponder,
+	Animated,
 } from "react-native";
 
 import MapView, { Polygon, Marker, PROVIDER_GOOGLE } from "react-native-maps";
@@ -28,10 +30,11 @@ import {
 	selectNavigationMapError,
 	selectNavigationMapFilters,
 	selectNavigationMapSelectedParcels,
+	selectNavigationMapFiltersIndexFromCache
 } from "../../store/redux/selector";
 
-const FALLBACK_SAFRA_OPTIONS = ["2024/2025", "2025/2026", "2026/2027"];
-const FALLBACK_CICLO_OPTIONS = ["1", "2", "3"];
+import { fetchParcelApplications } from "../../services/navigationApplicationsApi";
+import ParcelApplicationsSheet from "./ParcelApplicationsSheet";
 
 const DEFAULT_REGION = {
 	latitude: -10.85,
@@ -190,54 +193,273 @@ const getCultureText = (item) => {
 };
 
 const getPolygonVisual = ({ item, isSelected, isDimmed }) => {
-	const fillColor = item?.map?.fill_color || "#22C55E";
-	const lineColor = item?.map?.line_color || "#14532D";
+	const { fillColor, lineColor } = getItemBaseColors(item);
+	const statusVisual = getStatusVisualStyle(item?.status);
 
 	if (isSelected) {
 		return {
-			fillColor: "rgba(37,99,235,0.62)",
+			fillColor: hexToRgba(fillColor, 0.72),
 			strokeColor: "#1D4ED8",
-			strokeWidth: 3,
+			strokeWidth: 3.5,
 		};
 	}
 
 	if (isDimmed) {
 		return {
-			fillColor: "rgba(255,255,255,0.22)",
-			strokeColor: "rgba(71,85,105,0.55)",
+			fillColor: hexToRgba(fillColor, 0.16),
+			strokeColor: "rgba(71,85,105,0.45)",
 			strokeWidth: 1,
-		};
-	}
-
-	if (item?.status === "sem_planejamento") {
-		return {
-			fillColor: "rgba(255,255,255,0.45)",
-			strokeColor: "rgba(100,116,139,0.75)",
-			strokeWidth: 1,
-		};
-	}
-
-	if (item?.status === "em_plantio") {
-		return {
-			fillColor: "rgba(250,204,21,0.55)",
-			strokeColor: "#A16207",
-			strokeWidth: 2,
-		};
-	}
-
-	if (item?.status === "colhido") {
-		return {
-			fillColor: "rgba(161,98,7,0.48)",
-			strokeColor: "#854D0E",
-			strokeWidth: 2,
 		};
 	}
 
 	return {
-		fillColor: hexToRgba(fillColor, item?.status === "planejado" ? 0.36 : 0.52),
-		strokeColor: lineColor,
-		strokeWidth: 1.5,
+		fillColor: hexToRgba(fillColor, statusVisual.opacity),
+		strokeColor: statusVisual.strokeOverride || lineColor,
+		strokeWidth: statusVisual.strokeWidth,
 	};
+};
+
+const normalizeVarietyName = (value) => {
+	if (!value) return "";
+
+	return String(value)
+		.trim()
+		.normalize("NFD")
+		.replace(/[\u0300-\u036f]/g, "")
+		.toLowerCase();
+};
+
+const getVarietySpecialColors = (item) => {
+	const varietyName = normalizeVarietyName(
+		item?.variedade || item?.variedade_nome
+	);
+
+	// Mungo Preto
+	if (varietyName === "mungo preto") {
+		return {
+			fillColor: "#82202B",
+			lineColor: "rgba(170,88,57,0.9)",
+		};
+	}
+
+	// Mungo Verde
+	if (varietyName === "mungo verde") {
+		return {
+			fillColor: "rgba(170,88,57,1.0)",
+			lineColor: "rgba(130,32,43,0.9)",
+		};
+	}
+
+	// Caupi
+	if (varietyName === "caupi") {
+		return {
+			fillColor: "#3F4B7D",
+			lineColor: "#3F4B7D",
+		};
+	}
+
+	return null;
+};
+
+const getItemBaseColors = (item) => {
+	const cultura = normalizeVarietyName(item?.cultura);
+	const variedade = normalizeVarietyName(
+		item?.variedade || item?.variedade_nome
+	);
+
+	// Arroz
+	if (cultura === "arroz" || variedade.includes("arroz")) {
+		return {
+			fillColor: "#FACC15",
+			lineColor: "#A16207",
+		};
+	}
+
+	// Soja
+	if (cultura === "soja" || variedade.includes("soja")) {
+		return {
+			fillColor: "#22C55E",
+			lineColor: "#14532D",
+		};
+	}
+
+	// Açaí
+	if (
+		cultura === "acai" ||
+		cultura === "açai" ||
+		cultura === "açaí" ||
+		variedade.includes("acai") ||
+		variedade.includes("açai") ||
+		variedade.includes("açaí")
+	) {
+		return {
+			fillColor: "#6D28D9",
+			lineColor: "#4C1D95",
+		};
+	}
+
+	// Feijão Mungo Preto
+	if (variedade.includes("mungo preto")) {
+		return {
+			fillColor: "#82202B",
+			lineColor: "#64151F",
+		};
+	}
+
+	// Feijão Mungo Verde
+	if (variedade.includes("mungo verde")) {
+		return {
+			fillColor: "#AA5839",
+			lineColor: "#82202B",
+		};
+	}
+
+	// Feijão Caupi
+	if (variedade.includes("caupi")) {
+		return {
+			fillColor: "#3F4B7D",
+			lineColor: "#2F3A63",
+		};
+	}
+
+	// Sem cultura/sem planejamento
+	// Fallback: usa cor enviada pela API quando existir
+	return {
+		fillColor: item?.map?.fill_color || "#FFFFFF",
+		lineColor: item?.map?.line_color || "#334155",
+	};
+};
+
+
+const getStatusVisualStyle = (status) => {
+	if (status === "sem_planejamento") {
+		return {
+			opacity: 0.42,
+			strokeWidth: 1,
+			strokeOverride: "rgba(100,116,139,0.75)",
+		};
+	}
+
+	if (status === "planejado") {
+		return {
+			opacity: 0.38,
+			strokeWidth: 1.5,
+			strokeOverride: null,
+		};
+	}
+
+	if (status === "em_plantio") {
+		return {
+			opacity: 0.58,
+			strokeWidth: 3,
+			strokeOverride: null,
+		};
+	}
+
+	if (status === "plantado") {
+		return {
+			opacity: 0.64,
+			strokeWidth: 2,
+			strokeOverride: null,
+		};
+	}
+
+	if (status === "colhido") {
+		return {
+			opacity: 0.34,
+			strokeWidth: 2,
+			strokeOverride: null,
+		};
+	}
+
+	return {
+		opacity: 0.52,
+		strokeWidth: 1.5,
+		strokeOverride: null,
+	};
+};
+
+
+
+const normalizeSafra = (value) => {
+	if (value === null || value === undefined || value === "") return null;
+	return String(value).trim();
+};
+
+const normalizeCiclo = (value) => {
+	if (value === null || value === undefined || value === "") return null;
+
+	const parsed = Number(String(value).trim());
+
+	if (Number.isNaN(parsed)) return String(value).trim();
+
+	return String(parsed);
+};
+
+const normalizeTextFilter = (value) => {
+	if (value === null || value === undefined || value === "") return null;
+	return String(value).trim();
+};
+
+const uniqSorted = (arr, sortNumeric = false) => {
+	const clean = [...new Set(arr.filter(Boolean))];
+
+	if (sortNumeric) {
+		return clean.sort((a, b) => Number(a) - Number(b));
+	}
+
+	return clean.sort((a, b) => String(a).localeCompare(String(b)));
+};
+
+const getNavigationCacheRows = (navigationMapByKey = {}) => {
+	const rows = [];
+
+	Object.values(navigationMapByKey || {}).forEach((cacheItem) => {
+		if (Array.isArray(cacheItem?.data)) {
+			rows.push(...cacheItem.data);
+		}
+	});
+
+	return rows;
+};
+
+const applyContextFilters = (data = [], filters = {}, ignoreKey = null) => {
+	return data.filter((item) => {
+		if (filters.fazenda && ignoreKey !== "fazenda") {
+			if (item.fazenda_grupo !== filters.fazenda) return false;
+		}
+
+		if (filters.projeto && ignoreKey !== "projeto") {
+			if (item.projeto !== filters.projeto) return false;
+		}
+
+		if (filters.safra && ignoreKey !== "safra") {
+			if (normalizeSafra(item.safra) !== normalizeSafra(filters.safra)) {
+				return false;
+			}
+		}
+
+		if (filters.ciclo && ignoreKey !== "ciclo") {
+			if (normalizeCiclo(item.ciclo) !== normalizeCiclo(filters.ciclo)) {
+				return false;
+			}
+		}
+
+		if (filters.cultura && ignoreKey !== "cultura") {
+			if (normalizeTextFilter(item.cultura) !== normalizeTextFilter(filters.cultura)) {
+				return false;
+			}
+		}
+
+		if (filters.variedade && ignoreKey !== "variedade") {
+			const itemVariedade = normalizeTextFilter(item.variedade || item.variedade_nome);
+			if (itemVariedade !== normalizeTextFilter(filters.variedade)) {
+				return false;
+			}
+		}
+
+		return true;
+	});
 };
 
 const MapParcelLabel = memo(function MapParcelLabel({
@@ -384,7 +606,13 @@ const NavigationMapScreen = ({ navigation, route }) => {
 	const navigationMapError = useSelector(selectNavigationMapError);
 	const navigationMapFilters = useSelector(selectNavigationMapFilters);
 	const selectedParcelsRaw = useSelector(selectNavigationMapSelectedParcels);
+	const filtersIndex = useSelector(selectNavigationMapFiltersIndexFromCache);
 	const navigationMapByKey = useSelector((state) => state.geral.navigationMapByKey);
+
+	const navigationMapFiltersIndex = useSelector(
+		(state) => state.geral.navigationMapFiltersIndex || []
+	);
+
 
 	const navigationMapData = Array.isArray(navigationMapDataRaw)
 		? navigationMapDataRaw
@@ -394,11 +622,12 @@ const NavigationMapScreen = ({ navigation, route }) => {
 		? selectedParcelsRaw
 		: [];
 
-	const [selectedSafra, setSelectedSafra] = useState(safra || "2026/2027");
-	const [selectedCiclo, setSelectedCiclo] = useState(ciclo || "1");
+	const [selectedSafra, setSelectedSafra] = useState(safra || null);
+	const [selectedCiclo, setSelectedCiclo] = useState(ciclo ? normalizeCiclo(ciclo) : null);
 	const [filtersVisible, setFiltersVisible] = useState(false);
 	const [selectedStatus, setSelectedStatus] = useState([]);
-	const [selectedCulture, setSelectedCulture] = useState([]);
+	const [selectedCulture, setSelectedCulture] = useState(null);
+	const [selectedVariety, setSelectedVariety] = useState(null);
 	const [selectedProjectLocal, setSelectedProjectLocal] = useState(
 		selectedProjectParam || null
 	);
@@ -411,7 +640,76 @@ const NavigationMapScreen = ({ navigation, route }) => {
 	const [followUser, setFollowUser] = useState(false);
 	const [infoMode, setInfoMode] = useState(false);
 	const [infoParcel, setInfoParcel] = useState(null);
+
+
+
+	const [applicationsMode, setApplicationsMode] = useState(false);
+	const [applicationsParcel, setApplicationsParcel] = useState(null);
+	const [applicationsData, setApplicationsData] = useState(null);
+	const [applicationsLoading, setApplicationsLoading] = useState(false);
+	const [applicationsError, setApplicationsError] = useState(null);
+	const [applicationsSheetExpanded, setApplicationsSheetExpanded] = useState(false);
+
+	const [showOperationalSheet, setShowOperationalSheet] = useState(false);
+
+
+
+
+	const COLLAPSED_SHEET_HEIGHT = Platform.OS === "ios" ? 112 : 100;
+	const EXPANDED_SHEET_HEIGHT = Platform.OS === "ios" ? 330 : 310;
+
+	const sheetHeight = useRef(new Animated.Value(COLLAPSED_SHEET_HEIGHT)).current;
 	const [sheetExpanded, setSheetExpanded] = useState(false);
+
+
+	const FAB_BOTTOM_WITH_SHEET_COLLAPSED = Platform.OS === "ios" ? 128 : 116;
+	const FAB_BOTTOM_WITH_SHEET_EXPANDED = Platform.OS === "ios" ? 350 : 330;
+	const FAB_BOTTOM_WITHOUT_SHEET = Platform.OS === "ios" ? 34 : 26;
+
+	const animatedFabBottom = useRef(
+		new Animated.Value(FAB_BOTTOM_WITHOUT_SHEET)
+	).current;
+
+
+	const currentSafraFromRedux = useSelector(
+		(state) => state.geral.navigationMapCurrentSafra
+	);
+
+	const currentCicloFromRedux = useSelector(
+		(state) => state.geral.navigationMapCurrentCiclo
+	);
+
+	useEffect(() => {
+		if (!selectedSafra && currentSafraFromRedux) {
+			setSelectedSafra(currentSafraFromRedux);
+		}
+	}, [selectedSafra, currentSafraFromRedux]);
+
+	useEffect(() => {
+		if (!selectedCiclo && currentCicloFromRedux) {
+			setSelectedCiclo(normalizeCiclo(currentCicloFromRedux));
+		}
+	}, [selectedCiclo, currentCicloFromRedux]);
+
+	const filterIndexRows = useMemo(() => {
+		const rows = Array.isArray(filtersIndex) && filtersIndex.length > 0
+			? filtersIndex
+			: Array.isArray(navigationMapFiltersIndex)
+				? navigationMapFiltersIndex
+				: [];
+
+		return rows.filter((item) => {
+			if (selectedFarmParam && item.fazenda_grupo !== selectedFarmParam) {
+				return false;
+			}
+
+			if (selectedProjectLocal && item.projeto !== selectedProjectLocal) {
+				return false;
+			}
+
+			return true;
+		});
+	}, [filtersIndex, navigationMapFiltersIndex, selectedFarmParam, selectedProjectLocal]);
 
 	const resolvedFarmName =
 		selectedProjectLocal ||
@@ -429,18 +727,21 @@ const NavigationMapScreen = ({ navigation, route }) => {
 		}, 700);
 	}, []);
 
-	useEffect(() => {
-		if (!mapReady) return;
-		refreshMarkers();
-	}, [mapReady, selectedParcels.length, selectedStatus, selectedCulture, selectedProjectLocal, refreshMarkers]);
-
 	const showDetailedLabels = useMemo(() => {
-		return (currentRegion?.latitudeDelta ?? 999) < 0.08;
+		return (currentRegion?.latitudeDelta ?? 999) < 0.06;
 	}, [currentRegion]);
 
 	const showBasicLabels = useMemo(() => {
 		return (currentRegion?.latitudeDelta ?? 999) < 0.22;
 	}, [currentRegion]);
+
+
+	useEffect(() => {
+		if (!mapReady) return;
+
+		refreshMarkers();
+	}, [mapReady, showBasicLabels, showDetailedLabels, refreshMarkers]);
+
 
 	useEffect(() => {
 		const loadLocation = async () => {
@@ -480,54 +781,182 @@ const NavigationMapScreen = ({ navigation, route }) => {
 		loadLocation();
 	}, []);
 
-	const safraOptions = useMemo(() => {
-		const fromFilters = Array.isArray(navigationMapFilters?.safras)
-			? navigationMapFilters.safras
-			: [];
+	const allNavigationRows = useMemo(() => {
+		if (Array.isArray(filtersIndex) && filtersIndex.length > 0) {
+			return filtersIndex;
+		}
 
-		const fromCurrentData = navigationMapData
-			.map((item) => item?.safra)
-			.filter(Boolean);
+		const cacheRows = getNavigationCacheRows(navigationMapByKey);
+		const merged = [...cacheRows, ...navigationMapData];
 
-		const fromCache = Object.values(navigationMapByKey || {})
-			.map((item) => item?.safra)
-			.filter(Boolean);
+		const map = new Map();
 
-		return [...new Set([...FALLBACK_SAFRA_OPTIONS, ...fromFilters, ...fromCurrentData, ...fromCache])]
-			.sort((a, b) => String(a).localeCompare(String(b)));
-	}, [navigationMapFilters, navigationMapData, navigationMapByKey]);
+		merged.forEach((item) => {
+			const key = [
+				item?.id || "id",
+				item?.id_farmbox || "fb",
+				item?.projeto_id || item?.projeto || "proj",
+				item?.parcela || "parcela",
+				item?.safra || "safra",
+				item?.ciclo || "ciclo",
+			].join("__");
 
-	const cicloOptions = useMemo(() => {
-		const normalizeCiclo = (value) => {
-			if (value === null || value === undefined || value === "") return null;
+			if (!map.has(key)) {
+				map.set(key, item);
+			}
+		});
 
-			const parsed = Number(String(value).trim());
+		return Array.from(map.values());
+	}, [filtersIndex, navigationMapByKey, navigationMapData]);
 
-			if (Number.isNaN(parsed)) return String(value).trim();
-
-			return String(parsed);
+	const contextFilterBase = useMemo(() => {
+		return {
+			fazenda: selectedFarmParam || null,
+			projeto: selectedProjectLocal || null,
+			safra: selectedSafra || null,
+			ciclo: selectedCiclo || null,
+			cultura: selectedCulture || null,
+			variedade: selectedVariety || null,
 		};
+	}, [
+		selectedFarmParam,
+		selectedProjectLocal,
+		selectedSafra,
+		selectedCiclo,
+		selectedCulture,
+		selectedVariety,
+	]);
 
-		const fromFilters = Array.isArray(navigationMapFilters?.ciclos)
-			? navigationMapFilters.ciclos
-			: [];
+	useEffect(() => {
+		const hasFiltersIndex =
+			Array.isArray(filtersIndex) && filtersIndex.length > 0;
 
-		const fromCurrentData = navigationMapData
-			.map((item) => normalizeCiclo(item?.ciclo))
-			.filter(Boolean);
+		const hasRawFiltersIndex =
+			Array.isArray(navigationMapFiltersIndex) && navigationMapFiltersIndex.length > 0;
 
-		const fromCache = Object.values(navigationMapByKey || {})
-			.map((item) => normalizeCiclo(item?.ciclo))
-			.filter(Boolean);
+		const hasData =
+			Array.isArray(navigationMapData) && navigationMapData.length > 0;
 
+		const isLoading = navigationMapStatus === "pending";
+
+		if (!hasFiltersIndex && !hasRawFiltersIndex && !hasData && !isLoading) {
+			dispatch(fetchNavigationMapData({}));
+		}
+	}, [
+		dispatch,
+		filtersIndex,
+		navigationMapFiltersIndex,
+		navigationMapData,
+		navigationMapStatus,
+	]);
+
+	const safraOptions = useMemo(() => {
 		return [
 			...new Set(
-				[...FALLBACK_CICLO_OPTIONS, ...fromFilters, ...fromCurrentData, ...fromCache]
-					.map(normalizeCiclo)
+				filterIndexRows
+					.map((item) => String(item.safra || "").trim())
+					.filter(Boolean)
+			),
+		].sort((a, b) => String(a).localeCompare(String(b)));
+	}, [filterIndexRows]);
+
+	const cicloOptions = useMemo(() => {
+		return [
+			...new Set(
+				filterIndexRows
+					.filter((item) => {
+						if (!selectedSafra) return true;
+						return String(item.safra || "").trim() === String(selectedSafra).trim();
+					})
+					.map((item) => String(item.ciclo || "").trim())
 					.filter(Boolean)
 			),
 		].sort((a, b) => Number(a) - Number(b));
-	}, [navigationMapFilters, navigationMapData, navigationMapByKey]);
+	}, [filterIndexRows, selectedSafra]);
+
+	useEffect(() => {
+		if (!selectedSafra && safraOptions.length > 0) {
+			setSelectedSafra(safraOptions[0]);
+		}
+	}, [selectedSafra, safraOptions]);
+
+	useEffect(() => {
+		if (!selectedCiclo && cicloOptions.length > 0) {
+			setSelectedCiclo(cicloOptions[0]);
+		}
+	}, [selectedCiclo, cicloOptions]);
+
+
+
+	const cultureOptions = useMemo(() => {
+		return [
+			...new Set(
+				filterIndexRows
+					.filter((item) => {
+						if (selectedSafra && String(item.safra).trim() !== String(selectedSafra).trim()) {
+							return false;
+						}
+
+						if (selectedCiclo && String(item.ciclo).trim() !== String(selectedCiclo).trim()) {
+							return false;
+						}
+
+						return true;
+					})
+					.map((item) => String(item.cultura || "").trim())
+					.filter(Boolean)
+			),
+		].sort((a, b) => String(a).localeCompare(String(b)));
+	}, [filterIndexRows, selectedSafra, selectedCiclo]);
+
+	const varietyOptions = useMemo(() => {
+		return [
+			...new Set(
+				filterIndexRows
+					.filter((item) => {
+						if (selectedSafra && String(item.safra).trim() !== String(selectedSafra).trim()) {
+							return false;
+						}
+
+						if (selectedCiclo && String(item.ciclo).trim() !== String(selectedCiclo).trim()) {
+							return false;
+						}
+
+						if (selectedCulture && String(item.cultura).trim() !== String(selectedCulture).trim()) {
+							return false;
+						}
+
+						return true;
+					})
+					.map((item) => String(item.variedade || item.variedade_nome || "").trim())
+					.filter(Boolean)
+			),
+		].sort((a, b) => String(a).localeCompare(String(b)));
+	}, [filterIndexRows, selectedSafra, selectedCiclo, selectedCulture]);
+
+	useEffect(() => {
+		if (selectedSafra && safraOptions.length > 0 && !safraOptions.includes(selectedSafra)) {
+			setSelectedSafra(safraOptions[0]);
+		}
+	}, [selectedSafra, safraOptions]);
+
+	useEffect(() => {
+		if (selectedCiclo && cicloOptions.length > 0 && !cicloOptions.includes(String(selectedCiclo))) {
+			setSelectedCiclo(cicloOptions[0]);
+		}
+	}, [selectedCiclo, cicloOptions]);
+
+	useEffect(() => {
+		if (selectedCulture && cultureOptions.length > 0 && !cultureOptions.includes(selectedCulture)) {
+			setSelectedCulture(null);
+		}
+	}, [selectedCulture, cultureOptions]);
+
+	useEffect(() => {
+		if (selectedVariety && varietyOptions.length > 0 && !varietyOptions.includes(selectedVariety)) {
+			setSelectedVariety(null);
+		}
+	}, [selectedVariety, varietyOptions]);
 
 	const statusOptions = useMemo(() => {
 		if (navigationMapFilters?.statuses?.length > 0) {
@@ -543,21 +972,6 @@ const NavigationMapScreen = ({ navigation, route }) => {
 		];
 	}, [navigationMapFilters]);
 
-	const cultureOptions = useMemo(() => {
-		const fromApi = navigationMapFilters?.culturas;
-
-		if (Array.isArray(fromApi) && fromApi.length > 0) {
-			return fromApi;
-		}
-
-		return [
-			...new Set(
-				navigationMapData
-					.map((item) => item?.cultura)
-					.filter(Boolean)
-			),
-		].sort((a, b) => String(a).localeCompare(String(b)));
-	}, [navigationMapFilters, navigationMapData]);
 
 	useEffect(() => {
 		dispatch(
@@ -567,11 +981,43 @@ const NavigationMapScreen = ({ navigation, route }) => {
 			})
 		);
 
-		dispatch(fetchNavigationMapData({ safra: selectedSafra, ciclo: selectedCiclo }));
-	}, [dispatch, selectedSafra, selectedCiclo]);
+		if (!selectedSafra || !selectedCiclo) return;
+
+		const key = `${selectedSafra}__${normalizeCiclo(selectedCiclo)}`;
+		const hasCache = Array.isArray(navigationMapByKey?.[key]?.data);
+
+		if (!hasCache) {
+			dispatch(fetchNavigationMapData({ safra: selectedSafra, ciclo: selectedCiclo }));
+		}
+	}, [dispatch, selectedSafra, selectedCiclo, navigationMapByKey]);
+
 
 	const mapData = useMemo(() => {
-		let data = [...navigationMapData];
+		const selectedKey =
+			selectedSafra && selectedCiclo
+				? `${selectedSafra}__${normalizeCiclo(selectedCiclo)}`
+				: null;
+
+		const cachedData =
+			selectedKey && Array.isArray(navigationMapByKey?.[selectedKey]?.data)
+				? navigationMapByKey[selectedKey].data
+				: null;
+
+		let data = Array.isArray(cachedData)
+			? [...cachedData]
+			: [...navigationMapData];
+
+		if (selectedSafra) {
+			data = data.filter(
+				(item) => normalizeSafra(item.safra) === normalizeSafra(selectedSafra)
+			);
+		}
+
+		if (selectedCiclo) {
+			data = data.filter(
+				(item) => normalizeCiclo(item.ciclo) === normalizeCiclo(selectedCiclo)
+			);
+		}
 
 		if (selectedFarmParam) {
 			data = data.filter((item) => item.fazenda_grupo === selectedFarmParam);
@@ -585,18 +1031,120 @@ const NavigationMapScreen = ({ navigation, route }) => {
 			data = data.filter((item) => selectedStatus.includes(item.status));
 		}
 
-		if (selectedCulture.length > 0) {
-			data = data.filter((item) => selectedCulture.includes(item.cultura));
+		if (selectedCulture) {
+			data = data.filter(
+				(item) =>
+					normalizeTextFilter(item.cultura) === normalizeTextFilter(selectedCulture)
+			);
+		}
+
+		if (selectedVariety) {
+			data = data.filter((item) => {
+				const itemVariety = normalizeTextFilter(
+					item.variedade || item.variedade_nome
+				);
+
+				return itemVariety === normalizeTextFilter(selectedVariety);
+			});
 		}
 
 		return data;
 	}, [
+		navigationMapByKey,
 		navigationMapData,
+		selectedSafra,
+		selectedCiclo,
 		selectedFarmParam,
 		selectedProjectLocal,
 		selectedStatus,
 		selectedCulture,
+		selectedVariety,
 	]);
+
+
+	const expandSheet = useCallback(() => {
+		setSheetExpanded(true);
+
+		Animated.spring(sheetHeight, {
+			toValue: EXPANDED_SHEET_HEIGHT,
+			useNativeDriver: false,
+			bounciness: 4,
+			speed: 14,
+		}).start();
+	}, [sheetHeight]);
+
+	const collapseSheet = useCallback(() => {
+		setSheetExpanded(false);
+
+		Animated.spring(sheetHeight, {
+			toValue: COLLAPSED_SHEET_HEIGHT,
+			useNativeDriver: false,
+			bounciness: 4,
+			speed: 14,
+		}).start();
+	}, [sheetHeight]);
+
+
+	const sheetPanResponder = useRef(
+		PanResponder.create({
+			onMoveShouldSetPanResponder: (_, gestureState) => {
+				return Math.abs(gestureState.dy) > 8;
+			},
+
+			onPanResponderRelease: (_, gestureState) => {
+				if (gestureState.dy < -24) {
+					expandSheet();
+					return;
+				}
+
+				if (gestureState.dy > 24) {
+					collapseSheet();
+				}
+			},
+		})
+	).current;
+
+
+	const floatingBottom =
+		showOperationalSheet && !applicationsParcel
+			? sheetExpanded
+				? FAB_BOTTOM_WITH_SHEET_EXPANDED
+				: FAB_BOTTOM_WITH_SHEET_COLLAPSED
+			: FAB_BOTTOM_WITHOUT_SHEET;
+
+	const infoCardBottom = floatingBottom;
+
+	const selectionCounterBottom =
+		!showOperationalSheet && !applicationsParcel
+			? Platform.OS === "ios"
+				? 78
+				: 68
+			: floatingBottom;
+
+	useEffect(() => {
+		const nextBottom =
+			showOperationalSheet && !applicationsParcel
+				? sheetExpanded
+					? FAB_BOTTOM_WITH_SHEET_EXPANDED
+					: FAB_BOTTOM_WITH_SHEET_COLLAPSED
+				: FAB_BOTTOM_WITHOUT_SHEET;
+
+		Animated.spring(animatedFabBottom, {
+			toValue: nextBottom,
+			useNativeDriver: false,
+			bounciness: 5,
+			speed: 16,
+		}).start();
+	}, [
+		showOperationalSheet,
+		applicationsParcel,
+		sheetExpanded,
+		animatedFabBottom,
+		FAB_BOTTOM_WITH_SHEET_EXPANDED,
+		FAB_BOTTOM_WITH_SHEET_COLLAPSED,
+		FAB_BOTTOM_WITHOUT_SHEET,
+	]);
+
 
 	const polygonsData = useMemo(() => {
 		return mapData
@@ -668,6 +1216,15 @@ const NavigationMapScreen = ({ navigation, route }) => {
 		return () => clearTimeout(timer);
 	}, [allCoordinates]);
 
+
+	useEffect(() => {
+		setSelectedStatus([]);
+		setSelectedCulture(null);
+		setSelectedVariety(null);
+		setInfoParcel(null);
+		dispatch(geralActions.clearNavigationMapSelectedParcels());
+	}, [dispatch, selectedSafra, selectedCiclo]);
+
 	const totalArea = useMemo(() => {
 		return mapData.reduce((total, item) => total + Number(item?.area || 0), 0);
 	}, [mapData]);
@@ -686,43 +1243,37 @@ const NavigationMapScreen = ({ navigation, route }) => {
 	const projects = useMemo(() => {
 		const grouped = {};
 
-		navigationMapData
-			.filter((item) => {
-				if (selectedFarmParam) {
-					return item.fazenda_grupo === selectedFarmParam;
-				}
+		mapData.forEach((item) => {
+			const project = item?.projeto || "Sem projeto";
 
-				return true;
-			})
-			.forEach((item) => {
-				const project = item?.projeto || "Sem projeto";
+			if (!grouped[project]) {
+				grouped[project] = {
+					projeto_nome: project,
+					projeto_id: item?.projeto_id || project,
+					id_farmbox: item?.projeto_id_farmbox || null,
+					map_centro_id: getItemProjectCenter(item),
+					map_zoom: item?.map?.projeto_zoom || null,
+					area_produtiva: 0,
+					total_parcelas: 0,
+				};
+			}
 
-				if (!grouped[project]) {
-					grouped[project] = {
-						projeto_nome: project,
-						projeto_id: item?.projeto_id || project,
-						id_farmbox: item?.projeto_id_farmbox || null,
-						map_centro_id: getItemProjectCenter(item),
-						map_zoom: item?.map?.projeto_zoom || null,
-						area_produtiva: 0,
-						total_parcelas: 0,
-					};
-				}
-
-				grouped[project].area_produtiva += Number(item?.area || 0);
-				grouped[project].total_parcelas += 1;
-			});
+			grouped[project].area_produtiva += Number(item?.area || 0);
+			grouped[project].total_parcelas += 1;
+		});
 
 		return Object.values(grouped).sort((a, b) =>
 			String(a.projeto_nome).localeCompare(String(b.projeto_nome))
 		);
-	}, [navigationMapData, selectedFarmParam]);
+	}, [mapData]);
 
 	const isLoading = navigationMapStatus === "pending";
 	const hasMapData = polygonsData.length > 0;
+
 	const hasAnyFilter =
 		selectedStatus.length > 0 ||
-		selectedCulture.length > 0 ||
+		!!selectedCulture ||
+		!!selectedVariety ||
 		!!selectedProjectLocal;
 
 	const handleToggleStatus = (statusKey) => {
@@ -737,11 +1288,19 @@ const NavigationMapScreen = ({ navigation, route }) => {
 
 	const handleToggleCulture = (culture) => {
 		setSelectedCulture((current) => {
-			if (current.includes(culture)) {
-				return current.filter((item) => item !== culture);
+			const next = current === culture ? null : culture;
+
+			if (next !== current) {
+				setSelectedVariety(null);
 			}
 
-			return [...current, culture];
+			return next;
+		});
+	};
+
+	const handleToggleVariety = (variety) => {
+		setSelectedVariety((current) => {
+			return current === variety ? null : variety;
 		});
 	};
 
@@ -763,7 +1322,12 @@ const NavigationMapScreen = ({ navigation, route }) => {
 	};
 
 	const handlePolygonPress = (item) => {
-		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+
+		if (applicationsMode) {
+			handleOpenApplicationsSheet(item);
+			return;
+		}
 
 		if (infoMode) {
 			setInfoParcel(item);
@@ -775,7 +1339,8 @@ const NavigationMapScreen = ({ navigation, route }) => {
 
 	const handleClearFilters = () => {
 		setSelectedStatus([]);
-		setSelectedCulture([]);
+		setSelectedCulture(null);
+		setSelectedVariety(null);
 		setSelectedProjectLocal(null);
 		setInfoParcel(null);
 		dispatch(geralActions.clearNavigationMapSelectedParcels());
@@ -828,24 +1393,55 @@ const NavigationMapScreen = ({ navigation, route }) => {
 	};
 
 
+	const getPlantioIdFromMapItem = (item) => {
+		return item?.id_farmbox || item?.id || null;
+	};
+
+	const handleToggleApplicationsMode = () => {
+		setApplicationsMode((current) => {
+			const next = !current;
+
+			if (next) {
+				setInfoMode(false);
+				setInfoParcel(null);
+			} else {
+				setApplicationsParcel(null);
+				setApplicationsData(null);
+				setApplicationsError(null);
+				setApplicationsSheetExpanded(false);
+			}
+
+			return next;
+		});
+	};
+
+	const handleOpenApplicationsSheet = async (item) => {
+		const plantioId = getPlantioIdFromMapItem(item);
+
+		if (!plantioId) {
+			Alert.alert("Parcela sem ID", "Não foi possível identificar o ID FarmBox dessa parcela.");
+			return;
+		}
+
+		setApplicationsParcel(item);
+		setApplicationsData(null);
+		setApplicationsError(null);
+		setApplicationsLoading(true);
+		setApplicationsSheetExpanded(false);
+
+		try {
+			const data = await fetchParcelApplications(plantioId);
+			setApplicationsData(data);
+		} catch (error) {
+			setApplicationsError(error.message);
+		} finally {
+			setApplicationsLoading(false);
+		}
+	};
+
+
 
 	const hasSelectedArea = selectedParcels.length > 0 && Number(selectedAreaTotal || 0) > 0;
-
-	const floatingBottom = sheetExpanded
-		? Platform.OS === "ios"
-			? 330
-			: 310
-		: Platform.OS === "ios"
-			? 104
-			: 92;
-
-	const infoCardBottom = sheetExpanded
-		? Platform.OS === "ios"
-			? 330
-			: 310
-		: Platform.OS === "ios"
-			? 104
-			: 92;
 
 	return (
 		<View style={styles.container}>
@@ -887,33 +1483,32 @@ const NavigationMapScreen = ({ navigation, route }) => {
 					);
 				})}
 
-				{showBasicLabels &&
-					polygonsData.slice(0, 250).map(({ item, parcelId, center }) => {
-						if (!center) return null;
+				{polygonsData.slice(0, 250).map(({ item, parcelId, center }) => {
+					if (!center) return null;
 
-						const isSelected = selectedParcels.includes(parcelId);
-						const cultureText = getCultureText(item);
-						const shouldShowDetails = showDetailedLabels || isSelected || infoMode;
+					const isSelected = selectedParcels.includes(parcelId);
+					const cultureText = getCultureText(item);
+					const shouldShowDetails = showDetailedLabels || isSelected || infoMode;
 
-						return (
-							<Marker
-								key={`label-${item.id || "id"}-${item.id_farmbox || "fb"}-${item.projeto_id || item.projeto || "proj"}-${item.parcela || "parcela"}-${item.safra || "safra"}-${item.ciclo || "ciclo"}`}
-								hideCallout
-								tracksViewChanges={trackMarkers}
-								coordinate={center}
-								anchor={{ x: 0.5, y: 0.5 }}
-							>
-								<MapParcelLabel
-									parcela={item.parcela}
-									area={item.area}
-									cultureText={cultureText}
-									statusLabel={item.status_label}
-									isSelected={isSelected}
-									showDetails={shouldShowDetails}
-								/>
-							</Marker>
-						);
-					})}
+					return (
+						<Marker
+							key={`label-${item.id || "id"}-${item.id_farmbox || "fb"}-${item.projeto_id || item.projeto || "proj"}-${item.parcela || "parcela"}-${item.safra || "safra"}-${item.ciclo || "ciclo"}-${showDetailedLabels ? "details" : "basic"}`}
+							hideCallout
+							tracksViewChanges={trackMarkers}
+							coordinate={center}
+							anchor={{ x: 0.5, y: 0.5 }}
+						>
+							<MapParcelLabel
+								parcela={item.parcela}
+								area={item.area}
+								cultureText={cultureText}
+								statusLabel={item.status_label}
+								isSelected={isSelected}
+								showDetails={shouldShowDetails}
+							/>
+						</Marker>
+					);
+				})}
 			</MapView>
 
 			{!hasMapData && (
@@ -962,19 +1557,36 @@ const NavigationMapScreen = ({ navigation, route }) => {
 				</TouchableOpacity>
 			</View>
 
-			<View style={[styles.fabColumn, { bottom: floatingBottom }]}>
+			<Animated.View style={[styles.fabColumnLeft, { bottom: animatedFabBottom }]}>
 				<TouchableOpacity
 					activeOpacity={0.86}
 					style={[styles.fabButton, followUser && styles.fabButtonActive]}
 					onPress={handleCenterUser}
 				>
 					<Ionicons
-						name="person"
+						name="locate"
 						size={22}
 						color={followUser ? "#07130C" : "#334155"}
 					/>
 				</TouchableOpacity>
 
+				<TouchableOpacity
+					activeOpacity={0.86}
+					style={[
+						styles.fabButton,
+						showOperationalSheet && styles.fabButtonActive,
+					]}
+					onPress={() => setShowOperationalSheet((current) => !current)}
+				>
+					<Ionicons
+						name={showOperationalSheet ? "albums" : "albums-outline"}
+						size={22}
+						color={showOperationalSheet ? "#07130C" : "#334155"}
+					/>
+				</TouchableOpacity>
+			</Animated.View>
+
+			<Animated.View style={[styles.fabColumnRight, { bottom: animatedFabBottom }]}>
 				<TouchableOpacity
 					activeOpacity={0.86}
 					style={[styles.fabButton, infoMode && styles.fabButtonActive]}
@@ -986,7 +1598,19 @@ const NavigationMapScreen = ({ navigation, route }) => {
 						color={infoMode ? "#07130C" : "#334155"}
 					/>
 				</TouchableOpacity>
-			</View>
+
+				<TouchableOpacity
+					activeOpacity={0.86}
+					style={[styles.fabButton, applicationsMode && styles.fabButtonActive]}
+					onPress={handleToggleApplicationsMode}
+				>
+					<Ionicons
+						name="shield-checkmark"
+						size={22}
+						color={applicationsMode ? "#07130C" : "#334155"}
+					/>
+				</TouchableOpacity>
+			</Animated.View>
 
 			{isLoading && (
 				<View style={styles.loadingFloating}>
@@ -1002,140 +1626,40 @@ const NavigationMapScreen = ({ navigation, route }) => {
 			)}
 
 			{filtersVisible && (
-				<View style={styles.filtersPanel}>
-					<View style={styles.filterPanelHeader}>
-						<Text style={styles.filterPanelTitle}>Filtros do mapa</Text>
+				<>
+					<TouchableOpacity
+						activeOpacity={1}
+						style={styles.filtersBackdrop}
+						onPress={() => setFiltersVisible(false)}
+					/>
 
-						{hasAnyFilter && (
-							<TouchableOpacity activeOpacity={0.82} onPress={handleClearFilters}>
-								<Text style={styles.clearFiltersText}>Limpar</Text>
-							</TouchableOpacity>
-						)}
-					</View>
+					<View style={styles.filtersPanel}>
+						<View style={styles.filterPanelHeader}>
+							<Text style={styles.filterPanelTitle}>Filtros do mapa</Text>
 
-					<View style={styles.filterSection}>
-						<Text style={styles.filterLabel}>Safra</Text>
+							{hasAnyFilter && (
+								<TouchableOpacity activeOpacity={0.82} onPress={handleClearFilters}>
+									<Text style={styles.clearFiltersText}>Limpar</Text>
+								</TouchableOpacity>
+							)}
+						</View>
 
-						<ScrollView
-							horizontal
-							showsHorizontalScrollIndicator={false}
-							contentContainerStyle={styles.chipsRow}
-						>
-							{safraOptions.map((option) => {
-								const isSelected = selectedSafra === option;
-
-								return (
-									<TouchableOpacity
-										key={option}
-										activeOpacity={0.82}
-										onPress={() => setSelectedSafra(option)}
-										style={[
-											styles.filterChip,
-											isSelected && styles.filterChipSelected,
-										]}
-									>
-										<Text
-											style={[
-												styles.filterChipText,
-												isSelected && styles.filterChipTextSelected,
-											]}
-										>
-											{option}
-										</Text>
-									</TouchableOpacity>
-								);
-							})}
-						</ScrollView>
-					</View>
-
-					<View style={styles.filterSection}>
-						<Text style={styles.filterLabel}>Ciclo</Text>
-
-						<ScrollView
-							horizontal
-							showsHorizontalScrollIndicator={false}
-							contentContainerStyle={styles.chipsRow}
-						>
-							{cicloOptions.map((option) => {
-								const normalizedOption = String(option).trim();
-								const isSelected = String(selectedCiclo).trim() === normalizedOption;
-
-								return (
-									<TouchableOpacity
-										key={`ciclo-${normalizedOption}`}
-										activeOpacity={0.82}
-										onPress={() => setSelectedCiclo(normalizedOption)}
-										style={[
-											styles.filterChip,
-											isSelected && styles.filterChipSelected,
-										]}
-									>
-										<Text
-											style={[
-												styles.filterChipText,
-												isSelected && styles.filterChipTextSelected,
-											]}
-										>
-											Ciclo {normalizedOption}
-										</Text>
-									</TouchableOpacity>
-								);
-							})}
-						</ScrollView>
-					</View>
-
-					<View style={styles.filterSection}>
-						<Text style={styles.filterLabel}>Status</Text>
-
-						<ScrollView
-							horizontal
-							showsHorizontalScrollIndicator={false}
-							contentContainerStyle={styles.chipsRow}
-						>
-							{statusOptions.map((option) => {
-								const isSelected = selectedStatus.includes(option.key);
-
-								return (
-									<TouchableOpacity
-										key={option.key}
-										activeOpacity={0.82}
-										onPress={() => handleToggleStatus(option.key)}
-										style={[
-											styles.filterChip,
-											isSelected && styles.filterChipSelected,
-										]}
-									>
-										<Text
-											style={[
-												styles.filterChipText,
-												isSelected && styles.filterChipTextSelected,
-											]}
-										>
-											{option.label}
-										</Text>
-									</TouchableOpacity>
-								);
-							})}
-						</ScrollView>
-					</View>
-
-					{cultureOptions.length > 0 && (
-						<View style={styles.filterSectionLast}>
-							<Text style={styles.filterLabel}>Cultura</Text>
+						<View style={styles.filterSection}>
+							<Text style={styles.filterLabel}>Safra</Text>
 
 							<ScrollView
 								horizontal
 								showsHorizontalScrollIndicator={false}
 								contentContainerStyle={styles.chipsRow}
 							>
-								{cultureOptions.map((culture) => {
-									const isSelected = selectedCulture.includes(culture);
+								{safraOptions.map((option) => {
+									const isSelected = selectedSafra === option;
 
 									return (
 										<TouchableOpacity
-											key={culture}
+											key={`safra-${option}`}
 											activeOpacity={0.82}
-											onPress={() => handleToggleCulture(culture)}
+											onPress={() => setSelectedSafra(option)}
 											style={[
 												styles.filterChip,
 												isSelected && styles.filterChipSelected,
@@ -1147,15 +1671,172 @@ const NavigationMapScreen = ({ navigation, route }) => {
 													isSelected && styles.filterChipTextSelected,
 												]}
 											>
-												{culture}
+												{option}
+											</Text>
+										</TouchableOpacity>
+									);
+								})}
+
+								{safraOptions.length === 0 && (
+									<View style={styles.filterChipDisabled}>
+										<Text style={styles.filterChipDisabledText}>Sem safra disponível</Text>
+									</View>
+								)}
+							</ScrollView>
+						</View>
+
+						<View style={styles.filterSection}>
+							<Text style={styles.filterLabel}>Ciclo</Text>
+
+							<ScrollView
+								horizontal
+								showsHorizontalScrollIndicator={false}
+								contentContainerStyle={styles.chipsRow}
+							>
+								{cicloOptions.map((option) => {
+									const normalizedOption = normalizeCiclo(option);
+									const isSelected = normalizeCiclo(selectedCiclo) === normalizedOption;
+
+									return (
+										<TouchableOpacity
+											key={`ciclo-${normalizedOption}`}
+											activeOpacity={0.82}
+											onPress={() => setSelectedCiclo(normalizedOption)}
+											style={[
+												styles.filterChip,
+												isSelected && styles.filterChipSelected,
+											]}
+										>
+											<Text
+												style={[
+													styles.filterChipText,
+													isSelected && styles.filterChipTextSelected,
+												]}
+											>
+												Ciclo {normalizedOption}
+											</Text>
+										</TouchableOpacity>
+									);
+								})}
+
+								{cicloOptions.length === 0 && (
+									<View style={styles.filterChipDisabled}>
+										<Text style={styles.filterChipDisabledText}>Sem ciclo disponível</Text>
+									</View>
+								)}
+							</ScrollView>
+						</View>
+
+						<View style={styles.filterSection}>
+							<Text style={styles.filterLabel}>Status</Text>
+
+							<ScrollView
+								horizontal
+								showsHorizontalScrollIndicator={false}
+								contentContainerStyle={styles.chipsRow}
+							>
+								{statusOptions.map((option) => {
+									const isSelected = selectedStatus.includes(option.key);
+
+									return (
+										<TouchableOpacity
+											key={option.key}
+											activeOpacity={0.82}
+											onPress={() => handleToggleStatus(option.key)}
+											style={[
+												styles.filterChip,
+												isSelected && styles.filterChipSelected,
+											]}
+										>
+											<Text
+												style={[
+													styles.filterChipText,
+													isSelected && styles.filterChipTextSelected,
+												]}
+											>
+												{option.label}
 											</Text>
 										</TouchableOpacity>
 									);
 								})}
 							</ScrollView>
 						</View>
-					)}
-				</View>
+
+						{cultureOptions.length > 0 && (
+							<View style={styles.filterSection}>
+								<Text style={styles.filterLabel}>Cultura</Text>
+
+								<ScrollView
+									horizontal
+									showsHorizontalScrollIndicator={false}
+									contentContainerStyle={styles.chipsRow}
+								>
+									{cultureOptions.map((culture) => {
+										const isSelected = selectedCulture === culture;
+
+										return (
+											<TouchableOpacity
+												key={`culture-${culture}`}
+												activeOpacity={0.82}
+												onPress={() => handleToggleCulture(culture)}
+												style={[
+													styles.filterChip,
+													isSelected && styles.filterChipSelected,
+												]}
+											>
+												<Text
+													style={[
+														styles.filterChipText,
+														isSelected && styles.filterChipTextSelected,
+													]}
+												>
+													{culture}
+												</Text>
+											</TouchableOpacity>
+										);
+									})}
+								</ScrollView>
+							</View>
+						)}
+
+						{varietyOptions.length > 0 && (
+							<View style={styles.filterSectionLast}>
+								<Text style={styles.filterLabel}>Variedade</Text>
+
+								<ScrollView
+									horizontal
+									showsHorizontalScrollIndicator={false}
+									contentContainerStyle={styles.chipsRow}
+								>
+									{varietyOptions.map((variety) => {
+										const isSelected = selectedVariety === variety;
+
+										return (
+											<TouchableOpacity
+												key={`variety-${variety}`}
+												activeOpacity={0.82}
+												onPress={() => handleToggleVariety(variety)}
+												style={[
+													styles.filterChip,
+													isSelected && styles.filterChipSelected,
+												]}
+											>
+												<Text
+													style={[
+														styles.filterChipText,
+														isSelected && styles.filterChipTextSelected,
+													]}
+												>
+													{variety}
+												</Text>
+											</TouchableOpacity>
+										);
+									})}
+								</ScrollView>
+							</View>
+						)}
+					</View>
+				</>
 			)}
 
 			{infoMode && infoParcel ? (
@@ -1168,170 +1849,222 @@ const NavigationMapScreen = ({ navigation, route }) => {
 					/>
 				</View>
 			) : hasSelectedArea ? (
-				<View style={[styles.selectionCounter, { bottom: floatingBottom }]}>
-					<Text style={styles.selectionCounterTitle}>
-						{selectedParcels.length} selecionadas
-					</Text>
+				<View style={[styles.selectionCounter, { bottom: selectionCounterBottom }]}>
+					<View style={styles.selectionCounterPill}>
+						<Text style={styles.selectionCounterPillText}>
+							{selectedParcels.length}
+						</Text>
+					</View>
 
-					<Text style={styles.selectionCounterText}>
-						{formatHa(selectedAreaTotal)}
-					</Text>
+					<View style={styles.selectionCounterContent}>
+						<Text style={styles.selectionCounterLabel}>
+							Área selecionada
+						</Text>
+
+						<Text style={styles.selectionCounterValue}>
+							{formatHa(selectedAreaTotal)}
+						</Text>
+					</View>
+
+					<TouchableOpacity
+						activeOpacity={0.82}
+						onPress={() => dispatch(geralActions.clearNavigationMapSelectedParcels())}
+						style={styles.selectionCounterClearButton}
+					>
+						<Ionicons name="close" size={16} color="#FFFFFF" />
+					</TouchableOpacity>
 				</View>
 			) : null}
 
-			<View
-				style={[
-					styles.bottomSheet,
-					sheetExpanded ? styles.bottomSheetExpanded : styles.bottomSheetCollapsed,
-				]}
-			>
-				<TouchableOpacity
-					activeOpacity={0.85}
-					onPress={() => setSheetExpanded((current) => !current)}
-					style={styles.sheetHandleArea}
+			{!showOperationalSheet && !applicationsParcel && (
+				<View style={styles.mapFilterFooter}>
+					<Text style={styles.mapFilterFooterText} numberOfLines={1}>
+						{selectedSafra || "—"} · {selectedCiclo || "—"}
+					</Text>
+				</View>
+			)}
+
+			{showOperationalSheet && !applicationsParcel && (
+				<Animated.View
+					style={[
+						styles.bottomSheet,
+						{
+							height: sheetHeight,
+						},
+					]}
 				>
-					<View style={styles.sheetHandle} />
+					<View
+						style={styles.sheetHandleArea}
+						{...sheetPanResponder.panHandlers}
+					>
+						<View style={styles.sheetHandle} />
 
-					<View style={styles.sheetHeader}>
-						<View>
-							<Text style={styles.sheetTitle}>Mapa operacional</Text>
-							<Text style={styles.sheetSubtitle}>
-								Safra {selectedSafra} · Ciclo {selectedCiclo}
-							</Text>
-						</View>
-
-						<View style={styles.sheetHeaderRight}>
-							<View style={styles.sheetBadge}>
-								<Text style={styles.sheetBadgeText}>{mapData.length}</Text>
+						<View style={styles.sheetHeader}>
+							<View>
+								<Text style={styles.sheetTitle}>Mapa operacional</Text>
+								<Text style={styles.sheetSubtitle}>
+									Safra {selectedSafra || "—"} · Ciclo {selectedCiclo || "—"}
+								</Text>
 							</View>
 
-							<Ionicons
-								name={sheetExpanded ? "chevron-down" : "chevron-up"}
-								size={20}
-								color="rgba(15,23,42,0.58)"
-							/>
-						</View>
-					</View>
-				</TouchableOpacity>
-
-				{sheetExpanded && (
-					<>
-						<ScrollView
-							horizontal
-							showsHorizontalScrollIndicator={false}
-							contentContainerStyle={styles.projectsRow}
-						>
-							<TouchableOpacity
-								activeOpacity={0.84}
-								onPress={() => handleToggleProject(null)}
-								style={[
-									styles.projectCard,
-									!selectedProjectLocal && styles.projectCardSelected,
-								]}
-							>
-								<View style={styles.projectCardHeader}>
-									<View
-										style={[
-											styles.projectStatusDot,
-											{ backgroundColor: Colors.primary[700] },
-										]}
-									/>
-
-									<Text style={styles.projectName} numberOfLines={1}>
-										Todos
-									</Text>
+							<View style={styles.sheetHeaderRight}>
+								<View style={styles.sheetBadge}>
+									<Text style={styles.sheetBadgeText}>{mapData.length}</Text>
 								</View>
 
-								<Text style={styles.projectArea}>{formatHa(totalArea)}</Text>
+								<Ionicons
+									name={sheetExpanded ? "chevron-down" : "chevron-up"}
+									size={20}
+									color="rgba(15,23,42,0.58)"
+								/>
+							</View>
+						</View>
+					</View>
 
-								<Text style={styles.projectMeta}>{mapData.length} parcelas</Text>
-							</TouchableOpacity>
+					{sheetExpanded && (
+						<ScrollView
+							showsVerticalScrollIndicator={false}
+							contentContainerStyle={styles.sheetScrollContent}
+						>
+							<ScrollView
+								horizontal
+								showsHorizontalScrollIndicator={false}
+								contentContainerStyle={styles.projectsRow}
+							>
+								<TouchableOpacity
+									activeOpacity={0.84}
+									onPress={() => handleToggleProject(null)}
+									style={[
+										styles.projectCard,
+										!selectedProjectLocal && styles.projectCardSelected,
+									]}
+								>
+									<View style={styles.projectCardHeader}>
+										<View
+											style={[
+												styles.projectStatusDot,
+												{ backgroundColor: Colors.primary[700] },
+											]}
+										/>
 
-							{projects.map((project) => {
-								const hasMapCenter =
-									!!project?.map_centro_id?.lat ||
-									!!project?.map_centro_id?.latitude;
+										<Text style={styles.projectName} numberOfLines={1}>
+											Todos
+										</Text>
+									</View>
 
-								const isSelected = selectedProjectLocal === project.projeto_nome;
+									<Text style={styles.projectArea}>{formatHa(totalArea)}</Text>
 
-								return (
-									<TouchableOpacity
-										key={`project-${project.projeto_id || project.projeto_nome}-${project.projeto_nome}`}
-										activeOpacity={0.84}
-										onPress={() => handleToggleProject(project.projeto_nome)}
-										style={[
-											styles.projectCard,
-											isSelected && styles.projectCardSelected,
-										]}
-									>
-										<View style={styles.projectCardHeader}>
+									<Text style={styles.projectMeta}>{mapData.length} parcelas</Text>
+								</TouchableOpacity>
+
+								{projects.map((project) => {
+									const hasMapCenter =
+										!!project?.map_centro_id?.lat ||
+										!!project?.map_centro_id?.latitude;
+
+									const isSelected = selectedProjectLocal === project.projeto_nome;
+
+									return (
+										<TouchableOpacity
+											key={`project-${project.projeto_id || project.projeto_nome}-${project.projeto_nome}`}
+											activeOpacity={0.84}
+											onPress={() => handleToggleProject(project.projeto_nome)}
+											style={[
+												styles.projectCard,
+												isSelected && styles.projectCardSelected,
+											]}
+										>
+											<View style={styles.projectCardHeader}>
+												<View
+													style={[
+														styles.projectStatusDot,
+														{
+															backgroundColor: hasMapCenter ? "#16A34A" : "#CBD5E1",
+														},
+													]}
+												/>
+
+												<Text style={styles.projectName} numberOfLines={1}>
+													{normalizeProjectName(project.projeto_nome)}
+												</Text>
+											</View>
+
+											<Text style={styles.projectArea}>
+												{formatHa(project.area_produtiva)}
+											</Text>
+
+											<Text style={styles.projectMeta}>
+												{project.total_parcelas} parcelas
+											</Text>
+										</TouchableOpacity>
+									);
+								})}
+							</ScrollView>
+
+							<ScrollView
+								horizontal
+								showsHorizontalScrollIndicator={false}
+								contentContainerStyle={styles.parcelsRow}
+							>
+								{mapData.slice(0, 80).map((item) => {
+									const parcelId = item?.id_farmbox || item?.id;
+									const isSelected = selectedParcels.includes(parcelId);
+
+									return (
+										<TouchableOpacity
+											key={`parcel-chip-${item.id || "id"}-${item.id_farmbox || "fb"}-${item.projeto_id || item.projeto || "proj"}-${item.parcela || "parcela"}-${item.safra || "safra"}-${item.ciclo || "ciclo"}`}
+											activeOpacity={0.84}
+											onPress={() => handlePolygonPress(item)}
+											style={[
+												styles.parcelChip,
+												isSelected && styles.parcelChipSelected,
+											]}
+										>
 											<View
 												style={[
-													styles.projectStatusDot,
+													styles.parcelColorDot,
 													{
-														backgroundColor: hasMapCenter ? "#16A34A" : "#CBD5E1",
+														backgroundColor: getItemBaseColors(item).fillColor || "#CBD5E1",
+														borderWidth: getItemBaseColors(item).fillColor === "#FFFFFF" ? 1 : 0,
+														borderColor: "rgba(15,23,42,0.22)",
 													},
 												]}
 											/>
 
-											<Text style={styles.projectName} numberOfLines={1}>
-												{normalizeProjectName(project.projeto_nome)}
+											<Text
+												style={[
+													styles.parcelChipText,
+													isSelected && styles.parcelChipTextSelected,
+												]}
+											>
+												{item.parcela}
 											</Text>
-										</View>
-
-										<Text style={styles.projectArea}>
-											{formatHa(project.area_produtiva)}
-										</Text>
-
-										<Text style={styles.projectMeta}>
-											{project.total_parcelas} parcelas
-										</Text>
-									</TouchableOpacity>
-								);
-							})}
+										</TouchableOpacity>
+									);
+								})}
+							</ScrollView>
 						</ScrollView>
+					)}
+				</Animated.View>
+			)}
 
-						<ScrollView
-							horizontal
-							showsHorizontalScrollIndicator={false}
-							contentContainerStyle={styles.parcelsRow}
-						>
-							{mapData.slice(0, 80).map((item) => {
-								const parcelId = item?.id_farmbox || item?.id;
-								const isSelected = selectedParcels.includes(parcelId);
-
-								return (
-									<TouchableOpacity
-										key={`parcel-chip-${item.id || "id"}-${item.id_farmbox || "fb"}-${item.projeto_id || item.projeto || "proj"}-${item.parcela || "parcela"}-${item.safra || "safra"}-${item.ciclo || "ciclo"}`}
-										activeOpacity={0.84}
-										onPress={() => handlePolygonPress(item)}
-										style={[
-											styles.parcelChip,
-											isSelected && styles.parcelChipSelected,
-										]}
-									>
-										<View
-											style={[
-												styles.parcelColorDot,
-												{ backgroundColor: item?.map?.fill_color || "#CBD5E1" },
-											]}
-										/>
-
-										<Text
-											style={[
-												styles.parcelChipText,
-												isSelected && styles.parcelChipTextSelected,
-											]}
-										>
-											{item.parcela}
-										</Text>
-									</TouchableOpacity>
-								);
-							})}
-						</ScrollView>
-					</>
-				)}
-			</View>
+			<ParcelApplicationsSheet
+				visible={applicationsMode && !!applicationsParcel}
+				parcel={applicationsParcel}
+				data={applicationsData}
+				loading={applicationsLoading}
+				error={applicationsError}
+				expanded={applicationsSheetExpanded}
+				onToggleExpanded={() =>
+					setApplicationsSheetExpanded((current) => !current)
+				}
+				onClose={() => {
+					setApplicationsParcel(null);
+					setApplicationsData(null);
+					setApplicationsError(null);
+					setApplicationsSheetExpanded(false);
+				}}
+			/>
 		</View>
 	);
 };
@@ -1838,19 +2571,72 @@ const styles = StyleSheet.create({
 
 	selectionCounter: {
 		position: "absolute",
-		left: 14,
-		zIndex: 21,
-		backgroundColor: "rgba(255,255,255,0.94)",
-		borderRadius: 18,
-		paddingHorizontal: 14,
-		paddingVertical: 10,
+		alignSelf: "center",
+		zIndex: 23,
+		minHeight: 58,
+		maxWidth: "82%",
+		flexDirection: "row",
+		alignItems: "center",
+		backgroundColor: "rgba(255,255,255,0.96)",
+		borderRadius: 999,
+		paddingVertical: 8,
+		paddingLeft: 9,
+		paddingRight: 10,
 		borderWidth: 1,
 		borderColor: "rgba(15,23,42,0.08)",
 		shadowColor: "#000",
-		shadowOpacity: 0.14,
-		shadowRadius: 12,
-		shadowOffset: { width: 0, height: 6 },
-		elevation: 5,
+		shadowOpacity: 0.18,
+		shadowRadius: 16,
+		shadowOffset: { width: 0, height: 8 },
+		elevation: 8,
+	},
+
+	selectionCounterIcon: {
+		width: 38,
+		height: 38,
+		borderRadius: 19,
+		backgroundColor: Colors.primary[700],
+		alignItems: "center",
+		justifyContent: "center",
+		marginRight: 10,
+	},
+
+	selectionCounterContent: {
+		flexShrink: 1,
+		paddingRight: 8,
+	},
+
+	selectionCounterLabel: {
+		color: "rgba(15,23,42,0.52)",
+		fontSize: 10.5,
+		fontWeight: "900",
+		textTransform: "uppercase",
+		letterSpacing: 0.5,
+	},
+
+	selectionCounterValue: {
+		marginTop: 1,
+		color: "#0F172A",
+		fontSize: 16,
+		fontWeight: "950",
+	},
+
+	selectionCounterPill: {
+		minWidth: 32,
+		height: 32,
+		borderRadius: 16,
+		backgroundColor: "rgba(15,23,42,0.06)",
+		alignItems: "center",
+		justifyContent: "center",
+		paddingHorizontal: 9,
+		borderWidth: 1,
+		borderColor: "rgba(15,23,42,0.06)",
+	},
+
+	selectionCounterPillText: {
+		color: Colors.primary[800],
+		fontSize: 13,
+		fontWeight: "950",
 	},
 
 	infoCardFloatingWrap: {
@@ -1875,33 +2661,28 @@ const styles = StyleSheet.create({
 
 	bottomSheet: {
 		position: "absolute",
-		left: 12,
-		right: 12,
-		bottom: Platform.OS === "ios" ? 20 : 12,
-		backgroundColor: "rgba(255,255,255,0.95)",
-		borderRadius: 24,
+		left: 0,
+		right: 0,
+		bottom: 0,
+		backgroundColor: "rgba(255,255,255,0.97)",
+		borderTopLeftRadius: 28,
+		borderTopRightRadius: 28,
 		paddingHorizontal: 14,
+		paddingTop: 8,
+		paddingBottom: Platform.OS === "ios" ? 22 : 14,
 		borderWidth: 1,
 		borderColor: "rgba(15,23,42,0.08)",
 		shadowColor: "#000",
 		shadowOpacity: 0.18,
 		shadowRadius: 20,
-		shadowOffset: { width: 0, height: 10 },
-		elevation: 8,
-	},
-
-	bottomSheetCollapsed: {
-		paddingTop: 8,
-		paddingBottom: 10,
-	},
-
-	bottomSheetExpanded: {
-		paddingTop: 8,
-		paddingBottom: 14,
+		shadowOffset: { width: 0, height: -8 },
+		elevation: 12,
+		overflow: "hidden",
 	},
 
 	sheetHandleArea: {
 		paddingTop: 0,
+		paddingBottom: 10,
 	},
 
 	sheetHandle: {
@@ -1917,7 +2698,6 @@ const styles = StyleSheet.create({
 		flexDirection: "row",
 		alignItems: "center",
 		justifyContent: "space-between",
-		marginBottom: 0,
 	},
 
 	sheetHeaderRight: {
@@ -1925,4 +2705,160 @@ const styles = StyleSheet.create({
 		alignItems: "center",
 		gap: 8,
 	},
+
+	sheetScrollContent: {
+		paddingBottom: 14,
+	},
+
+	filterChipDisabled: {
+		borderRadius: 999,
+		paddingHorizontal: 12,
+		paddingVertical: 8,
+		backgroundColor: "rgba(255,255,255,0.04)",
+		borderWidth: 1,
+		borderColor: "rgba(255,255,255,0.08)",
+		opacity: 0.55,
+	},
+
+	filterChipDisabledText: {
+		color: "rgba(255,255,255,0.42)",
+		fontSize: 12,
+		fontWeight: "900",
+	},
+	filtersBackdrop: {
+		position: "absolute",
+		top: 0,
+		left: 0,
+		right: 0,
+		bottom: 0,
+		zIndex: 18,
+		backgroundColor: "transparent",
+	},
+	fabColumnLeft: {
+		position: "absolute",
+		left: 14,
+		zIndex: 22,
+		gap: 10,
+	},
+
+	fabColumnRight: {
+		position: "absolute",
+		right: 14,
+		zIndex: 22,
+		gap: 10,
+	},
+	mapFilterFooter: {
+		position: "absolute",
+		bottom: Platform.OS === "ios" ? 24 : 16,
+		alignSelf: "center",
+		zIndex: 21,
+		minHeight: 42,
+		borderRadius: 999,
+		backgroundColor: "rgba(10,16,12,0.82)",
+		borderWidth: 1,
+		borderColor: "rgba(255,255,255,0.12)",
+		paddingHorizontal: 18,
+		paddingVertical: 10,
+		alignItems: "center",
+		justifyContent: "center",
+		shadowColor: "#000",
+		shadowOpacity: 0.18,
+		shadowRadius: 16,
+		shadowOffset: { width: 0, height: 8 },
+		elevation: 8,
+	},
+
+	mapFilterFooterText: {
+		color: "#FFFFFF",
+		fontSize: 13,
+		fontWeight: "900",
+		letterSpacing: 0.2,
+	},
+	selectionCounterClearButton: {
+		width: 34,
+		height: 34,
+		borderRadius: 17,
+		backgroundColor: "rgba(239,68,68,0.95)",
+		alignItems: "center",
+		justifyContent: "center",
+		marginLeft: 8,
+		borderWidth: 1,
+		borderColor: "rgba(255,255,255,0.55)",
+		shadowColor: "#000",
+		shadowOpacity: 0.16,
+		shadowRadius: 8,
+		shadowOffset: { width: 0, height: 4 },
+		elevation: 4,
+	},
+	selectionCounter: {
+		position: "absolute",
+		alignSelf: "center",
+		zIndex: 23,
+		minHeight: 58,
+		maxWidth: "86%",
+		flexDirection: "row",
+		alignItems: "center",
+		backgroundColor: "rgba(255,255,255,0.96)",
+		borderRadius: 999,
+		paddingVertical: 8,
+		paddingLeft: 10,
+		paddingRight: 10,
+		borderWidth: 1,
+		borderColor: "rgba(15,23,42,0.08)",
+		shadowColor: "#000",
+		shadowOpacity: 0.18,
+		shadowRadius: 16,
+		shadowOffset: { width: 0, height: 8 },
+		elevation: 8,
+	},
+
+	selectionCounterPill: {
+		minWidth: 38,
+		height: 38,
+		borderRadius: 19,
+		backgroundColor: Colors.primary[700],
+		alignItems: "center",
+		justifyContent: "center",
+		paddingHorizontal: 10,
+		marginRight: 10,
+	},
+
+	selectionCounterPillText: {
+		color: "#FFFFFF",
+		fontSize: 14,
+		fontWeight: "950",
+	},
+
+	selectionCounterContent: {
+		flexShrink: 1,
+		paddingRight: 8,
+	},
+
+	selectionCounterLabel: {
+		color: "rgba(15,23,42,0.52)",
+		fontSize: 10.5,
+		fontWeight: "900",
+		textTransform: "uppercase",
+		letterSpacing: 0.5,
+	},
+
+	selectionCounterValue: {
+		marginTop: 1,
+		color: "#0F172A",
+		fontSize: 16,
+		fontWeight: "950",
+	},
+
+	selectionCounterClearButton: {
+		width: 34,
+		height: 34,
+		borderRadius: 17,
+		backgroundColor: "rgba(15,23,42,0.82)",
+		alignItems: "center",
+		justifyContent: "center",
+		marginLeft: 4,
+		borderWidth: 1,
+		borderColor: "rgba(255,255,255,0.18)",
+	},
+
 });

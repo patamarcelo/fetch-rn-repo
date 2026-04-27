@@ -27,6 +27,10 @@ const ensureNavigationMapState = (state) => {
 		state.navigationMapSelectedParcels = [];
 	}
 
+	if (!Array.isArray(state.navigationMapFiltersIndex)) {
+		state.navigationMapFiltersIndex = [];
+	}
+
 	if (!state.navigationMapFilterSelected) {
 		state.navigationMapFilterSelected = { ...DEFAULT_NAVIGATION_FILTERS };
 	}
@@ -130,6 +134,7 @@ const initialState = {
 	navigationMapStatus: "idle",
 	navigationMapError: null,
 	navigationMapLastFetch: null,
+	navigationMapFiltersIndex: [],
 };
 
 const geralSlice = createSlice({
@@ -236,6 +241,7 @@ const geralSlice = createSlice({
 
 			state.navigationMapData = payload?.data || [];
 			state.navigationMapFilters = payload?.filters || null;
+			state.navigationMapFiltersIndex = payload?.filters_index || [];
 			state.navigationMapTotals = payload?.totals || null;
 			state.navigationMapCurrentSafra = payload?.safra || null;
 			state.navigationMapCurrentCiclo = payload?.ciclo || null;
@@ -320,6 +326,7 @@ const geralSlice = createSlice({
 			state.navigationMapSelectedParcels = [];
 			state.navigationMapFilterSelected = { ...DEFAULT_NAVIGATION_FILTERS };
 			state.navigationMapByKey = {};
+			state.navigationMapFiltersIndex = [];
 			state.navigationMapStatus = "idle";
 			state.navigationMapError = null;
 			state.navigationMapLastFetch = null;
@@ -345,8 +352,10 @@ const geralSlice = createSlice({
 				const responseFilters = response?.filters || response?.filter_data || null;
 				const responseTotals = response?.totals || null;
 
+
 				state.navigationMapStatus = "succeeded";
 				state.navigationMapError = null;
+				state.navigationMapFiltersIndex = response?.filters_index || [];
 
 				state.navigationMapData = Array.isArray(responseData) ? responseData : [];
 				state.navigationMapFilters = responseFilters;
@@ -358,6 +367,7 @@ const geralSlice = createSlice({
 				state.navigationMapByKey[key] = {
 					data: Array.isArray(responseData) ? responseData : [],
 					filters: responseFilters,
+					filters_index: response?.filters_index || [],
 					totals: responseTotals,
 					safra: safra || response?.safra || null,
 					ciclo: ciclo || response?.ciclo || null,
