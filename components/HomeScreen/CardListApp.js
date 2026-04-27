@@ -123,7 +123,7 @@ const CardListApp = (props) => {
 
 	const culturaIcon = app[0]['cultura']
 
-	const { data, filterByDate, index } = props
+	const { data, filterByDate, index, selectedSafra, selectedCiclo } = props;
 
 	const dapAp = data.dap
 
@@ -200,8 +200,8 @@ const CardListApp = (props) => {
 			projeto: farmPlotMap,
 			parcelas: parcelasPlotMap,
 			safra: {
-				safra: '2024/2025',
-				ciclo: 1
+				safra: selectedSafra,
+				ciclo: Number(selectedCiclo),
 			}
 		});
 		try {
