@@ -218,19 +218,10 @@ const geralSlice = createSlice({
 		// -----------------------------
 		hydrateNavigationMapState: (state) => {
 			ensureNavigationMapState(state);
-
-			if (state.navigationMapStatus === "pending") {
-				state.navigationMapStatus = state.navigationMapData.length > 0 ? "succeeded" : "idle";
-			}
 		},
 
 		resetNavigationMapLoadingState: (state) => {
 			ensureNavigationMapState(state);
-
-			if (state.navigationMapStatus === "pending") {
-				state.navigationMapStatus = state.navigationMapData.length > 0 ? "succeeded" : "idle";
-			}
-
 			state.navigationMapError = null;
 		},
 
@@ -267,6 +258,19 @@ const geralSlice = createSlice({
 		setNavigationMapSelectedProject: (state, action) => {
 			ensureNavigationMapState(state);
 			state.navigationMapSelectedProject = action.payload;
+		},
+
+		setNavigationMapFiltersSelected: (state, action) => {
+			ensureNavigationMapState(state);
+
+			state.navigationMapFilterSelected = {
+				...state.navigationMapFilterSelected,
+				fazenda: [],
+				projeto: [],
+				cultura: Array.isArray(action.payload?.cultura) ? action.payload.cultura : [],
+				variedade: Array.isArray(action.payload?.variedade) ? action.payload.variedade : [],
+				status: Array.isArray(action.payload?.status) ? action.payload.status : [],
+			};
 		},
 
 		setNavigationMapFilter: (state, action) => {
@@ -341,6 +345,11 @@ const geralSlice = createSlice({
 
 				state.navigationMapStatus = "pending";
 				state.navigationMapError = null;
+
+				// Opcional: use somente se quiser impedir qualquer leitura de dado antigo durante refresh.
+				// state.navigationMapData = [];
+				// state.navigationMapTotals = null;
+				// state.navigationMapFiltersIndex = [];
 			})
 
 			.addCase(fetchNavigationMapData.fulfilled, (state, action) => {
@@ -349,29 +358,39 @@ const geralSlice = createSlice({
 				const { key, safra, ciclo, response } = action.payload;
 
 				const responseData = response?.data || response?.dados || [];
+				const normalizedData = Array.isArray(responseData) ? [...responseData] : [];
+
 				const responseFilters = response?.filters || response?.filter_data || null;
+				const responseFiltersIndex = Array.isArray(response?.filters_index)
+					? [...response.filters_index]
+					: [];
 				const responseTotals = response?.totals || null;
 
+				const now = new Date().toISOString();
 
 				state.navigationMapStatus = "succeeded";
 				state.navigationMapError = null;
-				state.navigationMapFiltersIndex = response?.filters_index || [];
 
-				state.navigationMapData = Array.isArray(responseData) ? responseData : [];
+				// Sempre substitui o estado principal por uma nova referência.
+				state.navigationMapData = normalizedData;
 				state.navigationMapFilters = responseFilters;
+				state.navigationMapFiltersIndex = responseFiltersIndex;
 				state.navigationMapTotals = responseTotals;
 				state.navigationMapCurrentSafra = safra || response?.safra || null;
 				state.navigationMapCurrentCiclo = ciclo || response?.ciclo || null;
-				state.navigationMapLastFetch = new Date().toISOString();
+				state.navigationMapLastFetch = now;
+
+				// Evita manter versões antigas dentro da mesma chave.
+				delete state.navigationMapByKey[key];
 
 				state.navigationMapByKey[key] = {
-					data: Array.isArray(responseData) ? responseData : [],
+					data: normalizedData,
 					filters: responseFilters,
-					filters_index: response?.filters_index || [],
+					filters_index: responseFiltersIndex,
 					totals: responseTotals,
 					safra: safra || response?.safra || null,
 					ciclo: ciclo || response?.ciclo || null,
-					fetchedAt: new Date().toISOString(),
+					fetchedAt: now,
 				};
 			})
 

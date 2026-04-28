@@ -146,8 +146,6 @@ export const selectNavigationMapSelectedFarm = (state) =>
 export const selectNavigationMapSelectedProject = (state) =>
 	state.geral.navigationMapSelectedProject;
 
-export const selectNavigationMapFilterSelected = (state) =>
-	state.geral.navigationMapFilterSelected;
 
 export const selectNavigationMapSelectedParcels = (state) =>
 	state.geral.navigationMapSelectedParcels;
@@ -285,3 +283,13 @@ export const selectNavigationMapFiltersIndexFromCache = createSelector(
 		return Array.from(map.values());
 	}
 );
+
+
+export const selectNavigationMapFilterSelected = (state) =>
+	state.geral.navigationMapFilterSelected || {
+		fazenda: [],
+		projeto: [],
+		cultura: [],
+		variedade: [],
+		status: [],
+	};

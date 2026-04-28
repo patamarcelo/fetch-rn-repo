@@ -1,6 +1,6 @@
 // screens/navigation/NavigationHomeScreen.jsx
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import {
 	View,
@@ -11,6 +11,8 @@ import {
 	Platform,
 	ActivityIndicator,
 	RefreshControl,
+	Animated,
+	Easing,
 } from "react-native";
 
 import { setStatusBarStyle, setStatusBarBackgroundColor } from "expo-status-bar";
@@ -23,18 +25,35 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import { Colors } from "../../constants/styles";
 
 import { geralActions } from "../../store/redux/geral";
+
 import {
 	selectNavigationMapData,
 	selectNavigationMapStatus,
 	selectNavigationMapError,
-	selectNavigationMapTotals,
 	selectNavigationMapCurrentSafra,
 	selectNavigationMapCurrentCiclo,
+	selectNavigationMapFilterSelected,
+	selectNavigationMapFilters,
+	selectNavigationMapFiltersIndexFromCache,
 } from "../../store/redux/selector";
 
 import { fetchNavigationMapData } from "../../store/redux/geral";
 
+const STATUS_LABELS = {
+	sem_planejamento: "Sem planejamento",
+	planejado: "Planejado",
+	em_plantio: "Em plantio",
+	plantado: "Plantado",
+	colhido: "Colhido",
+};
 
+const DEFAULT_STATUS_OPTIONS = [
+	{ key: "sem_planejamento", label: "Sem planejamento" },
+	{ key: "planejado", label: "Planejado" },
+	{ key: "em_plantio", label: "Em plantio" },
+	{ key: "plantado", label: "Plantado" },
+	{ key: "colhido", label: "Colhido" },
+];
 
 const formatHa = (value) => {
 	if (value === null || value === undefined || Number.isNaN(Number(value))) {
@@ -50,6 +69,69 @@ const formatHa = (value) => {
 const normalizeProjectName = (name) => {
 	if (!name) return "Projeto";
 	return String(name).replace("Projeto ", "");
+};
+
+const normalizeSafra = (value) => {
+	if (value === null || value === undefined || value === "") return null;
+	return String(value).trim();
+};
+
+const normalizeCiclo = (value) => {
+	if (value === null || value === undefined || value === "") return null;
+
+	const parsed = Number(String(value).trim());
+
+	if (Number.isNaN(parsed)) return String(value).trim();
+
+	return String(parsed);
+};
+
+const normalizeText = (value) => {
+	if (value === null || value === undefined || value === "") return null;
+	return String(value).trim();
+};
+
+const filterNavigationDataByContext = (data = [], safra, ciclo, filters = {}) => {
+	const safeData = Array.isArray(data) ? data : [];
+
+	const normalizedSafra = normalizeSafra(safra);
+	const normalizedCiclo = normalizeCiclo(ciclo);
+
+	return safeData.filter((item) => {
+		if (normalizedSafra && normalizeSafra(item?.safra) !== normalizedSafra) {
+			return false;
+		}
+
+		if (normalizedCiclo && normalizeCiclo(item?.ciclo) !== normalizedCiclo) {
+			return false;
+		}
+
+		if (filters?.cultura?.length > 0) {
+			const itemCulture = normalizeText(item?.cultura);
+
+			const matchesCulture = filters.cultura.some(
+				(culture) => normalizeText(culture) === itemCulture
+			);
+
+			if (!matchesCulture) return false;
+		}
+
+		if (filters?.variedade?.length > 0) {
+			const itemVariedade = normalizeText(item?.variedade || item?.variedade_nome);
+
+			const matchesVariety = filters.variedade.some(
+				(variety) => normalizeText(variety) === itemVariedade
+			);
+
+			if (!matchesVariety) return false;
+		}
+
+		if (filters?.status?.length > 0) {
+			if (!filters.status.includes(item?.status)) return false;
+		}
+
+		return true;
+	});
 };
 
 const groupNavigationDataByFarm = (data = []) => {
@@ -103,8 +185,6 @@ const groupNavigationDataByFarm = (data = []) => {
 		.sort((a, b) => String(a.fazenda_nome).localeCompare(String(b.fazenda_nome)));
 };
 
-
-
 const NavigationHomeSkeleton = () => {
 	return (
 		<View style={styles.skeletonContainer}>
@@ -141,19 +221,326 @@ const NavigationHomeScreen = ({ navigation }) => {
 	const navigationMapDataRaw = useSelector(selectNavigationMapData);
 	const navigationMapStatus = useSelector(selectNavigationMapStatus);
 	const navigationMapError = useSelector(selectNavigationMapError);
-	const navigationMapTotals = useSelector(selectNavigationMapTotals);
+	const navigationMapFilters = useSelector(selectNavigationMapFilters);
+	const filtersIndexRaw = useSelector(selectNavigationMapFiltersIndexFromCache);
 	const currentSafra = useSelector(selectNavigationMapCurrentSafra);
 	const currentCiclo = useSelector(selectNavigationMapCurrentCiclo);
+	const navigationMapFilterSelected = useSelector(selectNavigationMapFilterSelected);
 
 	const navigationMapData = Array.isArray(navigationMapDataRaw)
 		? navigationMapDataRaw
 		: [];
 
+	const filtersIndex = Array.isArray(filtersIndexRaw) ? filtersIndexRaw : [];
+
+	const selectedStatus = Array.isArray(navigationMapFilterSelected?.status)
+		? navigationMapFilterSelected.status
+		: [];
+
+	const selectedCultures = Array.isArray(navigationMapFilterSelected?.cultura)
+		? navigationMapFilterSelected.cultura
+		: [];
+
+	const selectedVarieties = Array.isArray(navigationMapFilterSelected?.variedade)
+		? navigationMapFilterSelected.variedade
+		: [];
+
 	const [expandedFarmId, setExpandedFarmId] = useState(null);
+	const [filtersVisible, setFiltersVisible] = useState(false);
+	const [filtersMounted, setFiltersMounted] = useState(false);
+
+	const filtersAnimation = useRef(new Animated.Value(0)).current;
+
+	useEffect(() => {
+		if (filtersVisible) {
+			setFiltersMounted(true);
+
+			Animated.timing(filtersAnimation, {
+				toValue: 1,
+				duration: 260,
+				easing: Easing.out(Easing.cubic),
+				useNativeDriver: false,
+			}).start();
+
+			return;
+		}
+
+		Animated.timing(filtersAnimation, {
+			toValue: 0,
+			duration: 220,
+			easing: Easing.in(Easing.cubic),
+			useNativeDriver: false,
+		}).start(({ finished }) => {
+			if (finished) {
+				setFiltersMounted(false);
+			}
+		});
+	}, [filtersVisible, filtersAnimation]);
+
+	const filterCardAnimatedStyle = {
+		opacity: filtersAnimation,
+		maxHeight: filtersAnimation.interpolate({
+			inputRange: [0, 1],
+			outputRange: [0, 520],
+		}),
+		marginTop: filtersAnimation.interpolate({
+			inputRange: [0, 1],
+			outputRange: [0, 10],
+		}),
+		transform: [
+			{
+				translateY: filtersAnimation.interpolate({
+					inputRange: [0, 1],
+					outputRange: [-8, 0],
+				}),
+			},
+			{
+				scale: filtersAnimation.interpolate({
+					inputRange: [0, 1],
+					outputRange: [0.98, 1],
+				}),
+			},
+		],
+	};
+
+	const sourceRowsForOptions = useMemo(() => {
+		if (filtersIndex.length > 0) return filtersIndex;
+		return navigationMapData;
+	}, [filtersIndex, navigationMapData]);
+
+	const safraOptions = useMemo(() => {
+		return [
+			...new Set(
+				sourceRowsForOptions
+					.map((item) => String(item?.safra || "").trim())
+					.filter(Boolean)
+			),
+		].sort((a, b) => String(a).localeCompare(String(b)));
+	}, [sourceRowsForOptions]);
+
+	const getCicloOptionsBySafra = useCallback(
+		(safraValue) => {
+			return [
+				...new Set(
+					sourceRowsForOptions
+						.filter((item) => {
+							if (!safraValue) return true;
+							return normalizeSafra(item?.safra) === normalizeSafra(safraValue);
+						})
+						.map((item) => String(item?.ciclo || "").trim())
+						.filter(Boolean)
+						.map((item) => normalizeCiclo(item))
+						.filter(Boolean)
+				),
+			].sort((a, b) => Number(a) - Number(b));
+		},
+		[sourceRowsForOptions]
+	);
+
+	const cicloOptions = useMemo(() => {
+		return getCicloOptionsBySafra(currentSafra);
+	}, [getCicloOptionsBySafra, currentSafra]);
+
+	const filterIndexRows = useMemo(() => {
+		return sourceRowsForOptions.filter((item) => {
+			if (currentSafra && normalizeSafra(item?.safra) !== normalizeSafra(currentSafra)) {
+				return false;
+			}
+
+			if (currentCiclo && normalizeCiclo(item?.ciclo) !== normalizeCiclo(currentCiclo)) {
+				return false;
+			}
+
+			return true;
+		});
+	}, [sourceRowsForOptions, currentSafra, currentCiclo]);
+
+	const statusOptions = useMemo(() => {
+		if (navigationMapFilters?.statuses?.length > 0) {
+			return navigationMapFilters.statuses;
+		}
+
+		return DEFAULT_STATUS_OPTIONS;
+	}, [navigationMapFilters]);
+
+	const cultureOptions = useMemo(() => {
+		return [
+			...new Set(
+				filterIndexRows
+					.map((item) => String(item?.cultura || "").trim())
+					.filter(Boolean)
+			),
+		].sort((a, b) => String(a).localeCompare(String(b)));
+	}, [filterIndexRows]);
+
+	const varietyOptions = useMemo(() => {
+		return [
+			...new Set(
+				filterIndexRows
+					.filter((item) => {
+						if (selectedCultures.length === 0) return true;
+
+						const itemCulture = normalizeText(item?.cultura);
+
+						return selectedCultures.some(
+							(culture) => normalizeText(culture) === itemCulture
+						);
+					})
+					.map((item) => String(item?.variedade || item?.variedade_nome || "").trim())
+					.filter(Boolean)
+			),
+		].sort((a, b) => String(a).localeCompare(String(b)));
+	}, [filterIndexRows, selectedCultures]);
+
+	const handleSetHomeFilters = useCallback(
+		(nextFilters) => {
+			dispatch(
+				geralActions.setNavigationMapFiltersSelected({
+					cultura: nextFilters?.cultura || [],
+					variedade: nextFilters?.variedade || [],
+					status: nextFilters?.status || [],
+				})
+			);
+		},
+		[dispatch]
+	);
+
+	const handleSelectSafra = useCallback(
+		(safraValue) => {
+			const nextCicloOptions = getCicloOptionsBySafra(safraValue);
+			const normalizedCurrentCiclo = normalizeCiclo(currentCiclo);
+
+			const nextCiclo = nextCicloOptions.includes(normalizedCurrentCiclo)
+				? normalizedCurrentCiclo
+				: nextCicloOptions[0] || null;
+
+			dispatch(
+				geralActions.setNavigationMapCurrentFilter({
+					safra: safraValue,
+					ciclo: nextCiclo,
+				})
+			);
+		},
+		[dispatch, currentCiclo, getCicloOptionsBySafra]
+	);
+
+	const handleSelectCiclo = useCallback(
+		(cicloValue) => {
+			dispatch(
+				geralActions.setNavigationMapCurrentFilter({
+					safra: currentSafra,
+					ciclo: normalizeCiclo(cicloValue),
+				})
+			);
+		},
+		[dispatch, currentSafra]
+	);
+
+	const handleToggleStatus = useCallback(
+		(statusKey) => {
+			const nextStatus = selectedStatus.includes(statusKey)
+				? selectedStatus.filter((item) => item !== statusKey)
+				: [...selectedStatus, statusKey];
+
+			handleSetHomeFilters({
+				status: nextStatus,
+				cultura: selectedCultures,
+				variedade: selectedVarieties,
+			});
+		},
+		[handleSetHomeFilters, selectedStatus, selectedCultures, selectedVarieties]
+	);
+
+	const handleToggleCulture = useCallback(
+		(culture) => {
+			const nextCultures = selectedCultures.includes(culture)
+				? selectedCultures.filter((item) => item !== culture)
+				: [...selectedCultures, culture];
+
+			const nextVarieties = selectedVarieties.filter((variety) => {
+				if (nextCultures.length === 0) return true;
+
+				return sourceRowsForOptions.some((item) => {
+					const itemCulture = normalizeText(item?.cultura);
+					const itemVariety = normalizeText(item?.variedade || item?.variedade_nome);
+
+					return (
+						nextCultures.some((selectedCulture) => normalizeText(selectedCulture) === itemCulture) &&
+						normalizeText(variety) === itemVariety
+					);
+				});
+			});
+
+			handleSetHomeFilters({
+				status: selectedStatus,
+				cultura: nextCultures,
+				variedade: nextVarieties,
+			});
+		},
+		[
+			handleSetHomeFilters,
+			selectedStatus,
+			selectedCultures,
+			selectedVarieties,
+			sourceRowsForOptions,
+		]
+	);
+
+	const handleToggleVariety = useCallback(
+		(variety) => {
+			const nextVarieties = selectedVarieties.includes(variety)
+				? selectedVarieties.filter((item) => item !== variety)
+				: [...selectedVarieties, variety];
+
+			handleSetHomeFilters({
+				status: selectedStatus,
+				cultura: selectedCultures,
+				variedade: nextVarieties,
+			});
+		},
+		[handleSetHomeFilters, selectedStatus, selectedCultures, selectedVarieties]
+	);
+
+	const handleClearHomeFilters = useCallback(() => {
+		dispatch(geralActions.clearNavigationMapFilters());
+	}, [dispatch]);
+
+	const handleClearAllFilterContext = useCallback(() => {
+		dispatch(geralActions.clearNavigationMapFilters());
+
+		const nextSafra = safraOptions[0] || null;
+		const nextCiclo = getCicloOptionsBySafra(nextSafra)[0] || null;
+
+		dispatch(
+			geralActions.setNavigationMapCurrentFilter({
+				safra: nextSafra,
+				ciclo: nextCiclo,
+			})
+		);
+	}, [dispatch, safraOptions, getCicloOptionsBySafra]);
+
+	const hasActiveHomeFilters =
+		selectedStatus.length > 0 ||
+		selectedCultures.length > 0 ||
+		selectedVarieties.length > 0;
+
+	const filteredNavigationMapData = useMemo(() => {
+		return filterNavigationDataByContext(
+			navigationMapData,
+			currentSafra,
+			currentCiclo,
+			navigationMapFilterSelected
+		);
+	}, [
+		navigationMapData,
+		currentSafra,
+		currentCiclo,
+		navigationMapFilterSelected,
+	]);
 
 	const farmsData = useMemo(() => {
-		return groupNavigationDataByFarm(navigationMapData);
-	}, [navigationMapData]);
+		return groupNavigationDataByFarm(filteredNavigationMapData);
+	}, [filteredNavigationMapData]);
 
 	const summary = useMemo(() => {
 		const totalFarms = farmsData.length;
@@ -162,17 +549,53 @@ const NavigationHomeScreen = ({ navigation }) => {
 			0
 		);
 
+		const totalParcels = filteredNavigationMapData.length;
+
+		const totalArea = filteredNavigationMapData.reduce((total, item) => {
+			return total + Number(item?.area || 0);
+		}, 0);
+
 		return {
 			totalFarms,
 			totalProjects,
-			totalParcels:
-				navigationMapTotals?.total_parcelas || navigationMapData.length || 0,
-			totalArea: navigationMapTotals?.area_total || 0,
+			totalParcels,
+			totalArea,
 		};
-	}, [farmsData, navigationMapData.length, navigationMapTotals]);
+	}, [farmsData, filteredNavigationMapData]);
 
-	const handleRefreshNavigationData = useCallback(() => {
-		dispatch(fetchNavigationMapData());
+	const appliedFiltersLabel = useMemo(() => {
+		const filters = [];
+
+		if (selectedStatus.length > 0) {
+			filters.push(
+				selectedStatus
+					.map((statusKey) => STATUS_LABELS[statusKey] || statusKey)
+					.join(", ")
+			);
+		}
+
+		if (selectedCultures.length > 0) {
+			filters.push(selectedCultures.join(", "));
+		}
+
+		if (selectedVarieties.length > 0) {
+			filters.push(selectedVarieties.join(", "));
+		}
+
+		if (filters.length === 0) return null;
+
+		return filters.join(" · ");
+	}, [selectedStatus, selectedCultures, selectedVarieties]);
+
+	const activeFiltersCount =
+		selectedStatus.length + selectedCultures.length + selectedVarieties.length;
+
+	const handleRefreshNavigationData = useCallback(async () => {
+		try {
+			await dispatch(fetchNavigationMapData()).unwrap();
+		} catch (error) {
+			console.log("Erro ao atualizar dados de navegação:", error);
+		}
 	}, [dispatch]);
 
 	useFocusEffect(
@@ -231,8 +654,9 @@ const NavigationHomeScreen = ({ navigation }) => {
 	};
 
 	const hasData = farmsData.length > 0;
-	const isFirstLoading = navigationMapStatus === "pending" && !hasData;
-	const isRefreshing = navigationMapStatus === "pending" && hasData;
+	const hasRawData = navigationMapData.length > 0;
+	const isFirstLoading = navigationMapStatus === "pending" && !hasRawData;
+	const isRefreshing = navigationMapStatus === "pending" && hasRawData;
 	const hasError = navigationMapStatus === "failed" || !!navigationMapError;
 
 	return (
@@ -247,12 +671,47 @@ const NavigationHomeScreen = ({ navigation }) => {
 						</Text>
 					</View>
 
-					<View style={styles.summaryPill}>
-						<Ionicons name="map-outline" size={16} color={Colors.primary[700]} />
+					<View style={styles.headerActionsRow}>
+						<View style={styles.summaryPill}>
+							<Ionicons name="map-outline" size={16} color={Colors.primary[700]} />
 
-						<Text style={styles.summaryPillText}>
-							{summary.totalFarms} fazendas · {summary.totalProjects} projetos
-						</Text>
+							<Text style={styles.summaryPillText}>
+								{summary.totalFarms} fazendas · {summary.totalProjects} projetos
+							</Text>
+						</View>
+
+						<TouchableOpacity
+							activeOpacity={0.84}
+							onPress={() => setFiltersVisible((current) => !current)}
+							style={[
+								styles.homeFilterButton,
+								filtersVisible && styles.homeFilterButtonActive,
+								hasActiveHomeFilters && styles.homeFilterButtonWithFilters,
+							]}
+						>
+							<Ionicons
+								name={filtersVisible ? "options" : "options-outline"}
+								size={17}
+								color={filtersVisible ? "#07130C" : Colors.primary[700]}
+							/>
+
+							<Text
+								style={[
+									styles.homeFilterButtonText,
+									filtersVisible && styles.homeFilterButtonTextActive,
+								]}
+							>
+								Filtros
+							</Text>
+
+							{activeFiltersCount > 0 && (
+								<View style={styles.homeFilterCountBadge}>
+									<Text style={styles.homeFilterCountBadgeText}>
+										{activeFiltersCount}
+									</Text>
+								</View>
+							)}
+						</TouchableOpacity>
 					</View>
 
 					<View style={styles.filterInfoPill}>
@@ -261,6 +720,270 @@ const NavigationHomeScreen = ({ navigation }) => {
 							{summary.totalParcels} parcelas · {formatHa(summary.totalArea)}
 						</Text>
 					</View>
+
+					{!!appliedFiltersLabel && (
+						<View style={styles.appliedFiltersPill}>
+							<Ionicons
+								name="filter-outline"
+								size={12}
+								color={Colors.primary[700]}
+							/>
+
+							<Text style={styles.appliedFiltersText} numberOfLines={1}>
+								{appliedFiltersLabel}
+							</Text>
+						</View>
+					)}
+
+					{filtersMounted && (
+						<Animated.View style={[styles.homeFiltersCardAnimated, filterCardAnimatedStyle]}>
+							<View style={styles.homeFiltersCard}>
+								<View style={styles.homeFiltersHeader}>
+									<View>
+										<Text style={styles.homeFiltersTitle}>Filtros operacionais</Text>
+										<Text style={styles.homeFiltersSubtitle}>
+											Safra, ciclo, status, cultura e variedade
+										</Text>
+									</View>
+
+									<View style={styles.homeFiltersHeaderActions}>
+										{hasActiveHomeFilters && (
+											<TouchableOpacity
+												activeOpacity={0.82}
+												onPress={handleClearHomeFilters}
+												style={styles.homeFiltersClearButton}
+											>
+												<Text style={styles.homeFiltersClear}>Limpar</Text>
+											</TouchableOpacity>
+										)}
+
+										<TouchableOpacity
+											activeOpacity={0.82}
+											onPress={() => setFiltersVisible(false)}
+											style={styles.homeFiltersCloseButton}
+										>
+											<Ionicons name="close" size={15} color="#0F172A" />
+										</TouchableOpacity>
+									</View>
+								</View>
+
+								<View style={styles.homeFilterSection}>
+									<Text style={styles.homeFilterLabel}>Safra</Text>
+
+									<ScrollView
+										horizontal
+										showsHorizontalScrollIndicator={false}
+										contentContainerStyle={styles.homeChipsRow}
+									>
+										{safraOptions.map((option) => {
+											const isSelected = normalizeSafra(currentSafra) === normalizeSafra(option);
+
+											return (
+												<TouchableOpacity
+													key={`home-safra-${option}`}
+													activeOpacity={0.82}
+													onPress={() => handleSelectSafra(option)}
+													style={[
+														styles.homeFilterChip,
+														isSelected && styles.homeFilterChipSelected,
+													]}
+												>
+													<Text
+														style={[
+															styles.homeFilterChipText,
+															isSelected && styles.homeFilterChipTextSelected,
+														]}
+													>
+														{option}
+													</Text>
+												</TouchableOpacity>
+											);
+										})}
+
+										{safraOptions.length === 0 && (
+											<View style={styles.homeFilterChipDisabled}>
+												<Text style={styles.homeFilterChipDisabledText}>
+													Sem safra disponível
+												</Text>
+											</View>
+										)}
+									</ScrollView>
+								</View>
+
+								<View style={styles.homeFilterSection}>
+									<Text style={styles.homeFilterLabel}>Ciclo</Text>
+
+									<ScrollView
+										horizontal
+										showsHorizontalScrollIndicator={false}
+										contentContainerStyle={styles.homeChipsRow}
+									>
+										{cicloOptions.map((option) => {
+											const normalizedOption = normalizeCiclo(option);
+											const isSelected = normalizeCiclo(currentCiclo) === normalizedOption;
+
+											return (
+												<TouchableOpacity
+													key={`home-ciclo-${normalizedOption}`}
+													activeOpacity={0.82}
+													onPress={() => handleSelectCiclo(normalizedOption)}
+													style={[
+														styles.homeFilterChip,
+														isSelected && styles.homeFilterChipSelected,
+													]}
+												>
+													<Text
+														style={[
+															styles.homeFilterChipText,
+															isSelected && styles.homeFilterChipTextSelected,
+														]}
+													>
+														Ciclo {normalizedOption}
+													</Text>
+												</TouchableOpacity>
+											);
+										})}
+
+										{cicloOptions.length === 0 && (
+											<View style={styles.homeFilterChipDisabled}>
+												<Text style={styles.homeFilterChipDisabledText}>
+													Sem ciclo disponível
+												</Text>
+											</View>
+										)}
+									</ScrollView>
+								</View>
+
+								<View style={styles.homeFilterSection}>
+									<Text style={styles.homeFilterLabel}>Status</Text>
+
+									<ScrollView
+										horizontal
+										showsHorizontalScrollIndicator={false}
+										contentContainerStyle={styles.homeChipsRow}
+									>
+										{statusOptions.map((option) => {
+											const isSelected = selectedStatus.includes(option.key);
+
+											return (
+												<TouchableOpacity
+													key={option.key}
+													activeOpacity={0.82}
+													onPress={() => handleToggleStatus(option.key)}
+													style={[
+														styles.homeFilterChip,
+														isSelected && styles.homeFilterChipSelected,
+													]}
+												>
+													<Text
+														style={[
+															styles.homeFilterChipText,
+															isSelected && styles.homeFilterChipTextSelected,
+														]}
+													>
+														{option.label}
+													</Text>
+												</TouchableOpacity>
+											);
+										})}
+									</ScrollView>
+								</View>
+
+								{cultureOptions.length > 0 && (
+									<View style={styles.homeFilterSection}>
+										<Text style={styles.homeFilterLabel}>Cultura</Text>
+
+										<ScrollView
+											horizontal
+											showsHorizontalScrollIndicator={false}
+											contentContainerStyle={styles.homeChipsRow}
+										>
+											{cultureOptions.map((culture) => {
+												const isSelected = selectedCultures.includes(culture);
+
+												return (
+													<TouchableOpacity
+														key={`home-culture-${culture}`}
+														activeOpacity={0.82}
+														onPress={() => handleToggleCulture(culture)}
+														style={[
+															styles.homeFilterChip,
+															isSelected && styles.homeFilterChipSelected,
+														]}
+													>
+														<Text
+															style={[
+																styles.homeFilterChipText,
+																isSelected && styles.homeFilterChipTextSelected,
+															]}
+														>
+															{culture}
+														</Text>
+													</TouchableOpacity>
+												);
+											})}
+										</ScrollView>
+									</View>
+								)}
+
+								{varietyOptions.length > 0 && (
+									<View style={styles.homeFilterSectionLast}>
+										<Text style={styles.homeFilterLabel}>Variedade</Text>
+
+										<ScrollView
+											horizontal
+											showsHorizontalScrollIndicator={false}
+											contentContainerStyle={styles.homeChipsRow}
+										>
+											{varietyOptions.map((variety) => {
+												const isSelected = selectedVarieties.includes(variety);
+
+												return (
+													<TouchableOpacity
+														key={`home-variety-${variety}`}
+														activeOpacity={0.82}
+														onPress={() => handleToggleVariety(variety)}
+														style={[
+															styles.homeFilterChip,
+															isSelected && styles.homeFilterChipSelected,
+														]}
+													>
+														<Text
+															style={[
+																styles.homeFilterChipText,
+																isSelected && styles.homeFilterChipTextSelected,
+															]}
+														>
+															{variety}
+														</Text>
+													</TouchableOpacity>
+												);
+											})}
+										</ScrollView>
+									</View>
+								)}
+
+								{(hasActiveHomeFilters || currentSafra || currentCiclo) && (
+									<View style={styles.homeFiltersFooter}>
+										<Text style={styles.homeFiltersFooterText} numberOfLines={1}>
+											Safra {currentSafra || "—"} · Ciclo {currentCiclo || "—"} ·{" "}
+											{summary.totalParcels} parcelas · {formatHa(summary.totalArea)}
+										</Text>
+
+										<TouchableOpacity
+											activeOpacity={0.82}
+											onPress={handleClearAllFilterContext}
+											style={styles.homeFiltersResetContextButton}
+										>
+											<Text style={styles.homeFiltersResetContextText}>
+												Resetar
+											</Text>
+										</TouchableOpacity>
+									</View>
+								)}
+							</View>
+						</Animated.View>
+					)}
 
 					{isRefreshing && (
 						<View style={styles.refreshPill}>
@@ -278,7 +1001,7 @@ const NavigationHomeScreen = ({ navigation }) => {
 
 				{isFirstLoading ? (
 					<NavigationHomeSkeleton />
-				) : hasError && !hasData ? (
+				) : hasError && !hasRawData ? (
 					<View style={styles.emptyBox}>
 						<Ionicons name="warning-outline" size={30} color="#B45309" />
 						<Text style={styles.emptyTitle}>Não foi possível carregar</Text>
@@ -287,13 +1010,38 @@ const NavigationHomeScreen = ({ navigation }) => {
 						</Text>
 					</View>
 				) : !hasData ? (
-					<View style={styles.emptyBox}>
-						<Ionicons name="map-outline" size={30} color={Colors.primary[700]} />
-						<Text style={styles.emptyTitle}>Nenhum dado encontrado</Text>
-						<Text style={styles.emptyText}>
-							Não há parcelas disponíveis para a safra/ciclo atual.
-						</Text>
-					</View>
+					<ScrollView
+						style={styles.scroll}
+						contentContainerStyle={styles.emptyScrollContent}
+						showsVerticalScrollIndicator={false}
+						refreshControl={
+							<RefreshControl
+								refreshing={isRefreshing}
+								onRefresh={handleRefreshNavigationData}
+								tintColor={Colors.primary[700]}
+								colors={[Colors.primary[700]]}
+								progressBackgroundColor="#FFFFFF"
+							/>
+						}
+					>
+						<View style={styles.emptyBoxInline}>
+							<Ionicons name="map-outline" size={30} color={Colors.primary[700]} />
+							<Text style={styles.emptyTitle}>Nenhum dado encontrado</Text>
+							<Text style={styles.emptyText}>
+								Não há parcelas disponíveis para os filtros atuais.
+							</Text>
+
+							{(hasActiveHomeFilters || currentSafra || currentCiclo) && (
+								<TouchableOpacity
+									activeOpacity={0.84}
+									onPress={handleClearAllFilterContext}
+									style={styles.emptyClearButton}
+								>
+									<Text style={styles.emptyClearButtonText}>Resetar filtros</Text>
+								</TouchableOpacity>
+							)}
+						</View>
+					</ScrollView>
 				) : (
 					<ScrollView
 						style={styles.scroll}
@@ -500,6 +1248,12 @@ const styles = StyleSheet.create({
 		lineHeight: 18,
 		fontWeight: "600",
 	},
+	headerActionsRow: {
+		flexDirection: "row",
+		alignItems: "center",
+		flexWrap: "wrap",
+		gap: 8,
+	},
 	summaryPill: {
 		alignSelf: "flex-start",
 		flexDirection: "row",
@@ -517,6 +1271,48 @@ const styles = StyleSheet.create({
 		fontSize: 12,
 		fontWeight: "800",
 	},
+	homeFilterButton: {
+		alignSelf: "flex-start",
+		flexDirection: "row",
+		alignItems: "center",
+		gap: 6,
+		backgroundColor: "rgba(255,255,255,0.82)",
+		borderWidth: 1,
+		borderColor: "rgba(15,23,42,0.08)",
+		paddingHorizontal: 11,
+		paddingVertical: 7,
+		borderRadius: 999,
+	},
+	homeFilterButtonActive: {
+		backgroundColor: "#72E6A1",
+		borderColor: "#72E6A1",
+	},
+	homeFilterButtonWithFilters: {
+		borderColor: "rgba(22,101,52,0.22)",
+	},
+	homeFilterButtonText: {
+		color: Colors.primary[800],
+		fontSize: 12,
+		fontWeight: "900",
+	},
+	homeFilterButtonTextActive: {
+		color: "#07130C",
+	},
+	homeFilterCountBadge: {
+		minWidth: 18,
+		height: 18,
+		borderRadius: 9,
+		backgroundColor: Colors.primary[700],
+		alignItems: "center",
+		justifyContent: "center",
+		paddingHorizontal: 5,
+		marginLeft: 1,
+	},
+	homeFilterCountBadgeText: {
+		color: "#FFFFFF",
+		fontSize: 10,
+		fontWeight: "950",
+	},
 	filterInfoPill: {
 		alignSelf: "flex-start",
 		marginTop: 8,
@@ -529,6 +1325,164 @@ const styles = StyleSheet.create({
 		color: "rgba(15,23,42,0.64)",
 		fontSize: 11,
 		fontWeight: "800",
+	},
+	appliedFiltersPill: {
+		alignSelf: "flex-start",
+		marginTop: 6,
+		maxWidth: "100%",
+		flexDirection: "row",
+		alignItems: "center",
+		gap: 5,
+		backgroundColor: "rgba(255,255,255,0.78)",
+		borderRadius: 999,
+		borderWidth: 1,
+		borderColor: "rgba(15,23,42,0.08)",
+		paddingHorizontal: 10,
+		paddingVertical: 6,
+	},
+	appliedFiltersText: {
+		flexShrink: 1,
+		color: Colors.primary[800],
+		fontSize: 11,
+		fontWeight: "850",
+	},
+	homeFiltersCardAnimated: {
+		overflow: "hidden",
+	},
+	homeFiltersCard: {
+		backgroundColor: "rgba(255,255,255,0.92)",
+		borderRadius: 20,
+		borderWidth: 1,
+		borderColor: "rgba(15,23,42,0.08)",
+		padding: 12,
+		shadowColor: "#000",
+		shadowOpacity: 0.08,
+		shadowRadius: 14,
+		shadowOffset: { width: 0, height: 7 },
+		elevation: 2,
+	},
+	homeFiltersHeader: {
+		flexDirection: "row",
+		alignItems: "center",
+		justifyContent: "space-between",
+		marginBottom: 10,
+		gap: 12,
+	},
+	homeFiltersTitle: {
+		color: "#0F172A",
+		fontSize: 13,
+		fontWeight: "950",
+	},
+	homeFiltersSubtitle: {
+		marginTop: 1,
+		color: "rgba(15,23,42,0.48)",
+		fontSize: 10.5,
+		fontWeight: "750",
+	},
+	homeFiltersHeaderActions: {
+		flexDirection: "row",
+		alignItems: "center",
+		gap: 7,
+	},
+	homeFiltersClearButton: {
+		borderRadius: 999,
+		backgroundColor: "rgba(22,101,52,0.10)",
+		paddingHorizontal: 10,
+		paddingVertical: 6,
+	},
+	homeFiltersClear: {
+		color: Colors.primary[700],
+		fontSize: 12,
+		fontWeight: "950",
+	},
+	homeFiltersCloseButton: {
+		width: 28,
+		height: 28,
+		borderRadius: 14,
+		backgroundColor: "rgba(15,23,42,0.06)",
+		alignItems: "center",
+		justifyContent: "center",
+	},
+	homeFilterSection: {
+		marginBottom: 10,
+	},
+	homeFilterSectionLast: {
+		marginBottom: 0,
+	},
+	homeFilterLabel: {
+		color: "rgba(15,23,42,0.52)",
+		fontSize: 10,
+		fontWeight: "950",
+		textTransform: "uppercase",
+		letterSpacing: 0.6,
+		marginBottom: 7,
+	},
+	homeChipsRow: {
+		flexDirection: "row",
+		alignItems: "center",
+		gap: 8,
+		paddingRight: 6,
+	},
+	homeFilterChip: {
+		borderRadius: 999,
+		paddingHorizontal: 11,
+		paddingVertical: 7,
+		backgroundColor: "rgba(15,23,42,0.055)",
+		borderWidth: 1,
+		borderColor: "rgba(15,23,42,0.07)",
+	},
+	homeFilterChipSelected: {
+		backgroundColor: Colors.primary[700],
+		borderColor: Colors.primary[700],
+	},
+	homeFilterChipText: {
+		color: "rgba(15,23,42,0.68)",
+		fontSize: 11.5,
+		fontWeight: "900",
+	},
+	homeFilterChipTextSelected: {
+		color: "#FFFFFF",
+	},
+	homeFilterChipDisabled: {
+		borderRadius: 999,
+		paddingHorizontal: 11,
+		paddingVertical: 7,
+		backgroundColor: "rgba(15,23,42,0.035)",
+		borderWidth: 1,
+		borderColor: "rgba(15,23,42,0.05)",
+		opacity: 0.7,
+	},
+	homeFilterChipDisabledText: {
+		color: "rgba(15,23,42,0.42)",
+		fontSize: 11.5,
+		fontWeight: "900",
+	},
+	homeFiltersFooter: {
+		marginTop: 12,
+		paddingTop: 10,
+		borderTopWidth: 1,
+		borderTopColor: "rgba(15,23,42,0.07)",
+		flexDirection: "row",
+		alignItems: "center",
+		justifyContent: "space-between",
+		gap: 8,
+	},
+	homeFiltersFooterText: {
+		flex: 1,
+		color: "rgba(15,23,42,0.58)",
+		fontSize: 10.5,
+		fontWeight: "800",
+	},
+	homeFiltersResetContextButton: {
+		borderRadius: 999,
+		backgroundColor: "rgba(15,23,42,0.06)",
+		paddingHorizontal: 10,
+		paddingVertical: 6,
+	},
+	homeFiltersResetContextText: {
+		color: "rgba(15,23,42,0.66)",
+		fontSize: 11,
+		fontWeight: "900",
 	},
 	refreshPill: {
 		alignSelf: "flex-start",
@@ -553,23 +1507,36 @@ const styles = StyleSheet.create({
 		fontSize: 11.5,
 		fontWeight: "900",
 	},
-	loadingBox: {
-		flex: 1,
+	refreshPillSubText: {
+		marginTop: 1,
+		color: "rgba(15,23,42,0.46)",
+		fontSize: 10.5,
+		fontWeight: "700",
+	},
+	refreshSpinnerBox: {
+		width: 28,
+		height: 28,
+		borderRadius: 999,
 		alignItems: "center",
 		justifyContent: "center",
-		paddingHorizontal: 28,
-	},
-	loadingText: {
-		marginTop: 12,
-		color: Colors.primary[800],
-		fontSize: 13,
-		fontWeight: "800",
+		backgroundColor: "rgba(255,255,255,0.86)",
 	},
 	emptyBox: {
 		flex: 1,
 		alignItems: "center",
 		justifyContent: "center",
 		paddingHorizontal: 28,
+	},
+	emptyScrollContent: {
+		flexGrow: 1,
+		paddingHorizontal: 28,
+		paddingBottom: Platform.OS === "ios" ? 110 : 90,
+	},
+	emptyBoxInline: {
+		flex: 1,
+		alignItems: "center",
+		justifyContent: "center",
+		paddingVertical: 50,
 	},
 	emptyTitle: {
 		marginTop: 10,
@@ -583,6 +1550,18 @@ const styles = StyleSheet.create({
 		fontSize: 13,
 		fontWeight: "700",
 		textAlign: "center",
+	},
+	emptyClearButton: {
+		marginTop: 14,
+		backgroundColor: Colors.primary[700],
+		borderRadius: 999,
+		paddingHorizontal: 14,
+		paddingVertical: 8,
+	},
+	emptyClearButtonText: {
+		color: "#FFFFFF",
+		fontSize: 12,
+		fontWeight: "900",
 	},
 	scroll: {
 		flex: 1,
@@ -839,19 +1818,5 @@ const styles = StyleSheet.create({
 		height: 28,
 		borderRadius: 999,
 		backgroundColor: "rgba(22,101,52,0.12)",
-	},
-	refreshSpinnerBox: {
-		width: 28,
-		height: 28,
-		borderRadius: 999,
-		alignItems: "center",
-		justifyContent: "center",
-		backgroundColor: "rgba(255,255,255,0.86)",
-	},
-	refreshPillSubText: {
-		marginTop: 1,
-		color: "rgba(15,23,42,0.46)",
-		fontSize: 10.5,
-		fontWeight: "700",
 	},
 });

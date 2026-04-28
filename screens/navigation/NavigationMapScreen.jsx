@@ -26,13 +26,15 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import { Colors } from "../../constants/styles";
 
 import { fetchNavigationMapData, geralActions } from "../../store/redux/geral";
+
 import {
 	selectNavigationMapData,
 	selectNavigationMapStatus,
 	selectNavigationMapError,
 	selectNavigationMapFilters,
 	selectNavigationMapSelectedParcels,
-	selectNavigationMapFiltersIndexFromCache
+	selectNavigationMapFiltersIndexFromCache,
+	selectNavigationMapFilterSelected,
 } from "../../store/redux/selector";
 
 import { fetchParcelApplications } from "../../services/navigationApplicationsApi";
@@ -830,6 +832,8 @@ const NavigationMapScreen = ({ navigation, route }) => {
 	const filtersIndex = useSelector(selectNavigationMapFiltersIndexFromCache);
 	const navigationMapByKey = useSelector((state) => state.geral.navigationMapByKey);
 
+	const persistedFilters = useSelector(selectNavigationMapFilterSelected);
+
 	const navigationMapFiltersIndex = useSelector(
 		(state) => state.geral.navigationMapFiltersIndex || []
 	);
@@ -846,9 +850,19 @@ const NavigationMapScreen = ({ navigation, route }) => {
 	const [selectedSafra, setSelectedSafra] = useState(safra || null);
 	const [selectedCiclo, setSelectedCiclo] = useState(ciclo ? normalizeCiclo(ciclo) : null);
 	const [filtersVisible, setFiltersVisible] = useState(false);
-	const [selectedStatus, setSelectedStatus] = useState([]);
-	const [selectedCultures, setSelectedCultures] = useState([]);
-	const [selectedVarieties, setSelectedVarieties] = useState([]);
+
+	const [selectedStatus, setSelectedStatus] = useState(
+		Array.isArray(persistedFilters?.status) ? persistedFilters.status : []
+	);
+
+	const [selectedCultures, setSelectedCultures] = useState(
+		Array.isArray(persistedFilters?.cultura) ? persistedFilters.cultura : []
+	);
+
+	const [selectedVarieties, setSelectedVarieties] = useState(
+		Array.isArray(persistedFilters?.variedade) ? persistedFilters.variedade : []
+	);
+
 	const [selectedProjectLocal, setSelectedProjectLocal] = useState(
 		selectedProjectParam || null
 	);
@@ -899,6 +913,23 @@ const NavigationMapScreen = ({ navigation, route }) => {
 	const currentCicloFromRedux = useSelector(
 		(state) => state.geral.navigationMapCurrentCiclo
 	);
+
+	useEffect(() => {
+		dispatch(
+			geralActions.setNavigationMapFiltersSelected({
+				cultura: selectedCultures,
+				variedade: selectedVarieties,
+				status: selectedStatus,
+			})
+		);
+	}, [
+		dispatch,
+		selectedFarmParam,
+		selectedProjectLocal,
+		selectedCultures,
+		selectedVarieties,
+		selectedStatus,
+	]);
 
 	useEffect(() => {
 		if (!selectedSafra && currentSafraFromRedux) {
@@ -1427,9 +1458,6 @@ const NavigationMapScreen = ({ navigation, route }) => {
 
 
 	useEffect(() => {
-		setSelectedStatus([]);
-		setSelectedCultures([]);
-		setSelectedVarieties([]);
 		setInfoParcel(null);
 		dispatch(geralActions.clearNavigationMapSelectedParcels());
 	}, [dispatch, selectedSafra, selectedCiclo]);
@@ -1554,6 +1582,8 @@ const NavigationMapScreen = ({ navigation, route }) => {
 		setSelectedVarieties([]);
 		setSelectedProjectLocal(null);
 		setInfoParcel(null);
+
+		dispatch(geralActions.clearNavigationMapFilters());
 		dispatch(geralActions.clearNavigationMapSelectedParcels());
 	};
 
