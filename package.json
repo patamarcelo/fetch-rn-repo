@@ -29,6 +29,7 @@
     "expo": "^54.0.17",
     "expo-file-system": "~19.0.21",
     "expo-haptics": "~15.0.7",
+    "expo-keep-awake": "~15.0.8",
     "expo-location": "~19.0.7",
     "expo-network": "~8.0.7",
     "expo-print": "~15.0.7",
@@ -68,7 +69,7 @@
     "redux-persist": "^6.0.0",
     "redux-thunk": "^3.1.0",
     "typescript": "~5.9.2",
-    "expo-keep-awake": "~15.0.8"
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@babel/core": "^7.24.0",

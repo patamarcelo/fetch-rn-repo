@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
     View,
     Text,
+    TextInput,
     TouchableOpacity,
     StyleSheet,
     ScrollView,
@@ -55,6 +56,16 @@ const normalizeCropText = (value) => {
         .toLowerCase();
 };
 
+const normalizeSearchText = (value) => {
+    if (!value) return "";
+
+    return String(value)
+        .trim()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .toLowerCase();
+};
+
 const getCropIcon = (cropValue, varietyValue) => {
     const cropText = normalizeCropText(cropValue);
     const varietyText = normalizeCropText(varietyValue);
@@ -86,6 +97,17 @@ const formatDateBR = (value) => {
     if (!value) return "—";
 
     const [year, month, day] = String(value).split("-");
+
+    if (!year || !month || !day) return String(value);
+
+    return `${day}/${month}/${year}`;
+};
+
+const formatDateBRTime = (value) => {
+    if (!value) return "—";
+
+    const dateOnly = String(value).split("T")[0];
+    const [year, month, day] = dateOnly.split("-");
 
     if (!year || !month || !day) return String(value);
 
@@ -124,7 +146,9 @@ const formatDap = (value) => {
 
 const getStatusColor = (status) => {
     if (status === "finalized") return "#166534";
+    if (status === "applied") return "#0F766E";
     if (status === "sought") return "#92400E";
+    if (status === "canceled") return "#991B1B";
     return "#475569";
 };
 
@@ -248,6 +272,7 @@ const ParcelApplicationsSheet = ({
     onClose,
 }) => {
     const [statusFilter, setStatusFilter] = useState("all");
+    const [productSearch, setProductSearch] = useState("");
 
     const applicationsSheetHeight = useRef(
         new Animated.Value(
@@ -259,17 +284,84 @@ const ParcelApplicationsSheet = ({
 
     const applications = Array.isArray(data?.applications) ? data.applications : [];
 
+    // console.log("DEBUG FRONT APPLICATIONS", data?.applications?.map((ap) => ({
+    //     code: ap.code,
+    //     status: ap.status,
+    //     originalStatus: ap.originalStatus,
+    //     statusLabel: ap.statusLabel,
+    //     progress: !!ap.progress,
+    //     closedDate: ap.closedDate,
+    // })));
+
+
+    const applicationsMatchingProduct = useMemo(() => {
+        const searchText = normalizeSearchText(productSearch);
+
+        if (!searchText) return applications;
+
+        return applications.filter((ap) =>
+            (ap.products || [])
+                .filter((product) => product.type !== "Operação")
+                .some((product) => {
+                    const productName = normalizeSearchText(product.product);
+                    const productType = normalizeSearchText(product.type);
+                    const register = normalizeSearchText(product.register);
+                    const manufacturer = normalizeSearchText(product.manufacturer);
+
+                    return (
+                        productName.includes(searchText) ||
+                        productType.includes(searchText) ||
+                        register.includes(searchText) ||
+                        manufacturer.includes(searchText)
+                    );
+                })
+        );
+    }, [applications, productSearch]);
+
+
+    const visibleTotals = useMemo(() => {
+        return applicationsMatchingProduct.reduce(
+            (acc, ap) => {
+                acc.total += 1;
+
+                if (ap.status === "sought") acc.open += 1;
+                if (ap.status === "applied") acc.applied += 1;
+                if (ap.status === "finalized") acc.finalized += 1;
+                if (ap.status === "canceled") acc.canceled += 1;
+
+                return acc;
+            },
+            {
+                total: 0,
+                open: 0,
+                applied: 0,
+                finalized: 0,
+                canceled: 0,
+            }
+        );
+    }, [applicationsMatchingProduct]);
+
     const filteredApplications = useMemo(() => {
-        if (statusFilter === "all") return applications;
+        if (statusFilter === "all") return applicationsMatchingProduct;
+
         if (statusFilter === "open") {
-            return applications.filter((item) => item.status === "sought");
-        }
-        if (statusFilter === "finalized") {
-            return applications.filter((item) => item.status === "finalized");
+            return applicationsMatchingProduct.filter((item) => item.status === "sought");
         }
 
-        return applications;
-    }, [applications, statusFilter]);
+        if (statusFilter === "applied") {
+            return applicationsMatchingProduct.filter((item) => item.status === "applied");
+        }
+
+        if (statusFilter === "finalized") {
+            return applicationsMatchingProduct.filter((item) => item.status === "finalized");
+        }
+
+        if (statusFilter === "canceled") {
+            return applicationsMatchingProduct.filter((item) => item.status === "canceled");
+        }
+
+        return applicationsMatchingProduct;
+    }, [applicationsMatchingProduct, statusFilter]);
 
     const parcelData = data?.parcel || null;
 
@@ -394,6 +486,44 @@ const ParcelApplicationsSheet = ({
             }),
         [expandApplicationsSheet, collapseApplicationsSheet]
     );
+
+
+    const statusSummaryItems = [
+        {
+            key: "all",
+            label: "Aplicações",
+            value: visibleTotals.total,
+            color: Colors.primary[800],
+            bg: "rgba(30,64,175,0.08)",
+            border: "rgba(30,64,175,0.16)",
+        },
+        {
+            key: "open",
+            label: "Abertas",
+            value: visibleTotals.open,
+            color: "#92400E",
+            bg: "rgba(146,64,14,0.09)",
+            border: "rgba(146,64,14,0.18)",
+        },
+        {
+            key: "applied",
+            label: "Aplicadas",
+            value: visibleTotals.applied,
+            color: "#0F766E",
+            bg: "rgba(15,118,110,0.10)",
+            border: "rgba(15,118,110,0.22)",
+        },
+        {
+            key: "finalized",
+            label: "Finalizadas",
+            value: visibleTotals.finalized,
+            color: "#166534",
+            bg: "rgba(22,101,52,0.10)",
+            border: "rgba(22,101,52,0.20)",
+        },
+    ];
+
+
     if (!visible) return null;
 
     return (
@@ -513,51 +643,89 @@ const ParcelApplicationsSheet = ({
             ) : (
                 <>
                     <View style={styles.summaryRow}>
-                        <View style={styles.summaryItem}>
-                            <Text style={styles.summaryValue}>{data?.totals?.total || 0}</Text>
-                            <Text style={styles.summaryLabel}>Aplicações</Text>
-                        </View>
-
-                        <View style={styles.summaryItem}>
-                            <Text style={styles.summaryValue}>{data?.totals?.open || 0}</Text>
-                            <Text style={styles.summaryLabel}>Abertas</Text>
-                        </View>
-
-                        <View style={styles.summaryItem}>
-                            <Text style={styles.summaryValue}>{data?.totals?.finalized || 0}</Text>
-                            <Text style={styles.summaryLabel}>Finalizadas</Text>
-                        </View>
-                    </View>
-
-                    <View style={styles.filterRow}>
-                        {[
-                            { key: "all", label: "Todas" },
-                            { key: "open", label: "Abertas" },
-                            { key: "finalized", label: "Finalizadas" },
-                        ].map((filter) => {
-                            const isSelected = statusFilter === filter.key;
+                        {statusSummaryItems.map((item) => {
+                            const isSelected = statusFilter === item.key;
 
                             return (
                                 <TouchableOpacity
-                                    key={filter.key}
-                                    activeOpacity={0.84}
-                                    onPress={() => setStatusFilter(filter.key)}
+                                    key={item.key}
+                                    activeOpacity={0.86}
+                                    onPress={() => setStatusFilter(item.key)}
                                     style={[
-                                        styles.filterChip,
-                                        isSelected && styles.filterChipSelected,
+                                        styles.summaryItem,
+                                        {
+                                            backgroundColor: item.bg,
+                                            borderColor: item.border,
+                                        },
+                                        isSelected && [
+                                            styles.summaryItemSelected,
+                                            {
+                                                borderColor: item.color,
+                                            },
+                                        ],
                                     ]}
                                 >
                                     <Text
                                         style={[
-                                            styles.filterChipText,
-                                            isSelected && styles.filterChipTextSelected,
+                                            styles.summaryValue,
+                                            { color: item.color },
                                         ]}
                                     >
-                                        {filter.label}
+                                        {item.value}
                                     </Text>
+
+                                    <Text
+                                        style={[
+                                            styles.summaryLabel,
+                                            { color: item.color },
+                                        ]}
+                                        numberOfLines={1}
+                                    >
+                                        {item.label}
+                                    </Text>
+
+                                    {isSelected ? (
+                                        <View
+                                            style={[
+                                                styles.summarySelectedDot,
+                                                { backgroundColor: item.color },
+                                            ]}
+                                        />
+                                    ) : null}
                                 </TouchableOpacity>
                             );
                         })}
+                    </View>
+                    <View style={styles.searchBox}>
+                        <Ionicons
+                            name="search-outline"
+                            size={16}
+                            color="rgba(15,23,42,0.48)"
+                        />
+
+                        <TextInput
+                            value={productSearch}
+                            onChangeText={setProductSearch}
+                            placeholder="Buscar produto aplicado na parcela..."
+                            placeholderTextColor="rgba(15,23,42,0.42)"
+                            style={styles.searchInput}
+                            autoCorrect={false}
+                            autoCapitalize="none"
+                        />
+
+                        {productSearch ? (
+                            <TouchableOpacity
+                                activeOpacity={0.75}
+                                onPress={() => setProductSearch("")}
+                                style={styles.searchClearButton}
+                            >
+                                <Ionicons
+                                    name="close"
+                                    size={14}
+                                    color="rgba(15,23,42,0.62)"
+                                />
+                            </TouchableOpacity>
+                        ) : null}
                     </View>
 
                     <ScrollView
@@ -579,12 +747,17 @@ const ParcelApplicationsSheet = ({
                                 />
                                 <Text style={styles.emptyTitle}>Nenhuma aplicação encontrada</Text>
                                 <Text style={styles.emptyText}>
-                                    Essa parcela ainda não possui aplicações nesse filtro.
+                                    {productSearch
+                                        ? "Nenhuma aplicação dessa parcela possui esse produto."
+                                        : "Essa parcela ainda não possui aplicações nesse filtro."}
                                 </Text>
                             </View>
                         ) : (
-                            filteredApplications.map((ap) => (
-                                <View key={`${ap.id}-${ap.code}`} style={styles.applicationCard}>
+                            filteredApplications.map((ap, apIndex) => (
+                                <View
+                                    key={`${ap.id || ap.mongoId || ap.code || "ap"}-${apIndex}`}
+                                    style={styles.applicationCard}
+                                >
                                     <View style={styles.apHeader}>
                                         <View>
                                             <View style={styles.apTitleRow}>
@@ -597,7 +770,15 @@ const ParcelApplicationsSheet = ({
                                                 <Text style={styles.apCode}>{ap.code}</Text>
                                             </View>
 
-                                            <Text style={styles.apDate}>{formatDateBR(ap.date)}</Text>
+                                            <View style={styles.apDateRow}>
+                                                <Ionicons
+                                                    name="calendar-outline"
+                                                    size={15}
+                                                    color="rgba(15,23,42,0.56)"
+                                                />
+
+                                                <Text style={styles.apDate}>{formatDateBR(ap.date)}</Text>
+                                            </View>
                                         </View>
 
                                         <View style={styles.apStatusPill}>
@@ -616,12 +797,41 @@ const ParcelApplicationsSheet = ({
                                         <Text style={styles.operationLabel}>Operação</Text>
                                         <Text style={styles.operationText}>{ap.operation}</Text>
                                     </View>
+                                    {ap.progress ? (
+                                        <View style={styles.progressBox}>
+                                            <View style={styles.progressItem}>
+                                                <Text style={styles.progressLabel}>Aplicado em</Text>
+                                                <Text style={styles.progressValue}>
+                                                    {formatDateBRTime(ap.progress.date)}
+                                                </Text>
+                                            </View>
+
+                                            <View style={styles.progressItem}>
+                                                <Text style={styles.progressLabel}>Área aplicada</Text>
+                                                <Text style={styles.progressValue}>
+                                                    {formatAreaBR(ap.progress.area)} ha
+                                                </Text>
+                                            </View>
+
+                                            {ap.progress.equipment ? (
+                                                <View style={styles.progressItem}>
+                                                    <Text style={styles.progressLabel}>Equipamento</Text>
+                                                    <Text style={styles.progressValue} numberOfLines={1}>
+                                                        {ap.progress.equipment}
+                                                    </Text>
+                                                </View>
+                                            ) : null}
+                                        </View>
+                                    ) : null}
 
                                     <View style={styles.productsList}>
                                         {ap.products
                                             .filter((product) => product.type !== "Operação")
-                                            .map((product) => (
-                                                <View key={product.id} style={styles.productRow}>
+                                            .map((product, productIndex) => (
+                                                <View
+                                                    key={`${ap.id || ap.mongoId || ap.code}-product-${product.id || product.product || productIndex}-${productIndex}`}
+                                                    style={styles.productRow}
+                                                >
                                                     <View
                                                         style={[
                                                             styles.productColorBar,
@@ -923,31 +1133,6 @@ const styles = StyleSheet.create({
         fontSize: 12,
         fontWeight: "700",
     },
-    summaryRow: {
-        flexDirection: "row",
-        paddingHorizontal: 16,
-        paddingBottom: 12,
-        gap: 8,
-    },
-    summaryItem: {
-        flex: 1,
-        backgroundColor: "rgba(15,23,42,0.045)",
-        borderRadius: 15,
-        paddingVertical: 10,
-        alignItems: "center",
-    },
-    summaryValue: {
-        color: Colors.primary[800],
-        fontSize: 17,
-        fontWeight: "950",
-    },
-    summaryLabel: {
-        marginTop: 2,
-        color: "rgba(15,23,42,0.52)",
-        fontSize: 10,
-        fontWeight: "900",
-        textTransform: "uppercase",
-    },
     filterRow: {
         flexDirection: "row",
         paddingHorizontal: 16,
@@ -1023,8 +1208,13 @@ const styles = StyleSheet.create({
         fontSize: 18,
         fontWeight: "950",
     },
-    apDate: {
+    apDateRow: {
         marginTop: 8,
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 5,
+    },
+    apDate: {
         color: "rgba(15,23,42,0.68)",
         fontSize: 14,
         fontWeight: "750",
@@ -1243,5 +1433,138 @@ const styles = StyleSheet.create({
         color: "rgba(15,23,42,0.56)",
         fontSize: 12,
         fontWeight: "900",
+    },
+    progressBox: {
+        flexDirection: "row",
+        gap: 8,
+        paddingHorizontal: 14,
+        paddingVertical: 10,
+        backgroundColor: "rgba(22,101,52,0.055)",
+        borderBottomWidth: 1,
+        borderBottomColor: "rgba(22,101,52,0.08)",
+    },
+
+    progressItem: {
+        flex: 1,
+        minWidth: 0,
+    },
+
+    progressLabel: {
+        color: "rgba(22,101,52,0.68)",
+        fontSize: 10,
+        fontWeight: "900",
+        textTransform: "uppercase",
+    },
+
+    progressValue: {
+        marginTop: 3,
+        color: "#14532D",
+        fontSize: 12,
+        fontWeight: "900",
+    },
+
+    summaryRow: {
+        flexDirection: "row",
+        paddingHorizontal: 16,
+        paddingBottom: 12,
+        gap: 8,
+    },
+
+    summaryItem: {
+        flex: 1,
+        minHeight: 62,
+        borderRadius: 16,
+        paddingVertical: 9,
+        paddingHorizontal: 6,
+        alignItems: "center",
+        justifyContent: "center",
+        borderWidth: 1,
+        position: "relative",
+    },
+
+    summaryItemSelected: {
+        transform: [{ translateY: -1 }],
+        shadowColor: "#000",
+        shadowOpacity: 0.08,
+        shadowRadius: 8,
+        shadowOffset: { width: 0, height: 3 },
+        elevation: 3,
+    },
+
+    summaryValue: {
+        fontSize: 17,
+        fontWeight: "950",
+    },
+
+    summaryLabel: {
+        marginTop: 2,
+        fontSize: 9.5,
+        fontWeight: "950",
+        textTransform: "uppercase",
+        textAlign: "center",
+    },
+
+    summarySelectedDot: {
+        position: "absolute",
+        bottom: 5,
+        width: 4,
+        height: 4,
+        borderRadius: 2,
+    },
+
+    progressBox: {
+        flexDirection: "row",
+        gap: 8,
+        paddingHorizontal: 14,
+        paddingVertical: 10,
+        backgroundColor: "rgba(15,118,110,0.055)",
+        borderBottomWidth: 1,
+        borderBottomColor: "rgba(15,118,110,0.10)",
+    },
+
+    progressLabel: {
+        color: "rgba(15,118,110,0.72)",
+        fontSize: 10,
+        fontWeight: "900",
+        textTransform: "uppercase",
+    },
+
+    progressValue: {
+        marginTop: 3,
+        color: "#0F766E",
+        fontSize: 12,
+        fontWeight: "900",
+    },
+
+    searchBox: {
+        marginHorizontal: 16,
+        marginBottom: 12,
+        minHeight: 42,
+        borderRadius: 14,
+        backgroundColor: "rgba(15,23,42,0.045)",
+        borderWidth: 1,
+        borderColor: "rgba(15,23,42,0.07)",
+        flexDirection: "row",
+        alignItems: "center",
+        paddingHorizontal: 12,
+        gap: 8,
+    },
+
+    searchInput: {
+        flex: 1,
+        minHeight: 40,
+        color: "#0F172A",
+        fontSize: 13,
+        fontWeight: "750",
+        paddingVertical: 0,
+    },
+
+    searchClearButton: {
+        width: 24,
+        height: 24,
+        borderRadius: 12,
+        backgroundColor: "rgba(15,23,42,0.08)",
+        alignItems: "center",
+        justifyContent: "center",
     },
 });
