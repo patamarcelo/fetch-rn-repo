@@ -1406,8 +1406,31 @@ const NavigationMapScreen = ({ navigation, route }) => {
 
 
 
+	const visibleMapData = useMemo(() => {
+		if (operationalFocusedProjects.length === 0) return mapData;
+
+		return mapData.filter((item) =>
+			operationalFocusedProjects.includes(item.projeto)
+		);
+	}, [mapData, operationalFocusedProjects]);
+
+	const visibleTotalArea = useMemo(() => {
+		return visibleMapData.reduce((total, item) => total + Number(item?.area || 0), 0);
+	}, [visibleMapData]);
+
+	const visibleProjects = useMemo(() => {
+		return [
+			...new Set(
+				visibleMapData
+					.map((item) => item?.projeto)
+					.filter(Boolean)
+			),
+		];
+	}, [visibleMapData]);
+
+
 	const polygonsData = useMemo(() => {
-		return mapData
+		return visibleMapData
 			.map((item) => {
 				const coordinates = getPolygonCoordinates(item);
 				const parcelId = item?.id_farmbox || item?.id;
@@ -1422,7 +1445,7 @@ const NavigationMapScreen = ({ navigation, route }) => {
 				};
 			})
 			.filter((polygon) => polygon.coordinates.length >= 3);
-	}, [mapData]);
+	}, [visibleMapData]);
 
 	const allCoordinates = useMemo(() => {
 		return polygonsData.flatMap((polygon) => polygon.coordinates);
@@ -1487,11 +1510,11 @@ const NavigationMapScreen = ({ navigation, route }) => {
 	}, [mapData]);
 
 	const selectedData = useMemo(() => {
-		return mapData.filter((item) => {
+		return visibleMapData.filter((item) => {
 			const id = item?.id_farmbox || item?.id;
 			return selectedParcels.includes(id);
 		});
-	}, [mapData, selectedParcels]);
+	}, [visibleMapData, selectedParcels]);
 
 	const selectedAreaTotal = useMemo(() => {
 		return selectedData.reduce((total, item) => total + Number(item?.area || 0), 0);
@@ -1581,6 +1604,8 @@ const NavigationMapScreen = ({ navigation, route }) => {
 
 			return [...current, projectNameValue];
 		});
+
+		dispatch(geralActions.clearNavigationMapSelectedParcels());
 	};
 
 
@@ -1611,6 +1636,7 @@ const NavigationMapScreen = ({ navigation, route }) => {
 		setSelectedStatus([]);
 		setSelectedCultures([]);
 		setSelectedVarieties([]);
+		setOperationalFocusedProjects([]);
 		setSelectedProjectLocal(null);
 		setInfoParcel(null);
 
@@ -1722,6 +1748,14 @@ const NavigationMapScreen = ({ navigation, route }) => {
 			filters.push(normalizeProjectName(selectedProjectLocal));
 		}
 
+		if (operationalFocusedProjects.length > 0) {
+			filters.push(
+				operationalFocusedProjects
+					.map((project) => normalizeProjectName(project))
+					.join(", ")
+			);
+		}
+
 		if (selectedStatus.length > 0) {
 			const labels = selectedStatus.map((statusKey) => {
 				const found = statusOptions.find((option) => option.key === statusKey);
@@ -1744,7 +1778,7 @@ const NavigationMapScreen = ({ navigation, route }) => {
 		}
 
 		return filters.join(" · ");
-	}, [selectedProjectLocal, selectedStatus, statusOptions, selectedCultures, selectedVarieties]);
+	}, [selectedProjectLocal, selectedStatus, statusOptions, selectedCultures, selectedVarieties, operationalFocusedProjects]);
 
 
 	const hasAppliedExtraFilters =
@@ -1786,6 +1820,29 @@ const NavigationMapScreen = ({ navigation, route }) => {
 		fabFilterOffset,
 	]);
 
+
+	useEffect(() => {
+		if (operationalFocusedProjects.length === 0) return;
+
+		const visibleIds = new Set(
+			visibleMapData
+				.map((item) => item?.id_farmbox || item?.id)
+				.filter(Boolean)
+		);
+
+		const hasHiddenSelectedParcel = selectedParcels.some(
+			(id) => !visibleIds.has(id)
+		);
+
+		if (hasHiddenSelectedParcel) {
+			dispatch(geralActions.clearNavigationMapSelectedParcels());
+		}
+	}, [
+		dispatch,
+		operationalFocusedProjects,
+		visibleMapData,
+		selectedParcels,
+	]);
 
 	const operationalProjectData = useMemo(() => {
 		if (operationalFocusedProjects.length === 0) return mapData;
@@ -2051,8 +2108,8 @@ const NavigationMapScreen = ({ navigation, route }) => {
 					</Text>
 
 					<Text style={styles.subtitle} numberOfLines={1}>
-						{projects.length} {projects.length === 1 ? "projeto" : "projetos"} ·{" "}
-						{mapData.length} parcelas · {formatHa(totalArea)}
+						{visibleProjects.length} {visibleProjects.length === 1 ? "projeto" : "projetos"} ·{" "}
+						{visibleMapData.length} parcelas · {formatHa(visibleTotalArea)}
 					</Text>
 				</View>
 
@@ -2439,7 +2496,15 @@ const NavigationMapScreen = ({ navigation, route }) => {
 							onPress={sheetExpanded ? collapseSheet : expandSheet}
 							style={styles.operationalHeaderPressable}
 						>
-							<View style={styles.sheetHandle} />
+							<View style={styles.sheetHandle}>
+								<Ionicons
+									name={sheetExpanded ? "chevron-down" : "chevron-up"}
+									size={18}
+									color="rgba(15,23,42,0.42)"
+								/>
+
+								{/* <View style={styles.sheetHandleBar} /> */}
+							</View>
 
 							<View style={styles.operationalHeader}>
 								<View style={styles.operationalTitleBlock}>
@@ -3149,7 +3214,6 @@ const styles = StyleSheet.create({
 		height: 5,
 		borderRadius: 999,
 		backgroundColor: "rgba(15,23,42,0.16)",
-		marginBottom: 12,
 	},
 
 	sheetTitle: {
@@ -3464,7 +3528,6 @@ const styles = StyleSheet.create({
 		height: 5,
 		borderRadius: 999,
 		backgroundColor: "rgba(15,23,42,0.16)",
-		marginBottom: 12,
 	},
 
 	sheetHeader: {
@@ -4218,6 +4281,21 @@ const styles = StyleSheet.create({
 	parcelGridCultureIcon: {
 		width: 15,
 		height: 15,
+	},
+	sheetHandle: {
+		alignSelf: "center",
+		height: 18,
+		alignItems: "center",
+		justifyContent: "center",
+		marginBottom: 10,
+	},
+
+	sheetHandleBar: {
+		width: 42,
+		height: 5,
+		borderRadius: 999,
+		backgroundColor: "rgba(15,23,42,0.16)",
+		marginTop: -2,
 	},
 
 });
