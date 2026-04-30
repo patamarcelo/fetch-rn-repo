@@ -34,7 +34,6 @@ import {
 	selectNavigationMapCurrentCiclo,
 	selectNavigationMapFilterSelected,
 	selectNavigationMapFilters,
-	selectNavigationMapFiltersIndexFromCache,
 } from "../../store/redux/selector";
 
 import { fetchNavigationMapData } from "../../store/redux/geral";
@@ -222,7 +221,9 @@ const NavigationHomeScreen = ({ navigation }) => {
 	const navigationMapStatus = useSelector(selectNavigationMapStatus);
 	const navigationMapError = useSelector(selectNavigationMapError);
 	const navigationMapFilters = useSelector(selectNavigationMapFilters);
-	const filtersIndexRaw = useSelector(selectNavigationMapFiltersIndexFromCache);
+	const filtersIndexRaw = useSelector(
+		(state) => state.geral.navigationMapFiltersIndex || []
+	);
 	const currentSafra = useSelector(selectNavigationMapCurrentSafra);
 	const currentCiclo = useSelector(selectNavigationMapCurrentCiclo);
 	const navigationMapFilterSelected = useSelector(selectNavigationMapFilterSelected);
@@ -592,7 +593,7 @@ const NavigationHomeScreen = ({ navigation }) => {
 
 	const handleRefreshNavigationData = useCallback(async () => {
 		try {
-			await dispatch(fetchNavigationMapData()).unwrap();
+			await dispatch(fetchNavigationMapData({})).unwrap();
 		} catch (error) {
 			console.log("Erro ao atualizar dados de navegação:", error);
 		}
@@ -601,6 +602,12 @@ const NavigationHomeScreen = ({ navigation }) => {
 	useFocusEffect(
 		useCallback(() => {
 			dispatch(geralActions.hydrateNavigationMapState());
+
+			dispatch(fetchNavigationMapData({}))
+				.unwrap()
+				.catch((error) => {
+					console.log("Erro ao carregar dados de navegação na Home:", error);
+				});
 
 			setStatusBarStyle("dark");
 			setStatusBarBackgroundColor("#D6E3F3", true);

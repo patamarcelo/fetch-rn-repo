@@ -6,29 +6,51 @@ import polygonReducer from "./polygon";
 
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { persistStore, persistReducer } from "redux-persist";
-import thunk from "redux-thunk";
 
-const persistConfig = {
-	key: "root",
-	storage: AsyncStorage
+const geralPersistConfig = {
+	key: "geral",
+	storage: AsyncStorage,
+	blacklist: [
+		"navigationMapData",
+		"navigationMapFilters",
+		"navigationMapTotals",
+		"navigationMapCurrentSafra",
+		"navigationMapCurrentCiclo",
+		"navigationMapSelectedParcels",
+		"navigationMapByKey",
+		"navigationMapStatus",
+		"navigationMapError",
+		"navigationMapLastFetch",
+		"navigationMapFiltersIndex",
+
+		// importante se algum mapa antigo ainda usa isso
+		"mapDataPlot",
+	],
+};
+
+const authPersistConfig = {
+	key: "auth",
+	storage: AsyncStorage,
+};
+
+const polygonPersistConfig = {
+	key: "polygon",
+	storage: AsyncStorage,
 };
 
 const reducer = combineReducers({
-	geral: GeralReducer,
-	auth: authReducer,
-	polygon: polygonReducer,
+	geral: persistReducer(geralPersistConfig, GeralReducer),
+	auth: persistReducer(authPersistConfig, authReducer),
+	polygon: persistReducer(polygonPersistConfig, polygonReducer),
 });
 
-const persistedReducer = persistReducer(persistConfig, reducer);
-
 export const store = configureStore({
-	reducer: persistedReducer,
+	reducer,
 	middleware: (getDefaultMiddleware) =>
 		getDefaultMiddleware({
-			thunk,
 			serializableCheck: false,
 			immutableCheck: false,
-		})
+		}),
 });
 
 export const persistor = persistStore(store);

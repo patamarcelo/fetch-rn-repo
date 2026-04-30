@@ -34,7 +34,6 @@ import {
 	selectNavigationMapError,
 	selectNavigationMapFilters,
 	selectNavigationMapSelectedParcels,
-	selectNavigationMapFiltersIndexFromCache,
 	selectNavigationMapFilterSelected,
 } from "../../store/redux/selector";
 
@@ -504,17 +503,7 @@ const uniqSorted = (arr, sortNumeric = false) => {
 	return clean.sort((a, b) => String(a).localeCompare(String(b)));
 };
 
-const getNavigationCacheRows = (navigationMapByKey = {}) => {
-	const rows = [];
 
-	Object.values(navigationMapByKey || {}).forEach((cacheItem) => {
-		if (Array.isArray(cacheItem?.data)) {
-			rows.push(...cacheItem.data);
-		}
-	});
-
-	return rows;
-};
 
 const applyContextFilters = (data = [], filters = {}, ignoreKey = null) => {
 	return data.filter((item) => {
@@ -837,8 +826,6 @@ const NavigationMapScreen = ({ navigation, route }) => {
 	const navigationMapError = useSelector(selectNavigationMapError);
 	const navigationMapFilters = useSelector(selectNavigationMapFilters);
 	const selectedParcelsRaw = useSelector(selectNavigationMapSelectedParcels);
-	const filtersIndex = useSelector(selectNavigationMapFiltersIndexFromCache);
-	const navigationMapByKey = useSelector((state) => state.geral.navigationMapByKey);
 
 	const persistedFilters = useSelector(selectNavigationMapFilterSelected);
 
@@ -960,11 +947,9 @@ const NavigationMapScreen = ({ navigation, route }) => {
 	}, [selectedCiclo, currentCicloFromRedux]);
 
 	const filterIndexRows = useMemo(() => {
-		const rows = Array.isArray(filtersIndex) && filtersIndex.length > 0
-			? filtersIndex
-			: Array.isArray(navigationMapFiltersIndex)
-				? navigationMapFiltersIndex
-				: [];
+		const rows = Array.isArray(navigationMapFiltersIndex) && navigationMapFiltersIndex.length > 0
+			? navigationMapFiltersIndex
+			: navigationMapData;
 
 		return rows.filter((item) => {
 			if (selectedFarmParam && item.fazenda_grupo !== selectedFarmParam) {
@@ -977,7 +962,12 @@ const NavigationMapScreen = ({ navigation, route }) => {
 
 			return true;
 		});
-	}, [filtersIndex, navigationMapFiltersIndex, selectedFarmParam, selectedProjectLocal]);
+	}, [
+		navigationMapFiltersIndex,
+		navigationMapData,
+		selectedFarmParam,
+		selectedProjectLocal,
+	]);
 
 	const resolvedFarmName =
 		selectedProjectLocal ||
@@ -1049,33 +1039,6 @@ const NavigationMapScreen = ({ navigation, route }) => {
 		loadLocation();
 	}, []);
 
-	const allNavigationRows = useMemo(() => {
-		if (Array.isArray(filtersIndex) && filtersIndex.length > 0) {
-			return filtersIndex;
-		}
-
-		const cacheRows = getNavigationCacheRows(navigationMapByKey);
-		const merged = [...cacheRows, ...navigationMapData];
-
-		const map = new Map();
-
-		merged.forEach((item) => {
-			const key = [
-				item?.id || "id",
-				item?.id_farmbox || "fb",
-				item?.projeto_id || item?.projeto || "proj",
-				item?.parcela || "parcela",
-				item?.safra || "safra",
-				item?.ciclo || "ciclo",
-			].join("__");
-
-			if (!map.has(key)) {
-				map.set(key, item);
-			}
-		});
-
-		return Array.from(map.values());
-	}, [filtersIndex, navigationMapByKey, navigationMapData]);
 
 	const contextFilterBase = useMemo(() => {
 		return {
@@ -1097,27 +1060,28 @@ const NavigationMapScreen = ({ navigation, route }) => {
 
 	useEffect(() => {
 		const hasFiltersIndex =
-			Array.isArray(filtersIndex) && filtersIndex.length > 0;
-
-		const hasRawFiltersIndex =
-			Array.isArray(navigationMapFiltersIndex) && navigationMapFiltersIndex.length > 0;
+			Array.isArray(navigationMapFiltersIndex) &&
+			navigationMapFiltersIndex.length > 0;
 
 		const hasData =
 			Array.isArray(navigationMapData) && navigationMapData.length > 0;
 
 		const isLoading = navigationMapStatus === "pending";
+		const hasSelectedContext = !!selectedSafra && !!selectedCiclo;
 
-		if (!hasFiltersIndex && !hasRawFiltersIndex && !hasData && !isLoading) {
+		if (!hasFiltersIndex && !hasData && !isLoading && !hasSelectedContext) {
 			dispatch(fetchNavigationMapData({}));
 		}
 	}, [
 		dispatch,
-		filtersIndex,
 		navigationMapFiltersIndex,
 		navigationMapData,
 		navigationMapStatus,
+		selectedSafra,
+		selectedCiclo,
 	]);
 
+	
 	const safraOptions = useMemo(() => {
 		return [
 			...new Set(
@@ -1247,6 +1211,8 @@ const NavigationMapScreen = ({ navigation, route }) => {
 	}, [navigationMapFilters]);
 
 
+	const lastFetchKeyRef = useRef(null);
+
 	useEffect(() => {
 		dispatch(
 			geralActions.setNavigationMapCurrentFilter({
@@ -1258,28 +1224,25 @@ const NavigationMapScreen = ({ navigation, route }) => {
 		if (!selectedSafra || !selectedCiclo) return;
 
 		const key = `${selectedSafra}__${normalizeCiclo(selectedCiclo)}`;
-		const hasCache = Array.isArray(navigationMapByKey?.[key]?.data);
 
-		if (!hasCache) {
-			dispatch(fetchNavigationMapData({ safra: selectedSafra, ciclo: selectedCiclo }));
-		}
-	}, [dispatch, selectedSafra, selectedCiclo, navigationMapByKey]);
+		if (lastFetchKeyRef.current === key) return;
+
+		lastFetchKeyRef.current = key;
+
+		console.log("FETCH MAPA POR SAFRA/CICLO ONLINE", {
+			safra: selectedSafra,
+			ciclo: selectedCiclo,
+		});
+
+		dispatch(fetchNavigationMapData({
+			safra: selectedSafra,
+			ciclo: selectedCiclo,
+		}));
+	}, [dispatch, selectedSafra, selectedCiclo]);
 
 
 	const mapData = useMemo(() => {
-		const selectedKey =
-			selectedSafra && selectedCiclo
-				? `${selectedSafra}__${normalizeCiclo(selectedCiclo)}`
-				: null;
-
-		const cachedData =
-			selectedKey && Array.isArray(navigationMapByKey?.[selectedKey]?.data)
-				? navigationMapByKey[selectedKey].data
-				: null;
-
-		let data = Array.isArray(cachedData)
-			? [...cachedData]
-			: [...navigationMapData];
+		let data = [...navigationMapData];
 
 		if (selectedSafra) {
 			data = data.filter(
@@ -1329,7 +1292,6 @@ const NavigationMapScreen = ({ navigation, route }) => {
 
 		return data;
 	}, [
-		navigationMapByKey,
 		navigationMapData,
 		selectedSafra,
 		selectedCiclo,

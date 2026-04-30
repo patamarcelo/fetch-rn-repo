@@ -29,12 +29,12 @@ const Tab = createBottomTabNavigator();
 const Navigation = () => {
 	const isAuthenticated = useSelector((state) => state.auth.isAuthenticated);
 	const user = useSelector((state) => state.auth.user);
-
-
-
 	const navigationMapData = useSelector(
 		(state) => state.geral.navigationMapData
 	);
+
+
+
 
 	const navigationMapStatus = useSelector(
 		(state) => state.geral.navigationMapStatus
@@ -65,18 +65,14 @@ const Navigation = () => {
 		if (!isAuthenticated) return;
 		if (didRequestNavigationDataRef.current) return;
 
-		const alreadyLoaded = Array.isArray(navigationMapData) && navigationMapData.length > 0;
-
-		if (alreadyLoaded) return;
-
 		didRequestNavigationDataRef.current = true;
 
-		console.log("Buscando dados iniciais de navegação...");
+		console.log("Buscando dados iniciais de navegação ONLINE...");
 
 		dispatch(fetchNavigationMapData({}))
 			.unwrap()
 			.then((data) => {
-				console.log("Dados de navegação carregados:", {
+				console.log("Dados de navegação carregados ONLINE:", {
 					total: data?.response?.data?.length,
 					safra: data?.response?.safra,
 					ciclo: data?.response?.ciclo,
@@ -84,10 +80,10 @@ const Navigation = () => {
 			})
 			.catch((error) => {
 				console.log("Erro ao carregar dados de navegação:", error);
+				didRequestNavigationDataRef.current = false;
 			});
-	}, [isAuthenticated, navigationMapData?.length, dispatch]);
+	}, [isAuthenticated, dispatch]);
 
-	
 
 	useEffect(() => {
 		console.log("APP NAVIGATION DEBUG:", {
