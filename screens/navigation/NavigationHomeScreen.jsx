@@ -603,11 +603,13 @@ const NavigationHomeScreen = ({ navigation }) => {
 		useCallback(() => {
 			dispatch(geralActions.hydrateNavigationMapState());
 
-			dispatch(fetchNavigationMapData({}))
-				.unwrap()
-				.catch((error) => {
-					console.log("Erro ao carregar dados de navegação na Home:", error);
-				});
+			if (!navigationMapData.length && navigationMapStatus !== "pending") {
+				dispatch(fetchNavigationMapData({}))
+					.unwrap()
+					.catch((error) => {
+						console.log("Erro ao carregar dados de navegação na Home:", error);
+					});
+			}
 
 			setStatusBarStyle("dark");
 			setStatusBarBackgroundColor("#D6E3F3", true);
@@ -616,7 +618,7 @@ const NavigationHomeScreen = ({ navigation }) => {
 				setStatusBarStyle("light");
 				setStatusBarBackgroundColor(Colors.primary[901], true);
 			};
-		}, [dispatch])
+		}, [dispatch, navigationMapData.length, navigationMapStatus])
 	);
 
 	const handleToggleDetails = (farmId) => {

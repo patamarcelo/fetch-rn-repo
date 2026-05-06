@@ -8,6 +8,7 @@ import {
     Platform,
     ActivityIndicator,
     RefreshControl,
+    useWindowDimensions
 } from "react-native";
 import { Colors } from "../../constants/styles";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -85,6 +86,16 @@ const CardFarmBox = ({ route, navigation }) => {
     const [isLoading, setIsLoading] = useState(false);
     const [isSharing, setIsSharing] = useState(false);
     const [isSharingUnique, setIsSharingUnique] = useState(false);
+
+    const { width } = useWindowDimensions();
+
+    const PARCELA_COLUMNS = 4;
+    const PARCELA_CONTAINER_PADDING = 8; // paddingHorizontal 4 + 4
+    const PARCELA_GAP = 5;
+    const PARCELA_CARD_WIDTH = Math.floor(
+        (width - PARCELA_CONTAINER_PADDING - PARCELA_GAP * (PARCELA_COLUMNS - 1)) /
+        PARCELA_COLUMNS
+    );
 
     const [viewMode, setViewMode] = useState("normal"); // normal | consolidated
 
@@ -190,6 +201,55 @@ const CardFarmBox = ({ route, navigation }) => {
         return "Líquido";
     };
 
+
+    const getParcelaVariedade = (parcela) => {
+        return (
+            parcela?.variedade ||
+            parcela?.variedadeNome ||
+            parcela?.nomeVariedade ||
+            parcela?.cultivar ||
+            parcela?.plantationVariety ||
+            parcela?.dados?.variedade ||
+            null
+        );
+    };
+
+    const getParcelaDap = (parcela) => {
+        const rawDate =
+            parcela?.date ||
+            parcela?.data_plantio ||
+            parcela?.dataPlantio ||
+            parcela?.plantioDate ||
+            parcela?.dados?.date ||
+            null;
+
+        if (!rawDate) return null;
+
+        const plantioDate = new Date(rawDate);
+
+        if (Number.isNaN(plantioDate.getTime())) return null;
+
+        const today = new Date();
+
+        const plantioOnlyDate = new Date(
+            plantioDate.getFullYear(),
+            plantioDate.getMonth(),
+            plantioDate.getDate()
+        );
+
+        const todayOnlyDate = new Date(
+            today.getFullYear(),
+            today.getMonth(),
+            today.getDate()
+        );
+
+        const diffMs = todayOnlyDate.getTime() - plantioOnlyDate.getTime();
+        const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+        const dap = diffDays + 1;
+
+        return dap >= 1 ? dap : null;
+    };
     const removeDuplicateParcelas = (parcelas = []) => {
         const map = new Map();
 
@@ -1160,8 +1220,8 @@ const CardFarmBox = ({ route, navigation }) => {
                                                                             styles.parcelasView,
                                                                             isSelected && styles.selectedParcelas,
                                                                             {
-                                                                                backgroundColor:
-                                                                                    parcela.fillColorParce,
+                                                                                width: PARCELA_CARD_WIDTH,
+                                                                                backgroundColor: parcela.fillColorParce,
                                                                             },
                                                                         ]}
                                                                         onPress={() =>
@@ -1178,41 +1238,55 @@ const CardFarmBox = ({ route, navigation }) => {
                                                                             />
                                                                         )}
 
-                                                                        <Text
-                                                                            style={{
-                                                                                color:
-                                                                                    parcela.fillColorParce ===
-                                                                                        "#E4D00A"
-                                                                                        ? "black"
-                                                                                        : "whitesmoke",
-                                                                                fontWeight: "bold",
-                                                                            }}
-                                                                        >
-                                                                            {parcela.parcela}
-                                                                        </Text>
-                                                                        <Text
-                                                                            style={{
-                                                                                color:
-                                                                                    parcela.fillColorParce ===
-                                                                                        "#E4D00A"
-                                                                                        ? "black"
-                                                                                        : "whitesmoke",
-                                                                            }}
-                                                                        >
-                                                                            -
-                                                                        </Text>
-                                                                        <Text
-                                                                            style={{
-                                                                                color:
-                                                                                    parcela.fillColorParce ===
-                                                                                        "#E4D00A"
-                                                                                        ? "black"
-                                                                                        : "whitesmoke",
-                                                                                fontWeight: "bold",
-                                                                            }}
-                                                                        >
-                                                                            {formatNumber(parcela.areaSolicitada)}
-                                                                        </Text>
+                                                                        {(() => {
+                                                                            const isLightChip = parcela.fillColorParce === "#E4D00A";
+                                                                            const textColor = isLightChip ? "black" : "whitesmoke";
+                                                                            const variedade = getParcelaVariedade(parcela);
+                                                                            const dap = getParcelaDap(parcela);
+                                                                            return (
+                                                                                <>
+                                                                                    <View style={styles.parcelaMainRow}>
+                                                                                        <Text style={[styles.parcelaCodeText, { color: textColor }]} numberOfLines={1}>
+                                                                                            {parcela.parcela}
+                                                                                        </Text>
+
+                                                                                        <Text style={[styles.parcelaAreaText, { color: textColor }]} numberOfLines={1}>
+                                                                                            {formatNumber(parcela.areaSolicitada)}
+                                                                                        </Text>
+                                                                                    </View>
+
+                                                                                    <View style={styles.parcelaMetaRow}>
+                                                                                        <Text
+                                                                                            style={[
+                                                                                                styles.parcelaVariedadeText,
+                                                                                                {
+                                                                                                    color: textColor,
+                                                                                                    opacity: isLightChip ? 0.68 : 0.82,
+                                                                                                },
+                                                                                            ]}
+                                                                                            numberOfLines={1}
+                                                                                        >
+                                                                                            {variedade || "—"}
+                                                                                        </Text>
+
+                                                                                        {!!dap || dap === 0 ? (
+                                                                                            <Text
+                                                                                                style={[
+                                                                                                    styles.parcelaDapText,
+                                                                                                    {
+                                                                                                        color: textColor,
+                                                                                                        opacity: isLightChip ? 0.72 : 0.9,
+                                                                                                    },
+                                                                                                ]}
+                                                                                                numberOfLines={1}
+                                                                                            >
+                                                                                                {dap}D
+                                                                                            </Text>
+                                                                                        ) : null}
+                                                                                    </View>
+                                                                                </>
+                                                                            );
+                                                                        })()}
                                                                     </Pressable>
                                                                 );
                                                             })}
@@ -1645,14 +1719,38 @@ const styles = StyleSheet.create({
     },
 
     parcelasView: {
-        flexDirection: "row",
-        gap: 1,
-        width: 91,
-        borderRadius: 6,
-        paddingHorizontal: 3,
-        paddingVertical: 6,
+        minHeight: 44,
+        borderRadius: 8,
+        paddingHorizontal: 4,
+        paddingVertical: 5,
         backgroundColor: "green",
-        justifyContent: "space-around",
+        justifyContent: "center",
+    },
+
+    parcelaMainRow: {
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "space-between",
+        gap: 3,
+    },
+
+    parcelaCodeText: {
+        fontSize: 11,
+        fontWeight: "900",
+        flexShrink: 1,
+    },
+
+    parcelaAreaText: {
+        fontSize: 10,
+        fontWeight: "900",
+        marginLeft: "auto",
+    },
+
+    parcelaVariedadeText: {
+        marginTop: 2,
+        fontSize: 7.5,
+        fontWeight: "800",
+        letterSpacing: -0.2,
     },
 
     infoContainer: {
@@ -1912,5 +2010,26 @@ const styles = StyleSheet.create({
         marginTop: 2,
         fontWeight: '900',
         paddingLeft: 8
-    }
+    },
+
+    parcelaMetaRow: {
+        marginTop: 2,
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "space-between",
+        gap: 4,
+    },
+
+    parcelaVariedadeText: {
+        fontSize: 7.5,
+        fontWeight: "800",
+        letterSpacing: -0.2,
+        flex: 1,
+    },
+
+    parcelaDapText: {
+        fontSize: 7.5,
+        fontWeight: "900",
+        marginLeft: 3,
+    },
 });

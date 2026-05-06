@@ -85,6 +85,28 @@ const getFormattedCultura = (item) => {
 	);
 };
 
+const getRawVariedade = (item) => {
+	return (
+		item?.dados?.variedade ||
+		item?.variedade ||
+		item?.variedade_nome ||
+		item?.nome_variedade ||
+		item?.plantio?.variedade ||
+		null
+	);
+};
+
+const getFormattedVariedade = (item) => {
+	return (
+		item?.variedade ||
+		item?.variedade_nome ||
+		item?.nome_variedade ||
+		item?.dados?.variedade ||
+		item?.plantio?.variedade ||
+		null
+	);
+};
+
 const getUniqueSorted = (values = [], sortMode = "text") => {
 	const unique = [...new Set(values.filter(Boolean).map(String))];
 
@@ -99,17 +121,39 @@ const getUniqueSorted = (values = [], sortMode = "text") => {
 	return unique.sort((a, b) => a.localeCompare(b));
 };
 
-const getRawFilterOptions = (rawData = [], selectedFarm = null) => {
+const getRawFilterOptions = (
+	rawData = [],
+	selectedFarm = null,
+	selectedSafra = null,
+	selectedCiclo = null,
+	selectedCultura = null
+) => {
 	const safeData = Array.isArray(rawData) ? rawData : [];
 
 	const farmFilteredData = selectedFarm
 		? safeData.filter((item) => item?.fazenda === selectedFarm)
 		: safeData;
 
+	const baseFilteredData = farmFilteredData.filter((item) => {
+		const matchesSafra = !selectedSafra || getRawSafra(item) === selectedSafra;
+		const matchesCiclo = !selectedCiclo || getRawCiclo(item) === String(selectedCiclo);
+
+		return matchesSafra && matchesCiclo;
+	});
+
+	const normalizedCultura = normalizeText(selectedCultura);
+
+	const variedadeBaseData = baseFilteredData.filter((item) => {
+		if (!selectedCultura) return true;
+
+		return normalizeText(getRawCultura(item)) === normalizedCultura;
+	});
+
 	return {
 		safras: getUniqueSorted(farmFilteredData.map(getRawSafra), "safra"),
 		ciclos: getUniqueSorted(farmFilteredData.map(getRawCiclo), "number"),
-		culturas: getUniqueSorted(farmFilteredData.map(getRawCultura), "text"),
+		culturas: getUniqueSorted(baseFilteredData.map(getRawCultura), "text"),
+		variedades: getUniqueSorted(variedadeBaseData.map(getRawVariedade), "text"),
 	};
 };
 
@@ -119,8 +163,10 @@ const filterRawData = ({
 	selectedSafra,
 	selectedCiclo,
 	selectedCultura,
+	selectedVariedade,
 }) => {
 	const normalizedCultura = normalizeText(selectedCultura);
+	const normalizedVariedade = normalizeText(selectedVariedade);
 
 	return rawData.filter((item) => {
 		const matchesFarm = !selectedFarm || item?.fazenda === selectedFarm;
@@ -131,22 +177,45 @@ const filterRawData = ({
 		const matchesCultura =
 			!selectedCultura || normalizeText(itemCultura) === normalizedCultura;
 
-		return matchesFarm && matchesSafra && matchesCiclo && matchesCultura;
+		const itemVariedade = getRawVariedade(item);
+		const matchesVariedade =
+			!selectedVariedade || normalizeText(itemVariedade) === normalizedVariedade;
+
+		return (
+			matchesFarm &&
+			matchesSafra &&
+			matchesCiclo &&
+			matchesCultura &&
+			matchesVariedade
+		);
 	});
 };
 
-const filterFormattedDataByCultura = (formattedData = [], selectedCultura) => {
-	if (!selectedCultura) return formattedData;
+const filterFormattedDataByFilters = (
+	formattedData = [],
+	selectedCultura,
+	selectedVariedade
+) => {
+	if (!selectedCultura && !selectedVariedade) return formattedData;
 
 	const normalizedSelectedCultura = normalizeText(selectedCultura);
+	const normalizedSelectedVariedade = normalizeText(selectedVariedade);
 
 	return formattedData
 		.map((card) => {
 			const filteredApp = Array.isArray(card?.app)
-				? card.app.filter(
-					(item) =>
-						normalizeText(getFormattedCultura(item)) === normalizedSelectedCultura
-				)
+				? card.app.filter((item) => {
+					const matchesCultura =
+						!selectedCultura ||
+						normalizeText(getFormattedCultura(item)) === normalizedSelectedCultura;
+
+					const matchesVariedade =
+						!selectedVariedade ||
+						normalizeText(getFormattedVariedade(item)) ===
+						normalizedSelectedVariedade;
+
+					return matchesCultura && matchesVariedade;
+				})
 				: [];
 
 			return {
@@ -156,7 +225,6 @@ const filterFormattedDataByCultura = (formattedData = [], selectedCultura) => {
 		})
 		.filter((card) => card.app.length > 0);
 };
-
 const FarmList = ({ item, filterByDate, index, selectedSafra, selectedCiclo }) => {
 	return (
 		<CardListApp
@@ -206,13 +274,17 @@ const ProgramacaoFilters = ({
 	selectedSafra,
 	selectedCiclo,
 	selectedCultura,
+	selectedVariedade,
 	safraOptions,
 	cicloOptions,
 	cultureOptions,
+	variedadeOptions,
 	onChangeSafra,
 	onChangeCiclo,
 	onChangeCultura,
 	onClearCultura,
+	onChangeVariedade,
+	onClearVariedade,
 	isLoading,
 }) => {
 	return (
@@ -224,6 +296,7 @@ const ProgramacaoFilters = ({
 					<Text style={styles.filtersSubtitle} numberOfLines={2}>
 						Safra {selectedSafra || "—"} · Ciclo {selectedCiclo || "—"}
 						{selectedCultura ? ` · ${selectedCultura}` : " · Todas as culturas"}
+						{selectedVariedade ? ` · ${selectedVariedade}` : " · Todas as variedades"}
 					</Text>
 				</View>
 
@@ -274,6 +347,27 @@ const ProgramacaoFilters = ({
 						label={cultura}
 						active={selectedCultura === cultura}
 						onPress={() => onChangeCultura(cultura)}
+					/>
+				))}
+			</FilterSection>
+
+			<FilterSection title="Variedade">
+				<FilterChip
+					label="Todas"
+					active={!selectedVariedade}
+					onPress={onClearVariedade}
+				/>
+
+				{!variedadeOptions.length && (
+					<Text style={styles.emptyFilterText}>Nenhuma variedade disponível</Text>
+				)}
+
+				{variedadeOptions.map((variedade) => (
+					<FilterChip
+						key={variedade}
+						label={variedade}
+						active={selectedVariedade === variedade}
+						onPress={() => onChangeVariedade(variedade)}
 					/>
 				))}
 			</FilterSection>
@@ -330,10 +424,12 @@ const HomeScreen = ({ navigation }) => {
 	const [selectedSafra, setSelectedSafra] = useState(null);
 	const [selectedCiclo, setSelectedCiclo] = useState(null);
 	const [selectedCultura, setSelectedCultura] = useState(null);
+	const [selectedVariedade, setSelectedVariedade] = useState(null);
 
 	const [safraOptions, setSafraOptions] = useState([]);
 	const [cicloOptions, setCicloOptions] = useState([]);
 	const [cultureOptions, setCultureOptions] = useState([]);
+	const [variedadeOptions, setVariedadeOptions] = useState([]);
 
 	const [showFilters, setShowFilters] = useState(false);
 	const filtersAnim = useRef(new Animated.Value(0)).current;
@@ -349,16 +445,17 @@ const HomeScreen = ({ navigation }) => {
 		if (selectedSafra) count += 1;
 		if (selectedCiclo) count += 1;
 		if (selectedCultura) count += 1;
+		if (selectedVariedade) count += 1;
 		if (filterEndDate) count += 1;
 
 		return count;
-	}, [selectedSafra, selectedCiclo, selectedCultura, filterEndDate]);
+	}, [selectedSafra, selectedCiclo, selectedCultura, selectedVariedade, filterEndDate]);
 
 	const filtersPanelStyle = {
 		opacity: filtersAnim,
 		maxHeight: filtersAnim.interpolate({
 			inputRange: [0, 1],
-			outputRange: [0, 390],
+			outputRange: [0, 470],
 		}),
 		transform: [
 			{
@@ -373,11 +470,18 @@ const HomeScreen = ({ navigation }) => {
 
 	const syncFilterOptionsFromRawData = useCallback(
 		(rawData) => {
-			const { safras, ciclos, culturas } = getRawFilterOptions(rawData, selFarm);
+			const { safras, ciclos, culturas, variedades } = getRawFilterOptions(
+				rawData,
+				selFarm,
+				selectedSafra,
+				selectedCiclo,
+				selectedCultura
+			);
 
 			setSafraOptions(safras);
 			setCicloOptions(ciclos);
 			setCultureOptions(culturas);
+			setVariedadeOptions(variedades);
 
 			setSelectedSafra((current) => {
 				if (current && safras.includes(current)) return current;
@@ -395,8 +499,14 @@ const HomeScreen = ({ navigation }) => {
 				if (culturas.includes(current)) return current;
 				return null;
 			});
+
+			setSelectedVariedade((current) => {
+				if (!current) return null;
+				if (variedades.includes(current)) return current;
+				return null;
+			});
 		},
-		[selFarm]
+		[selFarm, selectedSafra, selectedCiclo, selectedCultura]
 	);
 
 	const getData = useCallback(async () => {
@@ -510,17 +620,25 @@ const HomeScreen = ({ navigation }) => {
 		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 		setSelectedSafra(safra);
 		setSelectedCultura(null);
+		setSelectedVariedade(null);
 	};
 
 	const handleChangeCiclo = (ciclo) => {
 		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 		setSelectedCiclo(String(ciclo));
 		setSelectedCultura(null);
+		setSelectedVariedade(null);
 	};
 
 	const handleChangeCultura = (cultura) => {
 		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 		setSelectedCultura(cultura);
+		setSelectedVariedade(null);
+	};
+
+	const handleChangeVariedade = (variedade) => {
+		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+		setSelectedVariedade(variedade);
 	};
 
 	const handlerPrintData = () => {
@@ -530,6 +648,7 @@ const HomeScreen = ({ navigation }) => {
 			safra: selectedSafra || "—",
 			ciclo: selectedCiclo || "—",
 			cultura: selectedCultura || "Todas",
+			variedade: selectedVariedade || "Todas",
 		});
 	};
 
@@ -557,6 +676,8 @@ const HomeScreen = ({ navigation }) => {
 			setListToCardApp([]);
 			setTotalCalcArea(0);
 			setSelectedCultura(null);
+			setSelectedVariedade(null);
+			setVariedadeOptions([]);
 			return;
 		}
 
@@ -566,11 +687,18 @@ const HomeScreen = ({ navigation }) => {
 			return;
 		}
 
-		const { safras, ciclos, culturas } = getRawFilterOptions(dataPlantioServer, selFarm);
+		const { safras, ciclos, culturas, variedades } = getRawFilterOptions(
+			dataPlantioServer,
+			selFarm,
+			selectedSafra,
+			selectedCiclo,
+			selectedCultura
+		);
 
 		setSafraOptions(safras);
 		setCicloOptions(ciclos);
 		setCultureOptions(culturas);
+		setVariedadeOptions(variedades);
 
 		if (selectedSafra && !safras.includes(selectedSafra)) {
 			setSelectedSafra(safras?.[0] || null);
@@ -597,16 +725,26 @@ const HomeScreen = ({ navigation }) => {
 			return;
 		}
 
+		if (selectedVariedade && !variedades.includes(selectedVariedade)) {
+			setSelectedVariedade(null);
+			return;
+		}
+
 		const filteredRawData = filterRawData({
 			rawData: dataPlantioServer,
 			selectedFarm: selFarm,
 			selectedSafra,
 			selectedCiclo,
 			selectedCultura,
+			selectedVariedade
 		});
 
 		const result = formatDataServer(filteredRawData, filterEndDate);
-		const filteredResult = filterFormattedDataByCultura(result, selectedCultura);
+		const filteredResult = filterFormattedDataByFilters(
+			result,
+			selectedCultura,
+			selectedVariedade
+		);
 
 		setListToCardApp(filteredResult);
 
@@ -627,6 +765,7 @@ const HomeScreen = ({ navigation }) => {
 		selectedSafra,
 		selectedCiclo,
 		selectedCultura,
+		selectedVariedade
 	]);
 
 	useLayoutEffect(() => {
@@ -737,6 +876,7 @@ const HomeScreen = ({ navigation }) => {
 		selectedSafra,
 		selectedCiclo,
 		selectedCultura,
+		selectedVariedade,
 	]);
 
 	useScrollToTop(ref);
@@ -808,13 +948,20 @@ const HomeScreen = ({ navigation }) => {
 									selectedSafra={selectedSafra || "—"}
 									selectedCiclo={selectedCiclo || "—"}
 									selectedCultura={selectedCultura}
+									selectedVariedade={selectedVariedade}
 									safraOptions={safraOptions}
 									cicloOptions={cicloOptions}
 									cultureOptions={cultureOptions}
+									variedadeOptions={variedadeOptions}
 									onChangeSafra={handleChangeSafra}
 									onChangeCiclo={handleChangeCiclo}
 									onChangeCultura={handleChangeCultura}
-									onClearCultura={() => setSelectedCultura(null)}
+									onClearCultura={() => {
+										setSelectedCultura(null);
+										setSelectedVariedade(null);
+									}}
+									onChangeVariedade={handleChangeVariedade}
+									onClearVariedade={() => setSelectedVariedade(null)}
 									isLoading={isLoading}
 								/>
 							</Animated.View>
@@ -879,6 +1026,7 @@ const HomeScreen = ({ navigation }) => {
 										Filtros atuais: Safra {selectedSafra || "—"} · Ciclo{" "}
 										{selectedCiclo || "—"}
 										{selectedCultura ? ` · ${selectedCultura}` : " · Todas as culturas"}
+										{selectedVariedade ? ` · ${selectedVariedade}` : " · Todas as variedades"}
 									</Text>
 
 									<Pressable
@@ -941,6 +1089,7 @@ const HomeScreen = ({ navigation }) => {
 								>
 									{selectedSafra || "Safra"} · Ciclo {selectedCiclo || "—"}
 									{selectedCultura ? ` · ${selectedCultura}` : " · Todas"}
+									{selectedVariedade ? ` · ${selectedVariedade}` : ""}
 								</Text>
 							</View>
 						</Pressable>
