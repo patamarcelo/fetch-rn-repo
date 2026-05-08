@@ -144,6 +144,32 @@ const formatDap = (value) => {
     return `${Number(value)} DAP`;
 };
 
+const getApplicationProgressPercent = (ap, parcelArea) => {
+    const appliedArea = Number(ap?.progress?.area);
+    const totalArea = Number(parcelArea);
+
+    if (
+        !ap?.progress ||
+        Number.isNaN(appliedArea) ||
+        Number.isNaN(totalArea) ||
+        totalArea <= 0
+    ) {
+        return null;
+    }
+
+    const percent = Math.round((appliedArea / totalArea) * 100);
+
+    return Math.max(0, Math.min(percent, 100));
+};
+
+const getProgressCircleColor = (percent, status) => {
+    if (status === "canceled") return "#991B1B";
+    if (percent >= 100) return "#166534";
+    if (percent >= 75) return "#0F766E";
+    if (percent >= 40) return "#CA8A04";
+    return "#92400E";
+};
+
 const getStatusColor = (status) => {
     if (status === "finalized") return "#166534";
     if (status === "applied") return "#0F766E";
@@ -753,121 +779,173 @@ const ParcelApplicationsSheet = ({
                                 </Text>
                             </View>
                         ) : (
-                            filteredApplications.map((ap, apIndex) => (
-                                <View
-                                    key={`${ap.id || ap.mongoId || ap.code || "ap"}-${apIndex}`}
-                                    style={styles.applicationCard}
-                                >
-                                    <View style={styles.apHeader}>
-                                        <View>
-                                            <View style={styles.apTitleRow}>
-                                                <Ionicons
-                                                    name="shield"
-                                                    size={17}
-                                                    color={getStatusColor(ap.status)}
-                                                />
+                            filteredApplications.map((ap, apIndex) => {
+                                const parcelAreaValue = parcelData?.area ?? parcel?.area;
+                                const progressPercent = getApplicationProgressPercent(ap, parcelAreaValue);
+                                const progressColor = getProgressCircleColor(progressPercent ?? 0, ap.status);
+                                const statusColor = getStatusColor(ap.status);
 
-                                                <Text style={styles.apCode}>{ap.code}</Text>
+                                return (
+                                    <View
+                                        key={`${ap.id || ap.mongoId || ap.code || "ap"}-${apIndex}`}
+                                        style={styles.applicationCard}
+                                    >
+                                        <View style={styles.apHeader}>
+                                            <View style={styles.apHeaderLeft}>
+                                                <View style={styles.apTitleRow}>
+                                                    <Ionicons
+                                                        name="shield"
+                                                        size={17}
+                                                        color={statusColor}
+                                                    />
+
+                                                    <Text style={styles.apCode}>{ap.code}</Text>
+                                                </View>
+
+                                                <View style={styles.apDateRow}>
+                                                    <Ionicons
+                                                        name="calendar-outline"
+                                                        size={15}
+                                                        color="rgba(15,23,42,0.56)"
+                                                    />
+
+                                                    <Text style={styles.apDate}>{formatDateBR(ap.date)}</Text>
+                                                </View>
                                             </View>
 
-                                            <View style={styles.apDateRow}>
-                                                <Ionicons
-                                                    name="calendar-outline"
-                                                    size={15}
-                                                    color="rgba(15,23,42,0.56)"
-                                                />
-
-                                                <Text style={styles.apDate}>{formatDateBR(ap.date)}</Text>
-                                            </View>
-                                        </View>
-
-                                        <View style={styles.apStatusPill}>
-                                            <Text
+                                            <View
                                                 style={[
-                                                    styles.apStatusText,
-                                                    { color: getStatusColor(ap.status) },
+                                                    styles.apStatusPill,
+                                                    {
+                                                        backgroundColor: `${statusColor}12`,
+                                                        borderColor: `${statusColor}30`,
+                                                    },
                                                 ]}
                                             >
-                                                {ap.statusLabel}
-                                            </Text>
-                                        </View>
-                                    </View>
-
-                                    <View style={styles.operationBox}>
-                                        <Text style={styles.operationLabel}>Operação</Text>
-                                        <Text style={styles.operationText}>{ap.operation}</Text>
-                                    </View>
-                                    {ap.progress ? (
-                                        <View style={styles.progressBox}>
-                                            <View style={styles.progressItem}>
-                                                <Text style={styles.progressLabel}>Aplicado em</Text>
-                                                <Text style={styles.progressValue}>
-                                                    {formatDateBRTime(ap.progress.date)}
+                                                <Text
+                                                    style={[
+                                                        styles.apStatusText,
+                                                        { color: statusColor },
+                                                    ]}
+                                                    numberOfLines={1}
+                                                >
+                                                    {ap.statusLabel}
                                                 </Text>
                                             </View>
+                                        </View>
 
-                                            <View style={styles.progressItem}>
-                                                <Text style={styles.progressLabel}>Área aplicada</Text>
-                                                <Text style={styles.progressValue}>
-                                                    {formatAreaBR(ap.progress.area)} ha
-                                                </Text>
+                                        <View style={styles.operationRow}>
+                                            <View style={styles.operationBox}>
+                                                <Text style={styles.operationLabel}>Operação</Text>
+                                                <Text style={styles.operationText}>{ap.operation}</Text>
                                             </View>
 
-                                            {ap.progress.equipment ? (
-                                                <View style={styles.progressItem}>
-                                                    <Text style={styles.progressLabel}>Equipamento</Text>
-                                                    <Text style={styles.progressValue} numberOfLines={1}>
-                                                        {ap.progress.equipment}
-                                                    </Text>
-                                                </View>
-                                            ) : null}
-                                        </View>
-                                    ) : null}
-
-                                    <View style={styles.productsList}>
-                                        {ap.products
-                                            .filter((product) => product.type !== "Operação")
-                                            .map((product, productIndex) => (
+                                            <View style={styles.operationProgressWrap}>
                                                 <View
-                                                    key={`${ap.id || ap.mongoId || ap.code}-product-${product.id || product.product || productIndex}-${productIndex}`}
-                                                    style={styles.productRow}
+                                                    style={[
+                                                        styles.progressCircle,
+                                                        {
+                                                            borderColor: `${progressColor}30`,
+                                                            backgroundColor: `${progressColor}08`,
+                                                        },
+                                                    ]}
                                                 >
                                                     <View
                                                         style={[
-                                                            styles.productColorBar,
-                                                            { backgroundColor: product.colorChip },
+                                                            styles.progressCircleFill,
+                                                            {
+                                                                height: `${progressPercent ?? 0}%`,
+                                                                backgroundColor: `${progressColor}20`,
+                                                            },
                                                         ]}
                                                     />
 
-                                                    <View style={styles.productInfo}>
-                                                        <Text
-                                                            style={[
-                                                                styles.productType,
-                                                                { color: product.colorChip },
-                                                            ]}
-                                                            numberOfLines={1}
-                                                        >
-                                                            {product.type}
-                                                        </Text>
+                                                    <View style={styles.progressCircleGloss} />
 
-                                                        <Text style={styles.productName} numberOfLines={2}>
-                                                            {product.product}
-                                                        </Text>
-                                                    </View>
-
-                                                    <View style={styles.doseBox}>
-                                                        <Text style={styles.doseLabel}>Dose Solicitada</Text>
-
-                                                        <Text style={styles.doseValue}>
-                                                            {formatDose(product.soughtDose ?? product.displayDose)}{" "}
-                                                            {product.soughtUnit ?? product.displayUnit}
-                                                        </Text>
-                                                    </View>
+                                                    <Text
+                                                        style={[
+                                                            styles.progressCircleValue,
+                                                            { color: progressColor },
+                                                        ]}
+                                                    >
+                                                        {progressPercent !== null ? `${progressPercent}%` : "—"}
+                                                    </Text>
                                                 </View>
-                                            ))}
+                                            </View>
+                                        </View>
+
+                                        {ap.progress ? (
+                                            <View style={styles.progressBox}>
+                                                <View style={styles.progressItem}>
+                                                    <Text style={styles.progressLabel}>Aplicado em</Text>
+                                                    <Text style={styles.progressValue}>
+                                                        {formatDateBRTime(ap.progress.date)}
+                                                    </Text>
+                                                </View>
+
+                                                <View style={styles.progressItem}>
+                                                    <Text style={styles.progressLabel}>Área aplicada</Text>
+                                                    <Text style={styles.progressValue}>
+                                                        {formatAreaBR(ap.progress.area)} ha
+                                                    </Text>
+                                                </View>
+
+                                                {ap.progress.equipment ? (
+                                                    <View style={styles.progressItem}>
+                                                        <Text style={styles.progressLabel}>Equipamento</Text>
+                                                        <Text style={styles.progressValue} numberOfLines={1}>
+                                                            {ap.progress.equipment}
+                                                        </Text>
+                                                    </View>
+                                                ) : null}
+                                            </View>
+                                        ) : null}
+
+                                        <View style={styles.productsList}>
+                                            {(ap.products || [])
+                                                .filter((product) => product.type !== "Operação")
+                                                .map((product, productIndex) => (
+                                                    <View
+                                                        key={`${ap.id || ap.mongoId || ap.code}-product-${product.id || product.product || productIndex}-${productIndex}`}
+                                                        style={styles.productRow}
+                                                    >
+                                                        <View
+                                                            style={[
+                                                                styles.productColorBar,
+                                                                { backgroundColor: product.colorChip },
+                                                            ]}
+                                                        />
+
+                                                        <View style={styles.productInfo}>
+                                                            <Text
+                                                                style={[
+                                                                    styles.productType,
+                                                                    { color: product.colorChip },
+                                                                ]}
+                                                                numberOfLines={1}
+                                                            >
+                                                                {product.type}
+                                                            </Text>
+
+                                                            <Text style={styles.productName} numberOfLines={2}>
+                                                                {product.product}
+                                                            </Text>
+                                                        </View>
+
+                                                        <View style={styles.doseBox}>
+                                                            <Text style={styles.doseLabel}>Dose Solicitada</Text>
+
+                                                            <Text style={styles.doseValue}>
+                                                                {formatDose(product.soughtDose ?? product.displayDose)}{" "}
+                                                                {product.soughtUnit ?? product.displayUnit}
+                                                            </Text>
+                                                        </View>
+                                                    </View>
+                                                ))}
+                                        </View>
                                     </View>
-                                </View>
-                            ))
+                                );
+                            })
                         )}
                     </ScrollView>
                 </>
@@ -1193,10 +1271,12 @@ const styles = StyleSheet.create({
     },
     apHeader: {
         flexDirection: "row",
+        alignItems: "center",
         justifyContent: "space-between",
         padding: 14,
         borderBottomWidth: 1,
         borderBottomColor: "rgba(15,23,42,0.07)",
+        gap: 10,
     },
     apTitleRow: {
         flexDirection: "row",
@@ -1220,20 +1300,20 @@ const styles = StyleSheet.create({
         fontWeight: "750",
     },
     apStatusPill: {
-        backgroundColor: "rgba(15,23,42,0.045)",
         borderRadius: 999,
-        paddingHorizontal: 10,
-        paddingVertical: 6,
+        paddingHorizontal: 12,
+        paddingVertical: 7,
         alignSelf: "flex-start",
+        borderWidth: 1,
+        marginLeft: 10,
     },
     apStatusText: {
         fontSize: 11,
         fontWeight: "950",
     },
     operationBox: {
-        paddingHorizontal: 14,
-        paddingVertical: 12,
-        backgroundColor: "rgba(15,23,42,0.02)",
+        flex: 1,
+        justifyContent: "center",
     },
     operationLabel: {
         color: "rgba(15,23,42,0.52)",
@@ -1566,5 +1646,173 @@ const styles = StyleSheet.create({
         backgroundColor: "rgba(15,23,42,0.08)",
         alignItems: "center",
         justifyContent: "center",
+    },
+    apHeaderRight: {
+        alignItems: "flex-end",
+        justifyContent: "flex-start",
+        gap: 7,
+        marginLeft: 10,
+        flexShrink: 0,
+    },
+
+    progressCircle: {
+        width: 46,
+        height: 46,
+        borderRadius: 23,
+        borderWidth: 2,
+        alignItems: "center",
+        justifyContent: "center",
+    },
+
+    progressCircleValue: {
+        fontSize: 12,
+        fontWeight: "950",
+    },
+
+    apStatusPill: {
+        backgroundColor: "rgba(15,23,42,0.045)",
+        borderRadius: 999,
+        paddingHorizontal: 10,
+        paddingVertical: 6,
+        alignSelf: "flex-end",
+        maxWidth: 118,
+    },
+    apHeader: {
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "space-between",
+        padding: 14,
+        borderBottomWidth: 1,
+        borderBottomColor: "rgba(15,23,42,0.07)",
+        gap: 10,
+    },
+
+    apHeaderLeft: {
+        flex: 1.2,
+        minWidth: 0,
+    },
+
+    apHeaderCenter: {
+        flex: 1,
+        alignItems: "center",
+        justifyContent: "center",
+    },
+
+    apHeaderRight: {
+        width: 62,
+        alignItems: "flex-end",
+        justifyContent: "center",
+    },
+
+    apStatusPill: {
+        minWidth: 92,
+        maxWidth: 120,
+        borderRadius: 999,
+        paddingHorizontal: 12,
+        paddingVertical: 7,
+        alignItems: "center",
+        justifyContent: "center",
+        borderWidth: 1,
+    },
+
+    apStatusText: {
+        fontSize: 11,
+        fontWeight: "950",
+        textAlign: "center",
+    },
+
+    progressCircle: {
+        width: 52,
+        height: 52,
+        borderRadius: 26,
+        borderWidth: 1,
+        overflow: "hidden",
+        alignItems: "center",
+        justifyContent: "center",
+        position: "relative",
+    },
+
+    progressCircleFill: {
+        position: "absolute",
+        left: 0,
+        right: 0,
+        bottom: 0,
+    },
+
+    progressCircleGloss: {
+        position: "absolute",
+        top: 7,
+        left: 7,
+        right: 7,
+        height: 8,
+        borderRadius: 999,
+    },
+
+    progressCircleValue: {
+        fontSize: 12,
+        fontWeight: "950",
+        zIndex: 2,
+    },
+    apHeaderLeft: {
+        flex: 1,
+        minWidth: 0,
+    },
+
+    operationRow: {
+        flexDirection: "row",
+        alignItems: "stretch",
+        gap: 10,
+        paddingHorizontal: 14,
+        paddingVertical: 12,
+        backgroundColor: "rgba(15,23,42,0.02)",
+    },
+
+    operationProgressWrap: {
+        width: 72,
+        alignItems: "center",
+        justifyContent: "center",
+    },
+
+    operationProgressLabel: {
+        marginBottom: 6,
+        color: "rgba(15,23,42,0.52)",
+        fontSize: 10,
+        fontWeight: "900",
+        textTransform: "uppercase",
+        textAlign: "center",
+    },
+
+    progressCircle: {
+        width: 52,
+        height: 52,
+        borderRadius: 26,
+        borderWidth: 1,
+        overflow: "hidden",
+        alignItems: "center",
+        justifyContent: "center",
+        position: "relative",
+    },
+
+    progressCircleFill: {
+        position: "absolute",
+        left: 0,
+        right: 0,
+        bottom: 0,
+    },
+
+    progressCircleGloss: {
+        position: "absolute",
+        top: 7,
+        left: 8,
+        right: 8,
+        height: 8,
+        borderRadius: 999,
+        backgroundColor: "rgba(255,255,255,0.28)",
+    },
+
+    progressCircleValue: {
+        fontSize: 12,
+        fontWeight: "950",
+        zIndex: 2,
     },
 });

@@ -70,6 +70,7 @@ const ProgramScreen = ({ navigation }) => {
 	const areaTotalPrograms = useSelector(selectAreaTotal);
 
 	const [printableData, setPrintableData] = useState(null);
+	const [isPrinting, setIsPrinting] = useState(false);
 
 	const handleSelectProgram = () => {
 		console.log("selecionar um programa");
@@ -102,18 +103,55 @@ const ProgramScreen = ({ navigation }) => {
 	);
 
 
-	const handlerPrintData = () => {
-		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy)
-		console.log("print Program")
-		const filteredProds = dataProgram.filter((data) => data.operacao__programa__nome === programSelected.nome).sort((a, b) => a.defensivo__tipo.localeCompare(b.defensivo__tipo))
-		const onlyEstagios = filteredProds.sort((a, b) => a.operacao__prazo_dap - b.operacao__prazo_dap).map((data) => {
-			const newName = `${data.operacao__estagio} | ${data.operacao__prazo_dap}`
-			return newName
-		})
-		const filteredEstagios = [...new Set(onlyEstagios)]
-		const areaTotalProgram = areaTotalPrograms.find((program) => program.programa__nome === programSelected.nome)
-		PrintProgramPage(programSelected, filteredProds, filteredEstagios, areaTotalProgram)
-	}
+	const handlerPrintData = async () => {
+		if (isPrinting || !programSelected) return;
+
+		try {
+			setIsPrinting(true);
+			Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+
+			// dá tempo para o React renderizar o spinner antes do processamento do print
+			await new Promise((resolve) => {
+				requestAnimationFrame(() => {
+					setTimeout(resolve, 80);
+				});
+			});
+
+			console.log("print Program");
+
+			const filteredProds = dataProgram
+				.filter((data) => data.operacao__programa__nome === programSelected.nome)
+				.sort((a, b) =>
+					String(a.defensivo__tipo || "").localeCompare(
+						String(b.defensivo__tipo || "")
+					)
+				);
+
+			const onlyEstagios = filteredProds
+				.sort((a, b) => a.operacao__prazo_dap - b.operacao__prazo_dap)
+				.map((data) => `${data.operacao__estagio} | ${data.operacao__prazo_dap}`);
+
+			const filteredEstagios = [...new Set(onlyEstagios)];
+
+			const areaTotalProgram = areaTotalPrograms.find(
+				(program) => program.programa__nome === programSelected.nome
+			);
+
+			await Promise.resolve(
+				PrintProgramPage(
+					programSelected,
+					filteredProds,
+					filteredEstagios,
+					areaTotalProgram
+				)
+			);
+		} catch (error) {
+			console.log("erro ao imprimir programa", error);
+			Alert.alert("Erro ao imprimir", "Não foi possível gerar a impressão do programa.");
+		} finally {
+			setIsPrinting(false);
+		}
+	};
 
 	const handleLogout = () => {
 		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy)
@@ -151,14 +189,28 @@ const ProgramScreen = ({ navigation }) => {
 						{
 							programSelected !== "Programas" &&
 								programSelected !== null ?
-								<IconButton
-									type={"awesome"}
-									icon={'print'}
-									color={tintColor}
-									size={22}
+								<Pressable
 									onPress={handlerPrintData}
-									btnStyles={{ marginLeft: 5, marginTop: 10 }}
-								/>
+									disabled={isPrinting}
+									style={({ pressed }) => [
+										styles.headerPrintButton,
+										pressed && !isPrinting && styles.pressed,
+										isPrinting && styles.headerPrintButtonLoading,
+									]}
+								>
+									{isPrinting ? (
+										<ActivityIndicator size="small" color={tintColor} />
+									) : (
+										<IconButton
+											type={"awesome"}
+											icon={"print"}
+											color={tintColor}
+											size={22}
+											onPress={handlerPrintData}
+											btnStyles={styles.headerPrintIcon}
+										/>
+									)}
+								</Pressable>
 								:
 								<IconButton
 									type={"awesome"}
@@ -174,7 +226,7 @@ const ProgramScreen = ({ navigation }) => {
 			}
 		}
 		);
-	}, [programSelected]);
+	}, [programSelected, isPrinting, dataProgram, areaTotalPrograms]);
 
 	useScrollToTop(ref);
 
@@ -297,7 +349,25 @@ const styles = StyleSheet.create({
 		flex: 1,
 		justifyContent: "center",
 		alignItems: "center"
-	}
+	},
+	headerPrintButton: {
+		width: 42,
+		height: 42,
+		borderRadius: 21,
+		alignItems: "center",
+		justifyContent: "center",
+		marginLeft: 5,
+		marginTop: 4,
+	},
+
+	headerPrintButtonLoading: {
+		opacity: 0.75,
+	},
+
+	headerPrintIcon: {
+		marginLeft: 0,
+		marginTop: 0,
+	},
 });
 
 export default ProgramScreen;
