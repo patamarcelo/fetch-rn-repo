@@ -96,11 +96,7 @@ const ProgramScreen = ({ navigation }) => {
 	// 	console.log(programasAvai);
 	// }, [programasAvai]);
 
-	useScrollToTop(
-		useRef({
-			scrollToTop: () => ref.current?.scrollTo({ y: 0 })
-		})
-	);
+
 
 
 	const handlerPrintData = async () => {
@@ -228,7 +224,22 @@ const ProgramScreen = ({ navigation }) => {
 		);
 	}, [programSelected, isPrinting, dataProgram, areaTotalPrograms]);
 
-	useScrollToTop(ref);
+	const scrollToTopRef = useRef({
+		scrollToTop: () => {
+			try {
+				ref.current?.scrollToLocation?.({
+					sectionIndex: 0,
+					itemIndex: 0,
+					animated: true,
+					viewOffset: 0,
+				});
+			} catch (error) {
+				console.log("Erro ao voltar SectionList para o topo:", error);
+			}
+		},
+	});
+
+	useScrollToTop(scrollToTopRef);
 
 	useLayoutEffect(() => {
 		navigation.setOptions({
@@ -275,7 +286,7 @@ const ProgramScreen = ({ navigation }) => {
 	const snapPoints = useMemo(() => ["50%", "70%"], []);
 
 
-
+	
 	if (isLoading && dataProgram.length === 0) {
 		return (
 			<View

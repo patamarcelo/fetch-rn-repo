@@ -391,9 +391,9 @@ const ProgramList = ({ refresh, isLoading, innerRef, setPrintableData }) => {
 					<RefreshControl
 						refreshing={isLoading}
 						onRefresh={refresh}
-						colors={[Colors.primary[600]]}
-						tintColor={Colors.primary[600]}
-						titleColor={Colors.primary[600]}
+						colors={[Colors.primary[800]]}
+						tintColor={Colors.primary[800]}
+						titleColor={Colors.primary[800]}
 						progressBackgroundColor="#FFFFFF"
 					/>
 				}
