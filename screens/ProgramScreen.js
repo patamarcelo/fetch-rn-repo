@@ -394,8 +394,6 @@ const ProgramScreen = ({ navigation }) => {
 				</SafeAreaView>
 			</BottomSheet>
 
-
-
 		</>
 	);
 };
