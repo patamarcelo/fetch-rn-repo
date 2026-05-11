@@ -23,6 +23,8 @@ import AppSplash from "./components/Splash/AppSplash";
 
 import { fetchNavigationMapData, geralActions } from "./store/redux/geral";
 
+import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
+
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
 
@@ -111,7 +113,9 @@ export default function App() {
 
 			<Provider store={store}>
 				<PersistGate loading={<AppSplash />} persistor={persistor}>
-					<Root />
+					<BottomSheetModalProvider>
+						<Root />
+					</BottomSheetModalProvider>
 				</PersistGate>
 			</Provider>
 		</GestureHandlerRootView>
