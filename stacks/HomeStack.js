@@ -5,7 +5,7 @@ import { Colors } from "../constants/styles";
 
 import HomeScreen from "../screens/HomeScreen";
 import ProgramScreen from "../screens/ProgramScreen";
-import PolygonHomeScreen from "../screens/polygon/PolygonHomeScreen";
+// import PolygonHomeScreen from "../screens/polygon/PolygonHomeScreen";
 
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
@@ -79,7 +79,7 @@ const HomeStack = () => {
 				}}
 			/>
 
-			<Tab.Screen
+			{/* <Tab.Screen
 				name="PoligonosTab"
 				component={PolygonHomeScreen}
 				options={{
@@ -88,7 +88,9 @@ const HomeStack = () => {
 						<Ionicons name="map" color={color} size={size} />
 					),
 				}}
-			/>
+			/> */}
+
+
 
 			<Tab.Screen
 				name="Plantio / Colheita"

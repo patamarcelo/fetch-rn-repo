@@ -39,23 +39,35 @@ const formatDoseNumber = number => number?.toLocaleString("pt-br", {
   });
 
   const prodsList = data?.map((item, index) => {
-    const totalArea = item.app.reduce((totalArea, item) => totalArea += item.area, 0)
+    const totalArea = item.app.reduce((totalArea, item) => {
+      return totalArea + Number(item?.area || 0);
+    }, 0);
     areaTotalGeral += totalArea
-    const prods = item.app[0].produtos.filter((op) => op.tipo !== 'operacao').sort((a,b) => a.tipo.localeCompare(b.tipo)).map((prod) => (
-      `
-      <div class="container-produtos-detail">
-          <div class="container-produtos-row">
-              <div class="container-produtos-row-detail">
-                  <div>${formatDoseNumber(prod.dose.replace('.', ','))}&nbsp-</div>
-                  <div>&nbsp${prod.produto}</div>
-              </div>
-              <div class="container-produtos-row-total">
-                  <div>${formatNumber(totalArea * prod.dose)}</div>
+    const produtos = Array.isArray(item?.app?.[0]?.produtos)
+      ? item.app[0].produtos
+      : [];
+
+    const prods = produtos
+      .filter((op) => op?.tipo !== "operacao")
+      .sort((a, b) => String(a?.tipo || "").localeCompare(String(b?.tipo || "")))
+      .map((prod) => {
+        const doseNumber = Number(String(prod?.dose || 0).replace(",", "."));
+
+        return `
+          <div class="container-produtos-detail">
+              <div class="container-produtos-row">
+                  <div class="container-produtos-row-detail">
+                      <div>${formatDoseNumber(doseNumber)}&nbsp-</div>
+                      <div>&nbsp${prod?.produto || "-"}</div>
+                  </div>
+                  <div class="container-produtos-row-total">
+                      <div>${formatNumber(totalArea * doseNumber)}</div>
+                  </div>
               </div>
           </div>
-      </div>
-      `
-    )).join('');
+        `;
+      })
+      .join("");
 
     
 

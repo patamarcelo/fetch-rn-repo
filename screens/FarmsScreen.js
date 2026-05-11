@@ -16,7 +16,7 @@ const FarmsScreen = ({ setModalVisible, modalVisible, route }) => {
 	const farmsList = useSelector(farmsSelector);
 	const [checkedIndex, setCheckedIndex] = useState(null);
 	const [selectedFarmHook, setSelectedFarm] = useState("");
-	const params = route.params;
+	const params = route?.params;
 
 	const { selectedFarm } = geralActions;
 	const dispatch = useDispatch();
@@ -37,22 +37,36 @@ const FarmsScreen = ({ setModalVisible, modalVisible, route }) => {
 	const navigation = useNavigation();
 
 	const handleFilter = () => {
-		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy)
+		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+
 		dispatch(selectedFarm(selectedFarmHook));
-		if (params === undefined) {
-			navigation.navigate("HomeStackScreen");
+
+		if (params?.fromRoute === "maps") {
+			navigation.navigate("MapStackScreen");
 			return;
 		}
-		if (params.fromRoute === "maps") {
-			navigation.navigate("MapStackScreen");
+
+		if (typeof setModalVisible === "function") {
+			setModalVisible(false);
+			return;
 		}
-		// setModalVisible(!modalVisible);
+
+		if (navigation.canGoBack()) {
+			navigation.goBack();
+		}
 	};
 
 	const handlerCancel = () => {
-		navigation.navigate("HomeStackScreen");
-		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy)
-		// setModalVisible(!modalVisible);
+		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+
+		if (typeof setModalVisible === "function") {
+			setModalVisible(false);
+			return;
+		}
+
+		if (navigation.canGoBack()) {
+			navigation.goBack();
+		}
 	};
 
 	const handleCheck = (farm, index) => {
@@ -80,42 +94,42 @@ const FarmsScreen = ({ setModalVisible, modalVisible, route }) => {
 					</Text>
 				</View>
 				{farmsList.length > 0 && (
-						<ScrollView style={{ paddingHorizontal: 0, width: '100%' }} 
-							contentContainerStyle={{ justifyContent: 'center', alignItems: 'center'}}>
-							{farmsList.map((data, i) => {
-								return (
-									<Pressable
-										key={i}
-										style={[styles.titleContainer,{backgroundColor: i % 2 == 0 ? Colors.primary[900] : Colors.primary[902] }]}
-										onPress={handleCheck.bind(
-											this,
-											data,
-											i
-										)}
+					<ScrollView style={{ paddingHorizontal: 0, width: '100%' }}
+						contentContainerStyle={{ justifyContent: 'center', alignItems: 'center' }}>
+						{farmsList.map((data, i) => {
+							return (
+								<Pressable
+									key={i}
+									style={[styles.titleContainer, { backgroundColor: i % 2 == 0 ? Colors.primary[900] : Colors.primary[902] }]}
+									onPress={handleCheck.bind(
+										this,
+										data,
+										i
+									)}
+								>
+									<CheckBox
+										checked={checkedIndex === i}
+										style={{
+											backgroundColor: "transparent"
+										}}
+										containerStyle={{
+											backgroundColor: "transparent"
+										}}
+										size={18}
+									/>
+									<Text
+										style={[
+											styles.FarmsTitle,
+											checkedIndex === i &&
+											styles.checked
+										]}
 									>
-										<CheckBox
-											checked={checkedIndex === i}
-											style={{
-												backgroundColor: "transparent"
-											}}
-											containerStyle={{
-												backgroundColor: "transparent"
-											}}
-											size={18}
-										/>
-										<Text
-											style={[
-												styles.FarmsTitle,
-												checkedIndex === i &&
-												styles.checked
-											]}
-										>
-											{data.replace('Projeto ', '')}
-										</Text>
-									</Pressable>
-								);
-							})}
-						</ScrollView>
+										{data.replace('Projeto ', '')}
+									</Text>
+								</Pressable>
+							);
+						})}
+					</ScrollView>
 				)}
 			</View>
 			<View style={{ width: "100%", alignItems: "center", backgroundColor: Colors.primary[900], borderTopLeftRadius: 25, borderTopRightRadius: 25, borderColor: "rgba(230,230,230,0.2)", borderWidth: 0.2 }}>

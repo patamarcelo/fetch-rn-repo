@@ -411,6 +411,7 @@ const HomeScreen = ({ navigation }) => {
 	const tabBarHeight = useBottomTabBarHeight();
 
 	const [isLoading, setIsLoading] = useState(false);
+	const [isPrinting, setIsPrinting] = useState(false);
 	const [modalVisible, setModalVisible] = useState(false);
 	const [listToCardApp, setListToCardApp] = useState([]);
 
@@ -641,15 +642,44 @@ const HomeScreen = ({ navigation }) => {
 		setSelectedVariedade(variedade);
 	};
 
-	const handlerPrintData = () => {
+	const handlerPrintData = async () => {
+		if (isPrinting) return;
+
 		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
 
-		createAndPrintPDF(listToCardApp, selFarm, filterEndDate, {
-			safra: selectedSafra || "—",
-			ciclo: selectedCiclo || "—",
-			cultura: selectedCultura || "Todas",
-			variedade: selectedVariedade || "Todas",
-		});
+		if (!Array.isArray(listToCardApp) || listToCardApp.length === 0) {
+			Alert.alert(
+				"Sem dados para imprimir",
+				"Não existem aplicações com os filtros selecionados."
+			);
+			return;
+		}
+
+		try {
+			setIsPrinting(true);
+
+			await new Promise((resolve) => {
+				requestAnimationFrame(() => {
+					setTimeout(resolve, 80);
+				});
+			});
+
+			await createAndPrintPDF(listToCardApp, selFarm, filterEndDate, {
+				safra: selectedSafra || "—",
+				ciclo: selectedCiclo || "—",
+				cultura: selectedCultura || "Todas",
+				variedade: selectedVariedade || "Todas",
+			});
+		} catch (error) {
+			console.log("Erro ao imprimir programação:", error);
+
+			Alert.alert(
+				"Erro ao gerar PDF",
+				"Não foi possível gerar o PDF da programação."
+			);
+		} finally {
+			setIsPrinting(false);
+		}
 	};
 
 	useEffect(() => {
@@ -823,14 +853,20 @@ const HomeScreen = ({ navigation }) => {
 				<View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
 					{selFarm && listToCardApp.length > 0 && (
 						<>
-							<IconButton
-								type="awesome"
-								icon="print"
-								color={tintColor}
-								size={22}
-								onPress={handlerPrintData}
-								btnStyles={{ marginLeft: 5, marginTop: 10 }}
-							/>
+							{isPrinting ? (
+								<View style={styles.headerPrintLoading}>
+									<ActivityIndicator size="small" color={tintColor} />
+								</View>
+							) : (
+								<IconButton
+									type="awesome"
+									icon="print"
+									color={tintColor}
+									size={22}
+									onPress={handlerPrintData}
+									btnStyles={{ marginLeft: 5, marginTop: 10 }}
+								/>
+							)}
 
 							<IconButton
 								type="awesome"
@@ -877,6 +913,7 @@ const HomeScreen = ({ navigation }) => {
 		selectedCiclo,
 		selectedCultura,
 		selectedVariedade,
+		isPrinting
 	]);
 
 	useScrollToTop(ref);
@@ -1508,6 +1545,14 @@ const styles = StyleSheet.create({
 		height: 10,
 		borderRadius: 999,
 		backgroundColor: "rgba(15,23,42,0.055)",
+	},
+	headerPrintLoading: {
+		marginLeft: 5,
+		marginTop: 10,
+		width: 32,
+		height: 32,
+		alignItems: "center",
+		justifyContent: "center",
 	},
 });
 

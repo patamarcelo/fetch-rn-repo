@@ -12,7 +12,7 @@ const req = (key) => {
     return v;
 };
 
-const APP_VERSION = '1.0.68'; // escolha a sua
+const APP_VERSION = '1.0.69'; // escolha a sua
 
 
 export default {

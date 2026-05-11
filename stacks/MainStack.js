@@ -8,6 +8,7 @@ import FarmsScreen from "../screens/FarmsScreen";
 import MapStack from "./MapStack";
 import PolygonFlowStack from "./PolygonFlowStack";
 import NavigationMapScreen from "../screens/navigation/NavigationMapScreen";
+import AppDrawer from "./AppDrawer";
 
 const MainStack = () => {
 	return (
@@ -18,7 +19,8 @@ const MainStack = () => {
 				headerTintColor: "white",
 			}}
 		>
-			<Stack.Screen name="HomeStackScreen" component={HomeStack} />
+			{/* <Stack.Screen name="HomeStackScreen" component={HomeStack} /> */}
+			<Stack.Screen name="HomeStackScreen" component={AppDrawer} />
 
 			<Stack.Screen
 				name="FarmsScren"

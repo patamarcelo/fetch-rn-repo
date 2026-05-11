@@ -1,7 +1,10 @@
-import { useRef, useEffect, useState, useLayoutEffect, useMemo } from "react";
+import { useRef, useEffect, useState, useLayoutEffect, useMemo, useCallback } from "react";
 
-import BottomSheet from "@gorhom/bottom-sheet";
-import { BottomSheetScrollView } from "@gorhom/bottom-sheet";
+import BottomSheet, {
+	BottomSheetBackdrop,
+	BottomSheetScrollView,
+} from "@gorhom/bottom-sheet";
+
 
 import IconButton from "../components/ui/IconButton";
 
@@ -38,7 +41,7 @@ import PrintProgramPage from "../components/Global/PrintProgramPage";
 
 import * as Haptics from 'expo-haptics';
 
-import { logout } from "../store/redux/authSlice";
+// import { logout } from "../store/redux/authSlice";
 
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 
@@ -72,6 +75,26 @@ const ProgramScreen = ({ navigation }) => {
 	const [printableData, setPrintableData] = useState(null);
 	const [isPrinting, setIsPrinting] = useState(false);
 
+
+	const handleOpenDrawer = () => {
+		const parent = navigation.getParent?.();
+		const grandParent = parent?.getParent?.();
+
+		if (navigation.openDrawer) {
+			navigation.openDrawer();
+			return;
+		}
+
+		if (parent?.openDrawer) {
+			parent.openDrawer();
+			return;
+		}
+
+		if (grandParent?.openDrawer) {
+			grandParent.openDrawer();
+		}
+	};
+
 	const handleSelectProgram = () => {
 		console.log("selecionar um programa");
 		sheetRef.current?.snapToIndex(0)
@@ -83,6 +106,19 @@ const ProgramScreen = ({ navigation }) => {
 		sheetRef.current?.close();
 		setIsSheetOpen(false)
 	};
+
+	const renderBackdrop = useCallback(
+		(props) => (
+			<BottomSheetBackdrop
+				{...props}
+				appearsOnIndex={0}
+				disappearsOnIndex={-1}
+				pressBehavior="close"
+				opacity={0.35}
+			/>
+		),
+		[]
+	);
 
 	useEffect(() => {
 		console.log('sheetref', sheetRef.current)
@@ -149,80 +185,63 @@ const ProgramScreen = ({ navigation }) => {
 		}
 	};
 
-	const handleLogout = () => {
-		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy)
-		dispatch(logout());
-	};
+	// const handleLogout = () => {
+	// 	Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy)
+	// 	dispatch(logout());
+	// };
 
 	useEffect(() => {
 		navigation.setOptions({
-			headerShadowVisible: false, // applied here,
+			headerShadowVisible: false,
 			title: programSelected
-				? programSelected.nome_fantasia.replace("Programa", "").replace("Aplicação ", '')
+				? programSelected.nome_fantasia
+					.replace("Programa", "")
+					.replace("Aplicação ", "")
 				: "Programas",
-			headerLeft: ({ tintColor }) => {
-				if (
-					programSelected !== "Programas" &&
-					programSelected !== null
-				) {
-					return (
-						<View style={{ flexDirection: "row" }}>
-							<IconButton
-								type={"awesome"}
-								icon="filter"
-								color={tintColor}
-								size={22}
-								onPress={handleSelectProgram}
-								btnStyles={{ marginLeft: 25, marginTop: 10 }}
-							/>
-						</View>
-					);
-				}
-			},
-			headerRight: ({ tintColor }) => {
-				return (
-					<View style={{ flexDirection: "row", marginRight: 10 }}>
-						{
-							programSelected !== "Programas" &&
-								programSelected !== null ?
-								<Pressable
-									onPress={handlerPrintData}
-									disabled={isPrinting}
-									style={({ pressed }) => [
-										styles.headerPrintButton,
-										pressed && !isPrinting && styles.pressed,
-										isPrinting && styles.headerPrintButtonLoading,
-									]}
-								>
-									{isPrinting ? (
-										<ActivityIndicator size="small" color={tintColor} />
-									) : (
-										<IconButton
-											type={"awesome"}
-											icon={"print"}
-											color={tintColor}
-											size={22}
-											onPress={handlerPrintData}
-											btnStyles={styles.headerPrintIcon}
-										/>
-									)}
-								</Pressable>
-								:
+
+			headerLeft: ({ tintColor }) => (
+				<View style={styles.headerLeftActions}>
+					<IconButton
+						type=""
+						icon="menu-outline"
+						color={tintColor}
+						size={28}
+						onPress={handleOpenDrawer}
+						btnStyles={styles.headerMenuButton}
+					/>
+				</View>
+			),
+
+			headerRight: ({ tintColor }) => (
+				<View style={styles.headerRightActions}>
+					{programSelected !== "Programas" && programSelected !== null ? (
+						<Pressable
+							onPress={handlerPrintData}
+							disabled={isPrinting}
+							style={({ pressed }) => [
+								styles.headerPrintButton,
+								pressed && !isPrinting && styles.pressed,
+								isPrinting && styles.headerPrintButtonLoading,
+							]}
+						>
+							{isPrinting ? (
+								<ActivityIndicator size="small" color={tintColor} />
+							) : (
 								<IconButton
-									type={"awesome"}
-									icon={'power-off'}
+									type="awesome"
+									icon="print"
 									color={tintColor}
 									size={22}
-									onPress={handleLogout}
-									btnStyles={{ marginLeft: 5, marginTop: 10 }}
+									onPress={handlerPrintData}
+									btnStyles={styles.headerPrintIcon}
 								/>
-						}
-					</View>
-				)
-			}
-		}
-		);
-	}, [programSelected, isPrinting, dataProgram, areaTotalPrograms]);
+							)}
+						</Pressable>
+					) : null}
+				</View>
+			),
+		});
+	}, [navigation, programSelected, isPrinting, dataProgram, areaTotalPrograms]);
 
 	const scrollToTopRef = useRef({
 		scrollToTop: () => {
@@ -286,7 +305,7 @@ const ProgramScreen = ({ navigation }) => {
 	const snapPoints = useMemo(() => ["50%", "70%"], []);
 
 
-	
+
 	if (isLoading && dataProgram.length === 0) {
 		return (
 			<View
@@ -323,11 +342,41 @@ const ProgramScreen = ({ navigation }) => {
 					/>
 				</SafeAreaView>
 			)}
+			{programSelected !== null && !isSheetOpen && (
+				<Pressable
+					onPress={handleSelectProgram}
+					style={({ pressed }) => [
+						styles.programFilterFab,
+						pressed && styles.programFilterFabPressed,
+						{ bottom: tabBarHeight + insets.bottom },
+					]}
+				>
+					<IconButton
+						type="awesome"
+						icon="filter"
+						color={Colors.primary[800]}
+						size={16}
+						onPress={handleSelectProgram}
+						btnStyles={styles.programFilterFabIcon}
+					/>
+
+					<View style={styles.programFilterFabTextBox}>
+						<Text style={styles.programFilterFabLabel}>Programa</Text>
+						<Text style={styles.programFilterFabValue} numberOfLines={1}>
+							{programSelected?.nome_fantasia
+								?.replace("Programa", "")
+								?.replace("Aplicação ", "") || "Selecionado"}
+						</Text>
+					</View>
+				</Pressable>
+			)}
 			<BottomSheet
 				ref={sheetRef}
-				index={-1} // fechado inicialmente
+				index={-1}
 				snapPoints={snapPoints}
-				// enablePanDownToClose
+				enablePanDownToClose
+				backdropComponent={renderBackdrop}
+				onClose={() => setIsSheetOpen(false)}
 				backgroundStyle={{ backgroundColor: Colors.primary800 }}
 				handleIndicatorStyle={{ backgroundColor: "#fff" }}
 			>
@@ -335,7 +384,10 @@ const ProgramScreen = ({ navigation }) => {
 					<BottomSheetScrollView
 						keyboardShouldPersistTaps="handled"
 						showsVerticalScrollIndicator={false}
-						contentContainerStyle={{ paddingBottom: 50, backgroundColor: Colors.primary800 }}
+						contentContainerStyle={{
+							paddingBottom: 50,
+							backgroundColor: Colors.primary800,
+						}}
 					>
 						<BottomSheetList onClose={handleClose} />
 					</BottomSheetScrollView>
@@ -378,6 +430,71 @@ const styles = StyleSheet.create({
 	headerPrintIcon: {
 		marginLeft: 0,
 		marginTop: 0,
+	},
+	headerLeftActions: {
+		flexDirection: "row",
+		alignItems: "center",
+		marginLeft: 14,
+		marginTop: 6,
+	},
+
+	headerRightActions: {
+		flexDirection: "row",
+		alignItems: "center",
+		marginRight: 10,
+	},
+
+	headerMenuButton: {
+		marginLeft: 0,
+		marginTop: 0,
+	},
+
+	programFilterFab: {
+		position: "absolute",
+		left: 16,
+		zIndex: 9999,
+		elevation: 20,
+		flexDirection: "row",
+		alignItems: "center",
+		gap: 8,
+		backgroundColor: "#E8EEF7",
+		borderRadius: 999,
+		paddingLeft: 10,
+		paddingRight: 14,
+		paddingVertical: 10,
+		borderWidth: 1,
+		borderColor: "rgba(15,23,42,0.12)",
+		shadowColor: "#000",
+		shadowOpacity: 0.18,
+		shadowRadius: 14,
+		shadowOffset: { width: 0, height: 8 },
+	},
+
+	programFilterFabPressed: {
+		opacity: 0.82,
+		transform: [{ scale: 0.98 }],
+	},
+
+	programFilterFabIcon: {
+		marginLeft: 0,
+		marginTop: 0,
+	},
+
+	programFilterFabTextBox: {
+		maxWidth: 170,
+	},
+
+	programFilterFabLabel: {
+		color: "#0F172A",
+		fontSize: 11,
+		fontWeight: "900",
+	},
+
+	programFilterFabValue: {
+		marginTop: 1,
+		color: "rgba(15,23,42,0.54)",
+		fontSize: 10,
+		fontWeight: "800",
 	},
 });
 
