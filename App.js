@@ -31,6 +31,8 @@ const Tab = createBottomTabNavigator();
 const Navigation = () => {
 	const isAuthenticated = useSelector((state) => state.auth.isAuthenticated);
 	const user = useSelector((state) => state.auth.user);
+	const userClaims = user?.customClaims;
+	const firebaseToken = user?.token;
 	const navigationMapData = useSelector(
 		(state) => state.geral.navigationMapData
 	);
@@ -65,11 +67,18 @@ const Navigation = () => {
 
 	useEffect(() => {
 		if (!isAuthenticated) return;
+		if (!user?.uid) return;
+		if (!user?.customClaims) return;
+		if (!user?.token) return;
 		if (didRequestNavigationDataRef.current) return;
 
 		didRequestNavigationDataRef.current = true;
 
-		console.log("Buscando dados iniciais de navegação ONLINE...");
+		console.log("Buscando dados iniciais de navegação ONLINE com claims:", {
+			uid: user.uid,
+			email: user.email,
+			customClaims: user.customClaims,
+		});
 
 		dispatch(fetchNavigationMapData({}))
 			.unwrap()
@@ -84,7 +93,7 @@ const Navigation = () => {
 				console.log("Erro ao carregar dados de navegação:", error);
 				didRequestNavigationDataRef.current = false;
 			});
-	}, [isAuthenticated, dispatch]);
+	}, [isAuthenticated, user?.uid, user?.customClaims, user?.token, dispatch]);
 
 
 	useEffect(() => {

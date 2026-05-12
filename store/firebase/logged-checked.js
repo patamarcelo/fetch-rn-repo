@@ -1,37 +1,86 @@
 import { Alert } from 'react-native';
 import * as SplashScreen from 'expo-splash-screen';
 import { EXPO_PUBLIC_REACT_APP_DJANGO_TOKEN } from "@env";
-import { logout } from '../redux/authSlice';
+import { logout, setUser } from '../redux/authSlice';
 import { NODEUSERLINK } from '../../utils/api';
 
 import * as Network from 'expo-network';
 
+import { auth } from '../firebase';
+import { onAuthStateChanged } from 'firebase/auth';
+
+const waitForFirebaseUser = () => {
+    return new Promise((resolve) => {
+        const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+            unsubscribe();
+            resolve(firebaseUser);
+        });
+    });
+};
 
 export const checkUserStatus = async (dispatch, userFromRedux) => {
     try {
         await SplashScreen.preventAutoHideAsync();
 
-        if (userFromRedux) {
-            const { email, uid } = userFromRedux;
-            console.log('User is persisted in Redux:', email);
-            // Check if there is internet connection
-            const isConnected = await Network.getNetworkStateAsync();
-            if (!isConnected || isConnected.isConnected === false) {
-                Alert.alert('Error', 'No internet connection.');
-                return;
-            }
-            const response = await fetch(`${NODEUSERLINK}/check-user/`, {
-                headers: {
-                    Authorization: `Token ${EXPO_PUBLIC_REACT_APP_DJANGO_TOKEN}`,
-                    "Content-Type": "application/json"
-                },
-                method: "POST",
-                body: JSON.stringify({ uid: uid })
+        const networkState = await Network.getNetworkStateAsync();
+
+        if (!networkState?.isConnected) {
+            console.log('Sem internet. Mantendo usuário persistido se existir.');
+            return;
+        }
+
+        const firebaseUser = await waitForFirebaseUser();
+
+        if (!firebaseUser && userFromRedux) {
+            console.log('Usuário existe no Redux, mas o Firebase Auth não retornou usuário:', {
+                email: userFromRedux?.email,
+                uid: userFromRedux?.uid,
             });
-            console.log('response: ', response)
-            if(response.status !== 200){
-                dispatch(logout())
-            }
+
+            return;
+        }
+
+        if (!firebaseUser) {
+            console.log('Nenhum usuário logado no Firebase Auth.');
+            dispatch(logout());
+            return;
+        }
+
+        const idTokenResult = await firebaseUser.getIdTokenResult(true);
+
+        console.log('Firebase user encontrado. Claims atualizados:', {
+            uid: firebaseUser.uid,
+            email: firebaseUser.email,
+            customClaims: idTokenResult.claims,
+        });
+
+        dispatch(setUser({
+            uid: firebaseUser.uid,
+            email: firebaseUser.email,
+            displayName: firebaseUser.displayName,
+            photoURL: firebaseUser.photoURL,
+            emailVerified: firebaseUser.emailVerified,
+            customClaims: idTokenResult.claims,
+            token: idTokenResult.token,
+        }));
+
+        const response = await fetch(`${NODEUSERLINK}/check-user/`, {
+            method: "POST",
+            headers: {
+                Authorization: `Token ${EXPO_PUBLIC_REACT_APP_DJANGO_TOKEN}`,
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+                uid: firebaseUser.uid,
+                email: firebaseUser.email,
+                customClaims: idTokenResult.claims,
+            }),
+        });
+
+        console.log('response check-user:', response.status);
+
+        if (response.status !== 200) {
+            dispatch(logout());
         }
     } catch (error) {
         console.error('Error checking user status:', error);
