@@ -207,8 +207,8 @@ const AppDrawer = () => {
 					headerTitleStyle: {
 						fontWeight: "900",
 					},
-					headerLeft: () => buildBackToHomeButton(navigation),
-					headerRight: () => buildDrawerButton(navigation),
+					// headerLeft: () => buildBackToHomeButton(navigation),
+					// headerRight: () => buildDrawerButton(navigation),
 				})}
 			/>
 		</Drawer.Navigator>

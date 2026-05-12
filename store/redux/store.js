@@ -3,6 +3,7 @@ import { combineReducers } from "redux";
 import GeralReducer from "./geral";
 import authReducer from "./authSlice";
 import polygonReducer from "./polygon";
+import maquinarioReducer from "./maquinario";
 
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { persistStore, persistReducer } from "redux-persist";
@@ -22,8 +23,6 @@ const geralPersistConfig = {
 		"navigationMapError",
 		"navigationMapLastFetch",
 		"navigationMapFiltersIndex",
-
-		// importante se algum mapa antigo ainda usa isso
 		"mapDataPlot",
 	],
 };
@@ -38,10 +37,20 @@ const polygonPersistConfig = {
 	storage: AsyncStorage,
 };
 
+const maquinarioPersistConfig = {
+	key: "maquinario",
+	storage: AsyncStorage,
+	blacklist: [
+		"status",
+		"error",
+	],
+};
+
 const reducer = combineReducers({
 	geral: persistReducer(geralPersistConfig, GeralReducer),
 	auth: persistReducer(authPersistConfig, authReducer),
 	polygon: persistReducer(polygonPersistConfig, polygonReducer),
+	maquinario: persistReducer(maquinarioPersistConfig, maquinarioReducer),
 });
 
 export const store = configureStore({

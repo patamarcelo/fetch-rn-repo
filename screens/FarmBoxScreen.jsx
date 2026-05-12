@@ -144,7 +144,7 @@ const FarmBoxScreen = (props) => {
                 title: stackName === 'FarmBoxStack' ? 'FarmBox' : selectedFarm?.replace('Fazenda ', ''),
                 headerShadowVisible: false,
                 headerRight: ({ tintColor }) => (
-                    <View style={{ flexDirection: "row", alignItems: 'center', paddingRight: 20, flex: 1 }}>
+                    <View style={{ flexDirection: "row", alignItems: 'center', paddingRight: 20 }}>
                         <MaterialCommunityIcons
                             name="database-refresh-outline"
                             size={24}

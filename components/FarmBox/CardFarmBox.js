@@ -579,7 +579,7 @@ const CardFarmBox = ({ route, navigation }) => {
             title: stackName !== "FarmBoxStack" ? "FarmBox" : farm?.replace("Fazenda ", ""),
             headerShadowVisible: false,
             headerRight: ({ tintColor }) => (
-                <View style={{ flexDirection: "row", alignItems: "center", paddingRight: 20, flex: 1 }}>
+                <View style={{ flexDirection: "row", alignItems: "center", paddingRight: 20 }}>
                     <IconButton
                         type={"awesome"}
                         icon={"print"}
