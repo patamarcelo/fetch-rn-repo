@@ -2,12 +2,25 @@ import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import { LINKMachine } from "../../utils/api";
 
 const DEFAULT_MACHINE_FILTERS = {
-	fazendaId: 4,
+	fazendaId: null,
+	farmIds: [],
 	status: [],
 	machineType: [],
 	managerId: null,
 	search: "",
+
+	sortBy: "next_revision",
+	sortDirection: "asc",
+
+	nextPlanIds: [],
+	nextPlanIntervals: [],
+
+	revisionWindow: "all",
+
+	staleHourmeterDays: null,
+	includeNeverUpdated: true,
 };
+
 
 const normalizeMachinesResponse = (response) => {
 	const data = response?.data || response?.results || response?.machines || response;
@@ -211,6 +224,111 @@ const maquinarioSlice = createSlice({
 			}
 
 			state.machines[index] = machine;
+		},
+
+
+		setMachineFilters: (state, action) => {
+			state.filters = {
+				...state.filters,
+				...(action.payload || {}),
+			};
+		},
+
+		setMachineSort: (state, action) => {
+			const { sortBy, sortDirection } = action.payload || {};
+
+			state.filters.sortBy = sortBy || "next_revision";
+			state.filters.sortDirection = sortDirection || "asc";
+		},
+
+		toggleMachineFarmFilter: (state, action) => {
+			const value = action.payload;
+
+			if (!value) return;
+
+			if (!Array.isArray(state.filters.farmIds)) {
+				state.filters.farmIds = [];
+			}
+
+			const normalizedValue = String(value);
+			const index = state.filters.farmIds.findIndex(
+				(item) => String(item) === normalizedValue
+			);
+
+			if (index === -1) {
+				state.filters.farmIds.push(value);
+			} else {
+				state.filters.farmIds.splice(index, 1);
+			}
+		},
+
+		toggleMachineNextPlanFilter: (state, action) => {
+			const value = action.payload;
+
+			if (!value) return;
+
+			if (!Array.isArray(state.filters.nextPlanIds)) {
+				state.filters.nextPlanIds = [];
+			}
+
+			const normalizedValue = String(value);
+			const index = state.filters.nextPlanIds.findIndex(
+				(item) => String(item) === normalizedValue
+			);
+
+			if (index === -1) {
+				state.filters.nextPlanIds.push(value);
+			} else {
+				state.filters.nextPlanIds.splice(index, 1);
+			}
+		},
+
+		toggleMachineNextPlanIntervalFilter: (state, action) => {
+			const value = action.payload;
+
+			if (!value) return;
+
+			if (!Array.isArray(state.filters.nextPlanIntervals)) {
+				state.filters.nextPlanIntervals = [];
+			}
+
+			const normalizedValue = String(value);
+			const index = state.filters.nextPlanIntervals.findIndex(
+				(item) => String(item) === normalizedValue
+			);
+
+			if (index === -1) {
+				state.filters.nextPlanIntervals.push(value);
+			} else {
+				state.filters.nextPlanIntervals.splice(index, 1);
+			}
+		},
+
+		setMachineRevisionWindowFilter: (state, action) => {
+			state.filters.revisionWindow = action.payload || "all";
+		},
+
+		setMachineStaleHourmeterFilter: (state, action) => {
+			state.filters.staleHourmeterDays = action.payload ?? null;
+		},
+
+		setMachineIncludeNeverUpdated: (state, action) => {
+			state.filters.includeNeverUpdated = action.payload !== false;
+		},
+
+		clearMachineAdvancedFilters: (state) => {
+			state.filters = {
+				...state.filters,
+				farmIds: [],
+				machineType: [],
+				nextPlanIds: [],
+				nextPlanIntervals: [],
+				revisionWindow: "all",
+				staleHourmeterDays: null,
+				includeNeverUpdated: true,
+				sortBy: "next_revision",
+				sortDirection: "asc",
+			};
 		},
 	},
 

@@ -721,10 +721,9 @@ const MachineDetailScreen = ({ route, navigation }) => {
 						<Pressable
 							onPress={() => {
 								Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-								Alert.alert(
-									"Histórico de leituras",
-									"Próximo passo: abrir tela com GET /machines/:id/readings/."
-								);
+								navigation.navigate("MachineReadingsHistoryScreen", {
+									machineId: machine?.id,
+								});
 							}}
 							style={({ pressed }) => [
 								styles.historyCard,
@@ -743,10 +742,9 @@ const MachineDetailScreen = ({ route, navigation }) => {
 						<Pressable
 							onPress={() => {
 								Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-								Alert.alert(
-									"Histórico de revisões",
-									"Próximo passo: abrir tela com GET /machines/:id/maintenance_records/."
-								);
+								navigation.navigate("MachineMaintenanceHistoryScreen", {
+									machineId: machine?.id,
+								});
 							}}
 							style={({ pressed }) => [
 								styles.historyCard,

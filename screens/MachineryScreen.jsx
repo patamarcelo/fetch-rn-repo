@@ -36,6 +36,13 @@ import { LINKMachine } from "../utils/api";
 import * as Haptics from "expo-haptics";
 
 
+import {
+	applyMachineAdvancedFilters,
+	sortMachinesByFilters,
+	getAdvancedFiltersCount,
+} from "../store/redux/maquinarioFilterHelpers";
+
+
 
 const FAZENDA_BENCAO_DE_DEUS_ID = 4;
 
@@ -957,56 +964,25 @@ const MachineryScreen = ({ navigation }) => {
 	);
 
 	const machines = useMemo(() => {
-		const searchValue = normalizeSearch(search);
-
-		let filtered = Array.isArray(allMachines) ? [...allMachines] : [];
-
-		if (searchValue) {
-			filtered = filtered.filter((machine) =>
-				getMachineSearchText(machine).includes(searchValue)
-			);
-		}
-
-		if (selectedStatus) {
-			filtered = filtered.filter((machine) => machine.status === selectedStatus);
-		}
-
-		if (filters?.machineType?.length > 0) {
-			filtered = filtered.filter((machine) =>
-				filters.machineType.includes(machine.machine_type)
-			);
-		}
-
-		filtered.sort((a, b) => {
-			const aMaintenance = getMaintenanceSortValue(a);
-			const bMaintenance = getMaintenanceSortValue(b);
-
-			if (aMaintenance !== bMaintenance) {
-				return aMaintenance - bMaintenance;
-			}
-
-			const aStatus = getStatusSortValue(a.status);
-			const bStatus = getStatusSortValue(b.status);
-
-			if (aStatus !== bStatus) {
-				return aStatus - bStatus;
-			}
-
-			return getMachineNameSortValue(a).localeCompare(getMachineNameSortValue(b));
+		let filtered = applyMachineAdvancedFilters({
+			machines: allMachines,
+			search,
+			selectedStatus,
+			filters,
 		});
 
-		return filtered;
-	}, [allMachines, search, selectedStatus, filters?.machineType]);
+		return sortMachinesByFilters(filtered, filters);
+	}, [allMachines, search, selectedStatus, filters]);
+
+
 
 	const summary = useMemo(() => {
-		const searchValue = normalizeSearch(search);
-
-		const base = Array.isArray(allMachines)
-			? allMachines.filter((machine) => {
-				if (!searchValue) return true;
-				return getMachineSearchText(machine).includes(searchValue);
-			})
-			: [];
+		const base = applyMachineAdvancedFilters({
+			machines: allMachines,
+			search,
+			selectedStatus: null,
+			filters,
+		});
 
 		return {
 			total: base.length,
@@ -1014,7 +990,8 @@ const MachineryScreen = ({ navigation }) => {
 			revision: base.filter((machine) => machine.status === "revision").length,
 			maintenance: base.filter((machine) => machine.status === "maintenance").length,
 		};
-	}, [allMachines, search]);
+	}, [allMachines, search, filters]);
+
 
 
 
@@ -1022,6 +999,16 @@ const MachineryScreen = ({ navigation }) => {
 		return getPendingReadingsSummary(pendingHourmeterReadings);
 	}, [pendingHourmeterReadings]);
 
+
+	const advancedFiltersCount = useMemo(() => {
+		return getAdvancedFiltersCount(filters);
+	}, [filters]);
+
+	const handleOpenFilters = useCallback(() => {
+		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+
+		navigation.navigate("MachineFiltersScreen");
+	}, [navigation]);
 
 
 	const handleSyncPendingReadings = useCallback(() => {
@@ -1082,12 +1069,10 @@ const MachineryScreen = ({ navigation }) => {
 
 	const handleBack = useCallback(() => {
 		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-		if (navigation?.canGoBack?.()) {
-			navigation.goBack();
-			return;
-		}
 
-		navigation?.navigate?.("Home");
+		const parentNavigation = navigation.getParent?.();
+
+		parentNavigation?.navigate("HomeTabs");
 	}, [navigation]);
 
 
@@ -1204,9 +1189,9 @@ const MachineryScreen = ({ navigation }) => {
 					<RefreshControl
 						refreshing={isLoading && hasCachedData}
 						onRefresh={loadMachines}
-						colors={[Colors.primary[600]]}
-						tintColor={Colors.primary[600]}
-						titleColor={Colors.primary[600]}
+						colors={[Colors.primary[700]]}
+						tintColor={Colors.primary[700]}
+						titleColor={Colors.primary[700]}
 						progressBackgroundColor="#FFFFFF"
 					/>
 				}
@@ -1302,11 +1287,44 @@ const MachineryScreen = ({ navigation }) => {
 				</View>
 
 				<View style={styles.stickySearch}>
-					<SearchBox
-						value={search}
-						onChangeText={handleSearchChange}
-						onClear={handleClearSearch}
-					/>
+					<View style={styles.searchAndFilterRow}>
+						<View style={styles.searchFlex}>
+							<SearchBox
+								value={search}
+								onChangeText={handleSearchChange}
+								onClear={handleClearSearch}
+							/>
+						</View>
+
+						<Pressable
+							onPress={handleOpenFilters}
+							style={({ pressed }) => [
+								styles.filterButton,
+								advancedFiltersCount > 0 && styles.filterButtonActive,
+								pressed && styles.pressed,
+							]}
+						>
+							<Ionicons
+								name="options-outline"
+								size={20}
+								color={advancedFiltersCount > 0 ? "#FFFFFF" : Colors.primary[800]}
+							/>
+
+							{advancedFiltersCount > 0 ? (
+								<View style={styles.filterCountBadge}>
+									<Text style={styles.filterCountText}>{advancedFiltersCount}</Text>
+								</View>
+							) : null}
+						</Pressable>
+					</View>
+					{advancedFiltersCount > 0 ? (
+						<View style={styles.activeFiltersHint}>
+							<Ionicons name="filter-outline" size={13} color={Colors.primary[800]} />
+							<Text style={styles.activeFiltersHintText}>
+								{advancedFiltersCount} filtro{advancedFiltersCount === 1 ? "" : "s"} aplicado{advancedFiltersCount === 1 ? "" : "s"}
+							</Text>
+						</View>
+					) : null}
 				</View>
 
 				<ErrorBox
@@ -2374,6 +2392,76 @@ const styles = StyleSheet.create({
 		color: "rgba(15,23,42,0.50)",
 		fontSize: 10,
 		fontWeight: "800",
+	},
+	searchAndFilterRow: {
+		flexDirection: "row",
+		alignItems: "center",
+		gap: 8,
+	},
+
+	searchFlex: {
+		flex: 1,
+	},
+
+	filterButton: {
+		width: 46,
+		height: 46,
+		borderRadius: 18,
+		backgroundColor: "rgba(255,255,255,0.96)",
+		borderWidth: 1,
+		borderColor: "rgba(22,101,52,0.16)",
+		alignItems: "center",
+		justifyContent: "center",
+		shadowColor: "#000",
+		shadowOpacity: 0.04,
+		shadowRadius: 10,
+		shadowOffset: { width: 0, height: 5 },
+		elevation: 1,
+	},
+
+	filterButtonActive: {
+		backgroundColor: Colors.primary[800],
+		borderColor: Colors.primary[800],
+	},
+
+	filterCountBadge: {
+		position: "absolute",
+		top: -5,
+		right: -5,
+		minWidth: 19,
+		height: 19,
+		borderRadius: 999,
+		backgroundColor: "#B42318",
+		borderWidth: 1,
+		borderColor: "#FFFFFF",
+		alignItems: "center",
+		justifyContent: "center",
+		paddingHorizontal: 4,
+	},
+
+	filterCountText: {
+		color: "#FFFFFF",
+		fontSize: 10,
+		fontWeight: "900",
+	},
+	activeFiltersHint: {
+		marginTop: 7,
+		alignSelf: "flex-start",
+		borderRadius: 999,
+		paddingHorizontal: 9,
+		paddingVertical: 5,
+		backgroundColor: "rgba(22,101,52,0.08)",
+		borderWidth: 1,
+		borderColor: "rgba(22,101,52,0.12)",
+		flexDirection: "row",
+		alignItems: "center",
+		gap: 5,
+	},
+
+	activeFiltersHintText: {
+		color: Colors.primary[800],
+		fontSize: 10.5,
+		fontWeight: "900",
 	},
 });
 
