@@ -13,6 +13,7 @@ import MachineReadingsHistoryScreen from "../screens/machine/MachineReadingsHist
 import MachineMaintenanceHistoryScreen from "../screens/machine/MachineMaintenanceHistoryScreen";
 
 import MachineFiltersScreen from "../screens/machine/MachineFiltersScreen";
+import MachineStatusFormScreen from "../screens/machine/MachineStatusFormScreen";
 
 const Stack = createNativeStackNavigator();
 
@@ -63,6 +64,12 @@ const MachineStack = () => {
 			<Stack.Screen
 				name="MachineFiltersScreen"
 				component={MachineFiltersScreen}
+			/>
+
+
+			<Stack.Screen
+				name="MachineStatusFormScreen"
+				component={MachineStatusFormScreen}
 			/>
 
 		</Stack.Navigator>

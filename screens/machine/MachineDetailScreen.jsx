@@ -673,6 +673,18 @@ const MachineDetailScreen = ({ route, navigation }) => {
 						onPress={handleOpenMaintenanceForm}
 						tone="secondary"
 					/>
+					<ActionButton
+						icon="swap-horizontal-outline"
+						title="Alterar status"
+						description="Operação, revisão ou manutenção"
+						tone="warning"
+						onPress={() => {
+							Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+							navigation.navigate("MachineStatusFormScreen", {
+								machineId: machine?.id,
+							});
+						}}
+					/>
 				</View>
 
 				<View style={styles.block}>
@@ -769,7 +781,7 @@ const MachineDetailScreen = ({ route, navigation }) => {
 const styles = StyleSheet.create({
 	root: {
 		flex: 1,
-		backgroundColor: "#D6E3F3",
+		backgroundColor: Colors.secondary[100],
 	},
 
 	scrollContent: {
