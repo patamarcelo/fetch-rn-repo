@@ -18,7 +18,7 @@ import { useDispatch } from "react-redux";
 
 import HomeStack from "./HomeStack";
 import PolygonHomeScreen from "../screens/polygon/PolygonHomeScreen";
-import MachineryScreen from "../screens/MachineryScreen";
+import MachineStack from "./MachineStack";
 
 import { logout } from "../store/redux/authSlice";
 import { Colors } from "../constants/styles";
@@ -113,8 +113,8 @@ const CustomDrawerContent = (props) => {
 						label="Maquinário"
 						icon="tractor"
 						iconType="fa5"
-						focused={currentRouteName === "MachineryScreen"}
-						onPress={() => goTo("MachineryScreen")}
+						focused={currentRouteName === "MachineStack"}
+						onPress={() => goTo("MachineStack")}
 					/>
 				</View>
 			</DrawerContentScrollView>
@@ -195,21 +195,12 @@ const AppDrawer = () => {
 			/>
 
 			<Drawer.Screen
-				name="MachineryScreen"
-				component={MachineryScreen}
-				options={({ navigation }) => ({
-					headerShown: true,
+				name="MachineStack"
+				component={MachineStack}
+				options={{
+					headerShown: false,
 					title: "Maquinário",
-					headerStyle: {
-						backgroundColor: Colors.primary[901],
-					},
-					headerTintColor: "whitesmoke",
-					headerTitleStyle: {
-						fontWeight: "900",
-					},
-					// headerLeft: () => buildBackToHomeButton(navigation),
-					// headerRight: () => buildDrawerButton(navigation),
-				})}
+				}}
 			/>
 		</Drawer.Navigator>
 	);

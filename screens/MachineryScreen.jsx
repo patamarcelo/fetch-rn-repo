@@ -9,7 +9,11 @@ import {
 	TextInput,
 	ActivityIndicator,
 	Alert,
+	StatusBar,
+	Platform
 } from "react-native";
+import { useFocusEffect } from "@react-navigation/native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useDispatch, useSelector } from "react-redux";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import FontAwesome5 from "@expo/vector-icons/FontAwesome5";
@@ -28,6 +32,10 @@ import {
 import * as FileSystem from "expo-file-system/legacy";
 import * as Sharing from "expo-sharing";
 import { LINKMachine } from "../utils/api";
+
+import * as Haptics from "expo-haptics";
+
+
 
 const FAZENDA_BENCAO_DE_DEUS_ID = 4;
 
@@ -124,6 +132,46 @@ const formatHour = (value) => {
 		minimumFractionDigits: numberValue % 1 === 0 ? 0 : 1,
 		maximumFractionDigits: 1,
 	});
+};
+
+
+const getPendingReadingsSummary = (pendingReadings) => {
+	const pending = Array.isArray(pendingReadings)
+		? pendingReadings.filter((item) => item?.status === "pending" || item?.status === "failed")
+		: [];
+
+	const failed = pending.filter((item) => item?.status === "failed");
+	const onlyPending = pending.filter((item) => item?.status !== "failed");
+
+	const machinesMap = new Map();
+
+	pending.forEach((item) => {
+		if (!item?.machineId) return;
+
+		machinesMap.set(String(item.machineId), {
+			machineId: item.machineId,
+			machineIdentifier: item.machineIdentifier,
+			machineDescription: item.machineDescription,
+		});
+	});
+
+	return {
+		total: pending.length,
+		pendingTotal: onlyPending.length,
+		failedTotal: failed.length,
+		machinesTotal: machinesMap.size,
+		first: pending[0] || null,
+	};
+};
+
+const getMachinePendingReadings = (pendingReadings, machineId) => {
+	if (!Array.isArray(pendingReadings)) return [];
+
+	return pendingReadings.filter(
+		(item) =>
+			String(item?.machineId) === String(machineId) &&
+			(item?.status === "pending" || item?.status === "failed")
+	);
 };
 
 const normalizeSearch = (value) =>
@@ -305,7 +353,7 @@ const TopBar = ({ onBack, onExport, isExportDisabled, isExporting }) => {
 
 			<View style={styles.topTitleBox}>
 				<Text style={styles.topTitle}>Máquinas</Text>
-				<Text style={styles.topSubtitle}>Controle de horímetro</Text>
+				<Text style={styles.topSubtitle}>Gerenciamento das Máquinas</Text>
 			</View>
 
 			<Pressable
@@ -534,7 +582,71 @@ const MaintenanceMiniSummary = ({ machine }) => {
 	);
 };
 
-const MachineCard = ({ machine, onPress }) => {
+
+const PendingSyncSummaryCard = ({ summary, onPress }) => {
+	if (!summary?.total) return null;
+
+	const hasFailed = summary.failedTotal > 0;
+
+	return (
+		<View
+			style={[
+				styles.pendingSyncCard,
+				hasFailed && styles.pendingSyncCardFailed,
+			]}
+		>
+			<View
+				style={[
+					styles.pendingSyncIconBox,
+					hasFailed && styles.pendingSyncIconBoxFailed,
+				]}
+			>
+				<Ionicons
+					name={hasFailed ? "alert-circle-outline" : "cloud-upload-outline"}
+					size={22}
+					color={hasFailed ? "#B42318" : "#946200"}
+				/>
+			</View>
+
+			<View style={styles.pendingSyncTextBox}>
+				<Text
+					style={[
+						styles.pendingSyncTitle,
+						hasFailed && styles.pendingSyncTitleFailed,
+					]}
+				>
+					{hasFailed
+						? `${summary.failedTotal} pendência${summary.failedTotal === 1 ? "" : "s"} com falha`
+						: `${summary.total} leitura${summary.total === 1 ? "" : "s"} pendente${summary.total === 1 ? "" : "s"}`}
+				</Text>
+
+				<Text style={styles.pendingSyncDescription}>
+					{summary.machinesTotal} máquina{summary.machinesTotal === 1 ? "" : "s"} aguardando sincronização.
+				</Text>
+			</View>
+
+			<Pressable
+				onPress={onPress}
+				style={({ pressed }) => [
+					styles.pendingSyncButton,
+					hasFailed && styles.pendingSyncButtonFailed,
+					pressed && styles.pressed,
+				]}
+			>
+				<Text
+					style={[
+						styles.pendingSyncButtonText,
+						hasFailed && styles.pendingSyncButtonTextFailed,
+					]}
+				>
+					Sincronizar
+				</Text>
+			</Pressable>
+		</View>
+	);
+};
+
+const MachineCard = ({ machine, pendingReadings = [], onPress }) => {
 	const statusConfig = getStatusConfig(machine.status);
 	const nextDue = machine?.next_due_maintenance;
 	const planName = nextDue?.plan_name || "Próxima revisão";
@@ -550,6 +662,12 @@ const MachineCard = ({ machine, onPress }) => {
 		machine?.farm_name ||
 		machine?.location_name
 	);
+
+	const hasPendingReadings = pendingReadings.length > 0;
+	const failedReadings = pendingReadings.filter((item) => item?.status === "failed");
+	const hasFailedReadings = failedReadings.length > 0;
+
+	const latestPendingReading = pendingReadings[pendingReadings.length - 1];
 
 	return (
 		<Pressable
@@ -630,6 +748,46 @@ const MachineCard = ({ machine, onPress }) => {
 					</Text>
 				</View>
 			</View>
+
+			{hasPendingReadings ? (
+				<View
+					style={[
+						styles.machinePendingBox,
+						hasFailedReadings && styles.machinePendingBoxFailed,
+					]}
+				>
+					<View
+						style={[
+							styles.machinePendingIconBox,
+							hasFailedReadings && styles.machinePendingIconBoxFailed,
+						]}
+					>
+						<Ionicons
+							name={hasFailedReadings ? "alert-circle-outline" : "cloud-upload-outline"}
+							size={15}
+							color={hasFailedReadings ? "#B42318" : "#946200"}
+						/>
+					</View>
+
+					<View style={styles.machinePendingTextBox}>
+						<Text
+							style={[
+								styles.machinePendingTitle,
+								hasFailedReadings && styles.machinePendingTitleFailed,
+							]}
+							numberOfLines={1}
+						>
+							{hasFailedReadings
+								? "Falha ao sincronizar leitura"
+								: `${pendingReadings.length} leitura${pendingReadings.length === 1 ? "" : "s"} pendente${pendingReadings.length === 1 ? "" : "s"}`}
+						</Text>
+
+						<Text style={styles.machinePendingDescription} numberOfLines={1}>
+							Pendente: {formatHour(latestPendingReading?.value)} h
+						</Text>
+					</View>
+				</View>
+			) : null}
 
 			<View style={styles.nextDueBox}>
 				<View style={styles.nextDueIconBox}>
@@ -775,6 +933,10 @@ const MachineryScreen = ({ navigation }) => {
 
 	const authUser = useSelector((state) => state?.auth?.user || null);
 
+	const pendingHourmeterReadings = useSelector(
+		(state) => state?.maquinario?.pendingHourmeterReadings || []
+	);
+
 	const selectedStatus = filters?.status?.[0] || null;
 	const isLoading = status === "pending";
 	const hasCachedData = Array.isArray(allMachines) && allMachines.length > 0;
@@ -783,6 +945,16 @@ const MachineryScreen = ({ navigation }) => {
 	const hasSearch = !!normalizeSearch(search);
 	const hasStatusFilter = !!selectedStatus;
 	const isFiltering = hasSearch || hasStatusFilter;
+
+	useFocusEffect(
+		useCallback(() => {
+			StatusBar.setBarStyle("dark-content");
+
+			if (Platform.OS === "android") {
+				StatusBar.setBackgroundColor("#D6E3F3");
+			}
+		}, [])
+	);
 
 	const machines = useMemo(() => {
 		const searchValue = normalizeSearch(search);
@@ -844,6 +1016,26 @@ const MachineryScreen = ({ navigation }) => {
 		};
 	}, [allMachines, search]);
 
+
+
+	const pendingSummary = useMemo(() => {
+		return getPendingReadingsSummary(pendingHourmeterReadings);
+	}, [pendingHourmeterReadings]);
+
+
+
+	const handleSyncPendingReadings = useCallback(() => {
+		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+
+		Alert.alert(
+			"Sincronizar leituras",
+			"Próximo passo: enviar as leituras pendentes para a API e atualizar os cards das máquinas."
+		);
+
+		// Depois:
+		// dispatch(syncPendingHourmeterReadings());
+	}, []);
+
 	const loadMachines = useCallback(() => {
 		dispatch(
 			fetchMachines({
@@ -881,15 +1073,15 @@ const MachineryScreen = ({ navigation }) => {
 
 	const handleOpenMachine = useCallback(
 		(machine) => {
-			console.log("abrir máquina:", machine);
-
-			// Próximo passo:
-			// navigation.navigate("MachineDetailScreen", { machineId: machine.id });
+			navigation.navigate("MachineDetailScreen", {
+				machineId: machine.id,
+			});
 		},
 		[navigation]
 	);
 
 	const handleBack = useCallback(() => {
+		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
 		if (navigation?.canGoBack?.()) {
 			navigation.goBack();
 			return;
@@ -917,6 +1109,7 @@ const MachineryScreen = ({ navigation }) => {
 	}, []);
 
 	const handleExportMachines = useCallback(async () => {
+		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
 		if (isExporting) return;
 
 		setIsExporting(true);
@@ -997,13 +1190,14 @@ const MachineryScreen = ({ navigation }) => {
 	}, [authUser, filters]);
 
 	return (
-		<View style={styles.root}>
+		<SafeAreaView style={styles.root} edges={["top"]}>
+			<StatusBar barStyle="dark-content" backgroundColor="#D6E3F3" />
 			<ScrollView
 				ref={scrollViewRef}
 				showsVerticalScrollIndicator={false}
 				contentContainerStyle={styles.scrollContent}
 				keyboardShouldPersistTaps="handled"
-				stickyHeaderIndices={[3]}
+				stickyHeaderIndices={[4]}
 				onScroll={handleScroll}
 				scrollEventThrottle={16}
 				refreshControl={
@@ -1047,6 +1241,13 @@ const MachineryScreen = ({ navigation }) => {
 					</View>
 				</View>
 
+				<View>
+					<PendingSyncSummaryCard
+						summary={pendingSummary}
+						onPress={handleSyncPendingReadings}
+					/>
+				</View>
+
 				<View style={styles.summaryBlock}>
 					<View style={styles.summaryRow}>
 						<SummaryCard
@@ -1054,7 +1255,11 @@ const MachineryScreen = ({ navigation }) => {
 							value={summary.total}
 							type="all"
 							selected={!selectedStatus}
-							onPress={() => handleSelectStatus(null)}
+							onPress={() => {
+								Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+								handleSelectStatus(null)
+							}
+							}
 						/>
 
 						<SummaryCard
@@ -1062,7 +1267,11 @@ const MachineryScreen = ({ navigation }) => {
 							value={summary.operation}
 							type="operation"
 							selected={selectedStatus === "operation"}
-							onPress={() => handleSelectStatus("operation")}
+							onPress={() => {
+								Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+								handleSelectStatus("operation")
+							}
+							}
 						/>
 
 						<SummaryCard
@@ -1070,7 +1279,12 @@ const MachineryScreen = ({ navigation }) => {
 							value={summary.revision}
 							type="revision"
 							selected={selectedStatus === "revision"}
-							onPress={() => handleSelectStatus("revision")}
+							onPress={() => {
+								Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+								handleSelectStatus("revision")
+							}
+
+							}
 						/>
 
 						<SummaryCard
@@ -1078,7 +1292,11 @@ const MachineryScreen = ({ navigation }) => {
 							value={summary.maintenance}
 							type="maintenance"
 							selected={selectedStatus === "maintenance"}
-							onPress={() => handleSelectStatus("maintenance")}
+							onPress={() => {
+								Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+								handleSelectStatus("maintenance")
+							}
+							}
 						/>
 					</View>
 				</View>
@@ -1117,7 +1335,14 @@ const MachineryScreen = ({ navigation }) => {
 						<MachineCard
 							key={`${machine?.id || machine?.identifier || "machine"}-${index}`}
 							machine={machine}
-							onPress={() => handleOpenMachine(machine)}
+							pendingReadings={getMachinePendingReadings(
+								pendingHourmeterReadings,
+								machine?.id
+							)}
+							onPress={() => {
+								Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+								handleOpenMachine(machine);
+							}}
 						/>
 					))
 				)}
@@ -1133,7 +1358,7 @@ const MachineryScreen = ({ navigation }) => {
 					<Ionicons name="chevron-up" size={22} color="#FFFFFF" />
 				</Pressable>
 			) : null}
-		</View>
+		</SafeAreaView>
 	);
 };
 
@@ -2016,6 +2241,139 @@ const styles = StyleSheet.create({
 		shadowRadius: 14,
 		shadowOffset: { width: 0, height: 8 },
 		elevation: 5,
+	},
+	pendingSyncCard: {
+		marginBottom: 10,
+		backgroundColor: "rgba(255,247,237,0.98)",
+		borderRadius: 20,
+		padding: 12,
+		borderWidth: 1,
+		borderColor: "rgba(148,98,0,0.18)",
+		flexDirection: "row",
+		alignItems: "center",
+		gap: 10,
+		shadowColor: "#000",
+		shadowOpacity: 0.04,
+		shadowRadius: 10,
+		shadowOffset: { width: 0, height: 5 },
+		elevation: 1,
+	},
+
+	pendingSyncCardFailed: {
+		backgroundColor: "rgba(255,245,245,0.98)",
+		borderColor: "rgba(180,35,24,0.18)",
+	},
+
+	pendingSyncIconBox: {
+		width: 40,
+		height: 40,
+		borderRadius: 15,
+		backgroundColor: "rgba(148,98,0,0.12)",
+		alignItems: "center",
+		justifyContent: "center",
+	},
+
+	pendingSyncIconBoxFailed: {
+		backgroundColor: "rgba(180,35,24,0.10)",
+	},
+
+	pendingSyncTextBox: {
+		flex: 1,
+		minWidth: 0,
+	},
+
+	pendingSyncTitle: {
+		color: "#946200",
+		fontSize: 12.5,
+		fontWeight: "900",
+	},
+
+	pendingSyncTitleFailed: {
+		color: "#B42318",
+	},
+
+	pendingSyncDescription: {
+		marginTop: 2,
+		color: "rgba(15,23,42,0.52)",
+		fontSize: 10.5,
+		fontWeight: "700",
+		lineHeight: 15,
+	},
+
+	pendingSyncButton: {
+		borderRadius: 999,
+		paddingHorizontal: 11,
+		paddingVertical: 8,
+		backgroundColor: "rgba(148,98,0,0.12)",
+		borderWidth: 1,
+		borderColor: "rgba(148,98,0,0.12)",
+	},
+
+	pendingSyncButtonFailed: {
+		backgroundColor: "rgba(180,35,24,0.10)",
+		borderColor: "rgba(180,35,24,0.12)",
+	},
+
+	pendingSyncButtonText: {
+		color: "#946200",
+		fontSize: 10.5,
+		fontWeight: "900",
+	},
+
+	pendingSyncButtonTextFailed: {
+		color: "#B42318",
+	},
+
+	machinePendingBox: {
+		marginBottom: 10,
+		borderRadius: 15,
+		padding: 9,
+		backgroundColor: "rgba(255,247,237,0.96)",
+		borderWidth: 1,
+		borderColor: "rgba(148,98,0,0.16)",
+		flexDirection: "row",
+		alignItems: "center",
+		gap: 8,
+	},
+
+	machinePendingBoxFailed: {
+		backgroundColor: "rgba(255,245,245,0.96)",
+		borderColor: "rgba(180,35,24,0.16)",
+	},
+
+	machinePendingIconBox: {
+		width: 28,
+		height: 28,
+		borderRadius: 11,
+		backgroundColor: "rgba(148,98,0,0.12)",
+		alignItems: "center",
+		justifyContent: "center",
+	},
+
+	machinePendingIconBoxFailed: {
+		backgroundColor: "rgba(180,35,24,0.10)",
+	},
+
+	machinePendingTextBox: {
+		flex: 1,
+		minWidth: 0,
+	},
+
+	machinePendingTitle: {
+		color: "#946200",
+		fontSize: 10.5,
+		fontWeight: "900",
+	},
+
+	machinePendingTitleFailed: {
+		color: "#B42318",
+	},
+
+	machinePendingDescription: {
+		marginTop: 1,
+		color: "rgba(15,23,42,0.50)",
+		fontSize: 10,
+		fontWeight: "800",
 	},
 });
 

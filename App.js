@@ -1,8 +1,7 @@
 import "react-native-gesture-handler";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { NavigationContainer } from "@react-navigation/native";
-import { createNativeStackNavigator } from "@react-navigation/native-stack";
-import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
+
 
 import { StatusBar } from "expo-status-bar";
 import { StyleSheet } from "react-native";
@@ -24,9 +23,6 @@ import AppSplash from "./components/Splash/AppSplash";
 import { fetchNavigationMapData, geralActions } from "./store/redux/geral";
 
 import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
-
-const Stack = createNativeStackNavigator();
-const Tab = createBottomTabNavigator();
 
 const Navigation = () => {
 	const isAuthenticated = useSelector((state) => state.auth.isAuthenticated);

@@ -16,6 +16,8 @@ import {
 	Pressable,
 	ScrollView,
 	Alert,
+	StatusBar,
+	Platform
 	// SafeAreaView
 } from "react-native";
 import Button from "../components/ui/Button";
@@ -35,7 +37,7 @@ import BottomSheetList from "../components/ProgramasScreen/BottomSheetList";
 import { LINK } from "../utils/api";
 
 import ProgramList from "../components/ProgramasScreen/ProgramList";
-import { useScrollToTop } from "@react-navigation/native";
+import { useFocusEffect, useScrollToTop } from "@react-navigation/native";
 
 import PrintProgramPage from "../components/Global/PrintProgramPage";
 
@@ -74,6 +76,16 @@ const ProgramScreen = ({ navigation }) => {
 
 	const [printableData, setPrintableData] = useState(null);
 	const [isPrinting, setIsPrinting] = useState(false);
+
+	useFocusEffect(
+		useCallback(() => {
+			StatusBar.setBarStyle("light-content");
+
+			if (Platform.OS === "android") {
+				StatusBar.setBackgroundColor(Colors.primary[901]);
+			}
+		}, [])
+	);
 
 
 	const handleOpenDrawer = () => {

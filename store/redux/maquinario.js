@@ -93,6 +93,7 @@ const initialState = {
 	status: "idle",
 	error: null,
 	lastFetch: null,
+	pendingHourmeterReadings: [],
 };
 
 const maquinarioSlice = createSlice({
@@ -158,6 +159,59 @@ const maquinarioSlice = createSlice({
 		},
 
 		resetMachinesState: () => initialState,
+
+		addPendingHourmeterReading: (state, action) => {
+			const payload = action.payload;
+
+			if (!payload?.localId) return;
+
+			const exists = state.pendingHourmeterReadings.some(
+				(item) => item.localId === payload.localId
+			);
+
+			if (exists) return;
+
+			state.pendingHourmeterReadings.push(payload);
+		},
+
+		removePendingHourmeterReading: (state, action) => {
+			const localId = action.payload;
+
+			state.pendingHourmeterReadings = state.pendingHourmeterReadings.filter(
+				(item) => item.localId !== localId
+			);
+		},
+
+		markPendingHourmeterReadingError: (state, action) => {
+			const { localId, error } = action.payload || {};
+
+			const item = state.pendingHourmeterReadings.find(
+				(reading) => reading.localId === localId
+			);
+
+			if (!item) return;
+
+			item.status = "pending";
+			item.error = error || "Erro ao sincronizar leitura.";
+			item.lastAttemptAt = new Date().toISOString();
+		},
+
+		replaceMachineFromApi: (state, action) => {
+			const machine = action.payload;
+
+			if (!machine?.id) return;
+
+			const index = state.machines.findIndex(
+				(item) => String(item.id) === String(machine.id)
+			);
+
+			if (index === -1) {
+				state.machines.push(machine);
+				return;
+			}
+
+			state.machines[index] = machine;
+		},
 	},
 
 	extraReducers: (builder) => {

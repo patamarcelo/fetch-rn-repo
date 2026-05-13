@@ -7,7 +7,20 @@ import { LINK } from '../../utils/api';
 export const login = createAsyncThunk('auth/login', async ({ email, password }, thunkAPI) => {
     try {
         const userCredential = await signInWithEmailAndPassword(auth, email, password);
-        return userCredential.user;
+        const firebaseUser = userCredential.user;
+
+        // força pegar o token atualizado com custom claims
+        const idTokenResult = await firebaseUser.getIdTokenResult(true);
+
+        return {
+            uid: firebaseUser.uid,
+            email: firebaseUser.email,
+            displayName: firebaseUser.displayName,
+            photoURL: firebaseUser.photoURL,
+            emailVerified: firebaseUser.emailVerified,
+            customClaims: idTokenResult.claims,
+            token: idTokenResult.token,
+        };
     } catch (error) {
         return thunkAPI.rejectWithValue(error.message);
     }
@@ -65,6 +78,31 @@ export const exportPdf = createAsyncThunk(
         }
     }
 );
+
+export const hydrateFirebaseUser = createAsyncThunk(
+    'auth/hydrateFirebaseUser',
+    async (firebaseUser, thunkAPI) => {
+        try {
+            if (!firebaseUser) return null;
+
+            const idTokenResult = await firebaseUser.getIdTokenResult(true);
+
+            return {
+                uid: firebaseUser.uid,
+                email: firebaseUser.email,
+                displayName: firebaseUser.displayName,
+                photoURL: firebaseUser.photoURL,
+                emailVerified: firebaseUser.emailVerified,
+                customClaims: idTokenResult.claims,
+                token: idTokenResult.token,
+            };
+        } catch (error) {
+            return thunkAPI.rejectWithValue(error.message);
+        }
+    }
+);
+
+
 const authSlice = createSlice({
     name: 'auth',
     initialState: {
@@ -137,6 +175,15 @@ const authSlice = createSlice({
                 s.status = 'succeeded';
                 s.dataPlotMap = a.payload;        // ← guarda tudo
             })
+            .addCase(hydrateFirebaseUser.fulfilled, (state, action) => {
+                state.user = action.payload;
+                state.isAuthenticated = !!action.payload;
+                state.loading = false;
+            })
+            .addCase(hydrateFirebaseUser.rejected, (state, action) => {
+                state.loading = false;
+                state.error = action.payload;
+            })
             .addCase(exportPdf.rejected, (s, a) => {
                 s.status = 'failed';
                 s.error = a.payload;
@@ -147,5 +194,5 @@ const authSlice = createSlice({
 export const selectExportStatus = (state) => state.auth.status;      // se ainda estiver no authSlice
 export const selectExportError = (state) => state.auth.error;
 
-export const { setUser, clearRecoveryMessage, clearError , resetExportState} = authSlice.actions;
+export const { setUser, clearRecoveryMessage, clearError, resetExportState } = authSlice.actions;
 export default authSlice.reducer;
