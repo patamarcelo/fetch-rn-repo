@@ -65,7 +65,7 @@ export const Colors = {
 	error500: "#f37c13",
 	bgBlue: "#D6E3F3",
 
-	drawerBg: "rgba(7, 29, 58, 0.72)",
+	drawerBg: "rgba(7, 29, 58, 0.82)",
 	drawerSurface: "rgba(255,255,255,0.08)",
 	drawerSurfaceActive: "rgba(255,255,255,0.13)",
 	danger: "#B42318"

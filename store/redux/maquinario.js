@@ -114,7 +114,7 @@ const maquinarioSlice = createSlice({
 	initialState,
 	reducers: {
 		setMachineSearch: (state, action) => {
-			state.filters.search = action.payload || "";
+			state.filters.search = String(action.payload || "").trimStart();
 		},
 
 		setMachineFarmFilter: (state, action) => {
@@ -204,7 +204,7 @@ const maquinarioSlice = createSlice({
 
 			if (!item) return;
 
-			item.status = "pending";
+			item.status = "failed";
 			item.error = error || "Erro ao sincronizar leitura.";
 			item.lastAttemptAt = new Date().toISOString();
 		},
@@ -360,5 +360,126 @@ const maquinarioSlice = createSlice({
 });
 
 export const maquinarioActions = maquinarioSlice.actions;
+
+export const syncPendingHourmeterReadings = createAsyncThunk(
+	"maquinario/syncPendingHourmeterReadings",
+	async (_, thunkAPI) => {
+		const state = thunkAPI.getState();
+
+		const pendingReadings = state?.maquinario?.pendingHourmeterReadings || [];
+		const authUser = state?.auth?.user || null;
+
+		const customClaims =
+			authUser?.customClaims ||
+			authUser?.claims ||
+			authUser?.stsTokenManager?.claims ||
+			null;
+
+		const readingsToSync = pendingReadings.filter(
+			(item) => item?.status === "pending" || item?.status === "failed"
+		);
+
+		const results = {
+			total: readingsToSync.length,
+			success: 0,
+			failed: 0,
+			items: [],
+		};
+
+		for (const reading of readingsToSync) {
+			try {
+				if (!reading?.localId || !reading?.machineId) {
+					throw new Error("Leitura pendente inválida.");
+				}
+
+				const payload = {
+					value: reading.value,
+					measured_at: reading.measuredAt || new Date().toISOString(),
+					source: reading.source || "app_offline",
+					notes: reading.notes || "",
+					user: authUser
+						? {
+							uid: authUser.uid || null,
+							email: authUser.email || null,
+							displayName: authUser.displayName || null,
+							customClaims,
+						}
+						: null,
+				};
+
+				const response = await fetch(
+					`${LINKMachine}/maquinario/machines/${reading.machineId}/update_hourmeter/`,
+					{
+						method: "POST",
+						body: JSON.stringify(payload),
+						headers: {
+							"Content-Type": "application/json",
+							Authorization: `Token ${process.env.EXPO_PUBLIC_REACT_APP_DJANGO_TOKEN}`,
+						},
+					}
+				);
+
+				let data = null;
+
+				try {
+					data = await response.json();
+				} catch {
+					data = null;
+				}
+
+				if (!response.ok) {
+					const errorMessage =
+						data?.error ||
+						data?.detail ||
+						"Não foi possível sincronizar a leitura.";
+
+					const error = new Error(errorMessage);
+					error.status = response.status;
+					throw error;
+				}
+
+				thunkAPI.dispatch(
+					maquinarioActions.removePendingHourmeterReading(reading.localId)
+				);
+
+				if (data?.machine) {
+					thunkAPI.dispatch(
+						maquinarioActions.replaceMachineFromApi(data.machine)
+					);
+				}
+
+				results.success += 1;
+
+				results.items.push({
+					localId: reading.localId,
+					machineId: reading.machineId,
+					ok: true,
+				});
+			} catch (error) {
+				const errorMessage =
+					error?.message || "Erro ao sincronizar leitura.";
+
+				thunkAPI.dispatch(
+					maquinarioActions.markPendingHourmeterReadingError({
+						localId: reading.localId,
+						error: errorMessage,
+					})
+				);
+
+				results.failed += 1;
+
+				results.items.push({
+					localId: reading.localId,
+					machineId: reading.machineId,
+					ok: false,
+					error: errorMessage,
+				});
+			}
+		}
+
+		return results;
+	}
+);
+
 
 export default maquinarioSlice.reducer;

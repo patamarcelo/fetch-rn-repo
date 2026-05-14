@@ -19,7 +19,13 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import FontAwesome5 from "@expo/vector-icons/FontAwesome5";
 import { Colors } from "../constants/styles";
 
-import { fetchMachines, maquinarioActions } from "../store/redux/maquinario";
+import {
+	fetchMachines,
+	maquinarioActions,
+	syncPendingHourmeterReadings,
+} from "../store/redux/maquinario";
+
+
 import {
 	selectMachines,
 	selectMachinesError,
@@ -43,8 +49,8 @@ import {
 } from "../store/redux/maquinarioFilterHelpers";
 
 
+import * as Clipboard from "expo-clipboard";
 
-const FAZENDA_BENCAO_DE_DEUS_ID = 4;
 
 const STATUS_CONFIG = {
 	operation: {
@@ -211,6 +217,28 @@ const getMachineSearchText = (machine) => {
 };
 
 
+const buildHourmeterWhatsappTemplate = (machines = []) => {
+	if (!Array.isArray(machines) || machines.length === 0) {
+		return "";
+	}
+
+	const lines = machines
+		.map((machine) => {
+			const code = String(
+				machine?.identifier ||
+				machine?.description ||
+				"Máquina sem código"
+			).trim();
+
+			return `${code} - `;
+		})
+		.filter(Boolean)
+		.join("\n");
+
+	return `HORIMETRO\n\n${lines}`;
+};
+
+
 const blobToBase64 = (blob) => {
 	return new Promise((resolve, reject) => {
 		const reader = new FileReader();
@@ -344,7 +372,14 @@ const getProgressPercent = (machine) => {
 	return Math.max(0, Math.min(Math.round(progress), 100));
 };
 
-const TopBar = ({ onBack, onExport, isExportDisabled, isExporting }) => {
+const TopBar = ({
+	onBack,
+	onExport,
+	onCopyHourmeterTemplate,
+	isExportDisabled,
+	isExporting,
+	isCopyDisabled,
+}) => {
 	return (
 		<View style={styles.topBar}>
 			<Pressable
@@ -363,34 +398,60 @@ const TopBar = ({ onBack, onExport, isExportDisabled, isExporting }) => {
 				<Text style={styles.topSubtitle}>Gerenciamento das Máquinas</Text>
 			</View>
 
-			<Pressable
-				onPress={onExport}
-				disabled={isExportDisabled || isExporting}
-				style={({ pressed }) => [
-					styles.exportButton,
-					isExportDisabled && styles.exportButtonDisabled,
-					pressed && !isExportDisabled && styles.pressed,
-				]}
-			>
-				{isExporting ? (
-					<ActivityIndicator size="small" color={Colors.primary[800]} />
-				) : (
-					<Ionicons
-						name="download-outline"
-						size={17}
-						color={isExportDisabled ? "rgba(15,23,42,0.35)" : Colors.primary[800]}
-					/>
-				)}
-
-				<Text
-					style={[
-						styles.exportButtonText,
-						isExportDisabled && styles.exportButtonTextDisabled,
+			<View style={styles.topActions}>
+				<Pressable
+					onPress={onExport}
+					disabled={isExportDisabled || isExporting}
+					style={({ pressed }) => [
+						styles.exportButton,
+						isExportDisabled && styles.exportButtonDisabled,
+						pressed && !isExportDisabled && styles.pressed,
 					]}
 				>
-					{isExporting ? "Gerando" : "Excel"}
-				</Text>
-			</Pressable>
+					{isExporting ? (
+						<ActivityIndicator size="small" color={Colors.primary[800]} />
+					) : (
+						<Ionicons
+							name="download-outline"
+							size={17}
+							color={isExportDisabled ? "rgba(15,23,42,0.35)" : Colors.primary[800]}
+						/>
+					)}
+
+					<Text
+						style={[
+							styles.exportButtonText,
+							isExportDisabled && styles.exportButtonTextDisabled,
+						]}
+					>
+						{isExporting ? "Gerando" : "Excel"}
+					</Text>
+				</Pressable>
+				<Pressable
+					onPress={onCopyHourmeterTemplate}
+					disabled={isCopyDisabled}
+					style={({ pressed }) => [
+						styles.whatsappTopButton,
+						isCopyDisabled && styles.exportButtonDisabled,
+						pressed && !isCopyDisabled && styles.pressed,
+					]}
+				>
+					<Ionicons
+						name="logo-whatsapp"
+						size={17}
+						color={isCopyDisabled ? "rgba(15,23,42,0.35)" : Colors.primary[800]}
+					/>
+
+					<Text
+						style={[
+							styles.exportButtonText,
+							isCopyDisabled && styles.exportButtonTextDisabled,
+						]}
+					>
+						Zap
+					</Text>
+				</Pressable>
+			</View>
 		</View>
 	);
 };
@@ -590,7 +651,7 @@ const MaintenanceMiniSummary = ({ machine }) => {
 };
 
 
-const PendingSyncSummaryCard = ({ summary, onPress }) => {
+const PendingSyncSummaryCard = ({ summary, onPress, isSyncing }) => {
 	if (!summary?.total) return null;
 
 	const hasFailed = summary.failedTotal > 0;
@@ -634,24 +695,34 @@ const PendingSyncSummaryCard = ({ summary, onPress }) => {
 
 			<Pressable
 				onPress={onPress}
+				disabled={isSyncing}
 				style={({ pressed }) => [
 					styles.pendingSyncButton,
 					hasFailed && styles.pendingSyncButtonFailed,
-					pressed && styles.pressed,
+					isSyncing && styles.pendingSyncButtonDisabled,
+					pressed && !isSyncing && styles.pressed,
 				]}
 			>
-				<Text
-					style={[
-						styles.pendingSyncButtonText,
-						hasFailed && styles.pendingSyncButtonTextFailed,
-					]}
-				>
-					Sincronizar
-				</Text>
+				{isSyncing ? (
+					<ActivityIndicator
+						size="small"
+						color={hasFailed ? "#B42318" : "#946200"}
+					/>
+				) : (
+					<Text
+						style={[
+							styles.pendingSyncButtonText,
+							hasFailed && styles.pendingSyncButtonTextFailed,
+						]}
+					>
+						Sincronizar
+					</Text>
+				)}
 			</Pressable>
 		</View>
 	);
 };
+
 
 const MachineCard = ({ machine, pendingReadings = [], onPress }) => {
 	const statusConfig = getStatusConfig(machine.status);
@@ -931,6 +1002,7 @@ const MachineryScreen = ({ navigation }) => {
 	const scrollViewRef = useRef(null);
 	const [showScrollTop, setShowScrollTop] = useState(false);
 	const [isExporting, setIsExporting] = useState(false);
+	const [isSyncingPending, setIsSyncingPending] = useState(false);
 
 	const allMachines = useSelector(selectMachines);
 	const status = useSelector(selectMachinesStatus);
@@ -1011,22 +1083,65 @@ const MachineryScreen = ({ navigation }) => {
 	}, [navigation]);
 
 
-	const handleSyncPendingReadings = useCallback(() => {
+	const handleSyncPendingReadings = useCallback(async () => {
 		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
 
-		Alert.alert(
-			"Sincronizar leituras",
-			"Próximo passo: enviar as leituras pendentes para a API e atualizar os cards das máquinas."
-		);
+		if (!pendingSummary?.total) {
+			Alert.alert(
+				"Nenhuma pendência",
+				"Não existem leituras pendentes para sincronizar."
+			);
+			return;
+		}
 
-		// Depois:
-		// dispatch(syncPendingHourmeterReadings());
-	}, []);
+		if (isSyncingPending) return;
+
+		try {
+			setIsSyncingPending(true);
+
+			const result = await dispatch(syncPendingHourmeterReadings()).unwrap();
+
+			if (!result?.total) {
+				Alert.alert(
+					"Nenhuma pendência",
+					"Não existem leituras pendentes para sincronizar."
+				);
+				return;
+			}
+
+			if (result.failed > 0 && result.success > 0) {
+				Alert.alert(
+					"Sincronização parcial",
+					`${result.success} leitura${result.success === 1 ? "" : "s"} sincronizada${result.success === 1 ? "" : "s"}.\n${result.failed} leitura${result.failed === 1 ? "" : "s"} continua${result.failed === 1 ? "" : "m"} pendente${result.failed === 1 ? "" : "s"}.`
+				);
+				return;
+			}
+
+			if (result.failed > 0) {
+				Alert.alert(
+					"Não foi possível sincronizar",
+					`${result.failed} leitura${result.failed === 1 ? "" : "s"} continua${result.failed === 1 ? "" : "m"} pendente${result.failed === 1 ? "" : "s"}. Verifique a conexão ou os valores informados.`
+				);
+				return;
+			}
+
+			Alert.alert(
+				"Sincronização concluída",
+				`${result.success} leitura${result.success === 1 ? "" : "s"} sincronizada${result.success === 1 ? "" : "s"} com sucesso.`
+			);
+		} catch (error) {
+			Alert.alert(
+				"Erro ao sincronizar",
+				error?.message || "Não foi possível sincronizar as leituras pendentes."
+			);
+		} finally {
+			setIsSyncingPending(false);
+		}
+	}, [dispatch, pendingSummary, isSyncingPending]);
+
 
 	const loadMachines = useCallback(() => {
-		dispatch(
-			fetchMachines()
-		);
+		dispatch(fetchMachines());
 	}, [dispatch]);
 
 
@@ -1036,13 +1151,25 @@ const MachineryScreen = ({ navigation }) => {
 
 	const handleSearchChange = useCallback(
 		(value) => {
-			dispatch(maquinarioActions.setMachineSearch(value));
+			const nextValue = value || "";
+
+			dispatch(maquinarioActions.setMachineSearch(nextValue));
+			dispatch(
+				maquinarioActions.setMachineFilters({
+					search: nextValue,
+				})
+			);
 		},
 		[dispatch]
 	);
 
 	const handleClearSearch = useCallback(() => {
 		dispatch(maquinarioActions.setMachineSearch(""));
+		dispatch(
+			maquinarioActions.setMachineFilters({
+				search: "",
+			})
+		);
 	}, [dispatch]);
 
 	const handleSelectStatus = useCallback(
@@ -1091,6 +1218,56 @@ const MachineryScreen = ({ navigation }) => {
 			animated: true,
 		});
 	}, []);
+
+
+	const handleCopyHourmeterTemplate = useCallback(async () => {
+		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+
+		if (!machines.length) {
+			Alert.alert(
+				"Nenhuma máquina",
+				"Não existem máquinas na lista atual para gerar o modelo."
+			);
+			return;
+		}
+
+		const text = buildHourmeterWhatsappTemplate(machines);
+
+		if (machines.length > 40) {
+			Alert.alert(
+				"Lista grande",
+				`Você está copiando ${machines.length} máquinas. Deseja continuar?`,
+				[
+					{
+						text: "Cancelar",
+						style: "cancel",
+					},
+					{
+						text: "Copiar",
+						onPress: async () => {
+							await Clipboard.setStringAsync(text);
+
+							Alert.alert(
+								"Modelo copiado",
+								`Copiamos ${machines.length} máquina${machines.length === 1 ? "" : "s"} no padrão para colar no WhatsApp.`
+							);
+						},
+					},
+				]
+			);
+
+			return;
+		}
+
+		await Clipboard.setStringAsync(text);
+
+		Alert.alert(
+			"Modelo copiado",
+			`Copiamos ${machines.length} máquina${machines.length === 1 ? "" : "s"} no padrão para colar no WhatsApp.`
+		);
+	}, [machines]);
+
+
 
 	const handleExportMachines = useCallback(async () => {
 		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
@@ -1198,8 +1375,10 @@ const MachineryScreen = ({ navigation }) => {
 				<TopBar
 					onBack={handleBack}
 					onExport={handleExportMachines}
+					onCopyHourmeterTemplate={handleCopyHourmeterTemplate}
 					isExportDisabled={machines.length === 0}
 					isExporting={isExporting}
+					isCopyDisabled={machines.length === 0}
 				/>
 
 				<View style={styles.headerCard}>
@@ -1229,6 +1408,7 @@ const MachineryScreen = ({ navigation }) => {
 					<PendingSyncSummaryCard
 						summary={pendingSummary}
 						onPress={handleSyncPendingReadings}
+						isSyncing={isSyncingPending}
 					/>
 				</View>
 
@@ -2461,6 +2641,32 @@ const styles = StyleSheet.create({
 		color: Colors.primary[800],
 		fontSize: 10.5,
 		fontWeight: "900",
+	},
+	topActions: {
+		flexDirection: "row",
+		alignItems: "center",
+		gap: 7,
+	},
+
+	whatsappTopButton: {
+		height: 42,
+		paddingHorizontal: 12,
+		borderRadius: 16,
+		backgroundColor: "rgba(255,255,255,0.92)",
+		borderWidth: 1,
+		borderColor: "rgba(22,101,52,0.20)",
+		flexDirection: "row",
+		alignItems: "center",
+		justifyContent: "center",
+		gap: 6,
+		shadowColor: "#000",
+		shadowOpacity: 0.04,
+		shadowRadius: 10,
+		shadowOffset: { width: 0, height: 5 },
+		elevation: 1,
+	},
+	pendingSyncButtonDisabled: {
+		opacity: 0.65,
 	},
 });
 
