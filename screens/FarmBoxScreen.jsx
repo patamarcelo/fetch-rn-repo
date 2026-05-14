@@ -138,7 +138,8 @@ const FarmBoxScreen = (props) => {
     useLayoutEffect(() => {
         const unsubscribeFocus = navigation.addListener("focus", () => {
             const currentStack = navigation.getState();
-            const stackName = currentStack.routes[0]['name']
+            const currentRoute = currentStack.routes[currentStack.index];
+            const stackName = currentRoute?.name;
 
             stackNavigator.setOptions({
                 title: stackName === 'FarmBoxStack' ? 'FarmBox' : selectedFarm?.replace('Fazenda ', ''),
@@ -158,7 +159,11 @@ const FarmBoxScreen = (props) => {
                         <HeaderBackButton
                             {...props}
                             onPress={() => {
-                                navigation.navigate('FarmBoxStack');
+                                if (navigation.canGoBack()) {
+                                    navigation.goBack();
+                                } else {
+                                    navigation.popToTop();
+                                } navigation.navigate('FarmBoxStack');
                             }}
                         />
                     )

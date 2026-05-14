@@ -573,10 +573,13 @@ const CardFarmBox = ({ route, navigation }) => {
 
     useLayoutEffect(() => {
         const currentStack = navigation.getState();
-        const stackName = currentStack.routes[0]["name"];
+        const currentRoute = currentStack.routes[currentStack.index];
+        const stackName = currentRoute?.name;
 
-        stackNavigator.setOptions({
-            title: stackName !== "FarmBoxStack" ? "FarmBox" : farm?.replace("Fazenda ", ""),
+        const isRoot = stackName === "FarmBoxStack";
+
+        stackNavigator?.setOptions({
+            title: isRoot ? "FarmBox" : farm?.replace("Fazenda ", ""),
             headerShadowVisible: false,
             headerRight: ({ tintColor }) => (
                 <View style={{ flexDirection: "row", alignItems: "center", paddingRight: 20 }}>
@@ -590,21 +593,25 @@ const CardFarmBox = ({ route, navigation }) => {
                     />
                 </View>
             ),
-            headerLeft:
-                stackName === "FarmBoxStack"
-                    ? (props) => (
-                        <HeaderBackButton
-                            {...props}
-                            label="Voltar"
-                            onPress={() => {
-                                navigation.navigate("FarmBoxStack");
-                            }}
-                        />
-                    )
-                    : null,
+            headerLeft: isRoot
+                ? null
+                : (props) => (
+                    <HeaderBackButton
+                        {...props}
+                        label="Voltar"
+                        onPress={() => {
+                            if (navigation.canGoBack()) {
+                                navigation.goBack();
+                                return;
+                            }
+
+                            navigation.popToTop();
+                        }}
+                    />
+                ),
         });
     }, [navigation, stackNavigator, farm, viewMode, farmData]);
-
+    
     const handleShareCard = async (cardData) => {
         try {
             await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);

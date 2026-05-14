@@ -134,6 +134,24 @@ const MapScreen = ({ navigation, route }) => {
 		return dataParcela?.fillColorParce || "white";
 	};
 
+
+
+	const handleBack = () => {
+		const parentNavigation = navigation.getParent("MainStack");
+
+		if (parentNavigation?.canGoBack()) {
+			parentNavigation.goBack();
+			return;
+		}
+
+		if (navigation.canGoBack()) {
+			navigation.goBack();
+			return;
+		}
+
+		parentNavigation?.navigate("HomeStackScreen");
+	};
+
 	// Região inicial baseada nas coords da fazenda
 	useEffect(() => {
 		if (mapPlotData.length > 0 && farmName && data?.ciclo != null) {
@@ -440,7 +458,7 @@ const MapScreen = ({ navigation, route }) => {
 					icon="arrow-back-outline"
 					color={"grey"}
 					size={22}
-					onPress={() => navigation.navigate("HomeStackScreen")}
+					onPress={handleBack}
 					btnStyles={styles.fabBtn}
 				/>
 			</View>
