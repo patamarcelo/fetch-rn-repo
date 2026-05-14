@@ -52,7 +52,7 @@ export const fetchMachines = createAsyncThunk(
 			const filters = state?.maquinario?.filters || DEFAULT_MACHINE_FILTERS;
 
 			const payload = {
-				fazenda_id: params.fazendaId || filters.fazendaId || 4,
+				fazenda_id: params.fazendaId ?? filters.fazendaId ?? null,
 				status: params.status || filters.status || [],
 				machine_type: params.machineType || filters.machineType || [],
 				manager_id: params.managerId || filters.managerId || null,

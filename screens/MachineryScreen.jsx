@@ -1025,11 +1025,10 @@ const MachineryScreen = ({ navigation }) => {
 
 	const loadMachines = useCallback(() => {
 		dispatch(
-			fetchMachines({
-				fazendaId: FAZENDA_BENCAO_DE_DEUS_ID,
-			})
+			fetchMachines()
 		);
 	}, [dispatch]);
+
 
 	useEffect(() => {
 		loadMachines();
@@ -1106,7 +1105,7 @@ const MachineryScreen = ({ navigation }) => {
 				null;
 
 			const payload = {
-				fazenda_id: filters?.fazendaId || FAZENDA_BENCAO_DE_DEUS_ID,
+				fazenda_id: filters?.fazendaId || null,
 				status: filters?.status || [],
 				machine_type: filters?.machineType || [],
 				search: filters?.search || "",
