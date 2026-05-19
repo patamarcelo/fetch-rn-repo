@@ -14,7 +14,7 @@ import MainStack from "./stacks/MainStack";
 import LoginStack from "./stacks/LoginStack";
 
 import { useSelector, useDispatch } from "react-redux";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { checkUserStatus } from "./store/firebase/logged-checked";
 import AppSplash from "./components/Splash/AppSplash";
@@ -25,16 +25,14 @@ import { fetchNavigationMapData, geralActions } from "./store/redux/geral";
 import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
 
 const Navigation = () => {
+	const [showStartupSplash, setShowStartupSplash] = useState(true);
+
 	const isAuthenticated = useSelector((state) => state.auth.isAuthenticated);
 	const user = useSelector((state) => state.auth.user);
-	const userClaims = user?.customClaims;
-	const firebaseToken = user?.token;
+
 	const navigationMapData = useSelector(
 		(state) => state.geral.navigationMapData
 	);
-
-
-
 
 	const navigationMapStatus = useSelector(
 		(state) => state.geral.navigationMapStatus
@@ -45,21 +43,22 @@ const Navigation = () => {
 	const didRequestNavigationDataRef = useRef(false);
 
 	useEffect(() => {
-		const initializeApp = async () => {
-			await checkUserStatus(dispatch, user);
-		};
+		const timer = setTimeout(() => {
+			setShowStartupSplash(false);
+		}, __DEV__ ? 1800 : 900);
 
-		initializeApp();
+		return () => clearTimeout(timer);
 	}, []);
 
+	useEffect(() => {
+		checkUserStatus(dispatch, user);
+	}, []);
 
 	useEffect(() => {
 		if (!isAuthenticated) return;
 
 		dispatch(geralActions.resetNavigationMapLoadingState());
 	}, [isAuthenticated, dispatch]);
-
-
 
 	useEffect(() => {
 		if (!isAuthenticated) return;
@@ -91,7 +90,6 @@ const Navigation = () => {
 			});
 	}, [isAuthenticated, user?.uid, user?.customClaims, user?.token, dispatch]);
 
-
 	useEffect(() => {
 		console.log("APP NAVIGATION DEBUG:", {
 			isAuthenticated,
@@ -100,13 +98,16 @@ const Navigation = () => {
 		});
 	}, [isAuthenticated, navigationMapStatus, navigationMapData?.length]);
 
+	if (showStartupSplash) {
+		return <AppSplash />;
+	}
+
 	return (
 		<NavigationContainer>
 			{!isAuthenticated ? <LoginStack /> : <MainStack />}
 		</NavigationContainer>
 	);
 };
-
 const Root = () => {
 	return <Navigation />;
 };
