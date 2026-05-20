@@ -58,7 +58,7 @@ const MapScreen = ({ navigation, route }) => {
 	const mapRef = useRef(null);
 	const refRBSheet = useRef();
 
-	const { data, selectedParcelas = [] } = route?.params || {};
+	const { data, selectedParcelas = [], apsCodes = [] } = route?.params || {};
 
 	const [location, setLocation] = useState(null);
 	const [errorMsg, setErrorMsg] = useState(null);
@@ -277,16 +277,76 @@ const MapScreen = ({ navigation, route }) => {
 	const normalizeTalhao = (value) =>
 		String(value || "").replace(/\s+/g, "").trim().toLowerCase();
 
+
+	const isConsolidatedMap =
+		data?.isConsolidated || (Array.isArray(apsCodes) && apsCodes.length > 1);
+
+	const getApNumber = (code) => {
+		const match = String(code || "").match(/\d+/);
+		return match ? Number(match[0]) : Number.MAX_SAFE_INTEGER;
+	};
+
+	const consolidatedAps = useMemo(() => {
+		if (!isConsolidatedMap) return [];
+
+		const apsFromData = Array.isArray(data?.aps) ? data.aps : [];
+
+		if (apsFromData.length > 0) {
+			return [...apsFromData]
+				.filter((ap) => ap?.code)
+				.sort((a, b) => getApNumber(a?.code) - getApNumber(b?.code))
+				.map((ap) => ({
+					code: String(ap?.code || "").replace(/([A-Za-z]+)(\d+)/, "$1 $2"),
+					operation: ap?.operation || "Sem Operação",
+				}));
+		}
+
+		return [...(apsCodes || [])]
+			.filter(Boolean)
+			.sort((a, b) => getApNumber(a) - getApNumber(b))
+			.map((code) => ({
+				code: String(code || "").replace(/([A-Za-z]+)(\d+)/, "$1 $2"),
+				operation: null,
+			}));
+	}, [data?.aps, apsCodes, isConsolidatedMap]);
+
+	const consolidatedOperations = useMemo(() => {
+		if (!isConsolidatedMap) {
+			return getOperationAp ? [getOperationAp] : [];
+		}
+
+		return Array.from(
+			new Set(
+				consolidatedAps
+					.map((ap) => ap.operation)
+					.filter(Boolean)
+			)
+		);
+	}, [consolidatedAps, getOperationAp, isConsolidatedMap]);
+
+	const mapTitle = isConsolidatedMap
+		? consolidatedAps.map((ap) => ap.code).join(" • ")
+		: String(data?.code || "").replace(/([A-Za-z]+)(\d+)/, "$1 $2");
+
+	const mapSubtitle = isConsolidatedMap
+		? consolidatedOperations.join(" • ")
+		: getOperationAp
+			? ` ${getOperationAp}`
+			: "";
+
 	if (!data) return <Text>Loading..</Text>;
 	if (filteredFarmArr.length === 0) return <Text>Loading..</Text>;
 	if (mapCoordsInit.latitude === null) return <Text>Loading..</Text>;
 
-	// Totais para Legend: se foco ligado e há seleção, usa totalsSelected; senão, usa data
 	const legendAplicado =
-		focusSelected && selectedParcelas.length > 0 ? totalsSelected.aplicado : (data?.areaAplicada || 0);
+		focusSelected && selectedParcelas.length > 0
+			? totalsSelected.aplicado
+			: data?.areaAplicada || 0;
 
 	const legendSolicitado =
-		focusSelected && selectedParcelas.length > 0 ? totalsSelected.total : (data?.areaSolicitada || 0);
+		focusSelected && selectedParcelas.length > 0
+			? totalsSelected.total
+			: data?.areaSolicitada || 0;
 
 	return (
 		<View style={styles.container}>
@@ -469,15 +529,32 @@ const MapScreen = ({ navigation, route }) => {
 			</View>
 
 			{/* Header card */}
-			<View style={styles.headerCard}>
+			<View style={[styles.headerCard, isConsolidatedMap && styles.headerCardConsolidated]}>
 				<View style={{ flexDirection: "column", alignItems: "center" }}>
-					<Text style={{ fontWeight: "bold" }}>
-						{String(data.code || "").replace(/([A-Za-z]+)(\d+)/, "$1 $2")}
+					<Text
+						style={[
+							styles.headerCardTitle,
+							isConsolidatedMap && { color: "white" },
+						]}
+						numberOfLines={1}
+					>
+						{mapTitle}
 					</Text>
-					<Text>{getOperationAp ? " " + getOperationAp : ""}</Text>
+
+					{!!mapSubtitle && (
+						<Text
+							style={[
+								styles.headerCardSubtitle,
+								isConsolidatedMap && { color: "rgba(255,255,255,0.84)" },
+							]}
+							numberOfLines={1}
+						>
+							{mapSubtitle}
+						</Text>
+					)}
+
 				</View>
 			</View>
-
 			<BottomSheetApp
 				refRBSheet={refRBSheet}
 				data={propsToBottom}
@@ -583,6 +660,70 @@ const styles = StyleSheet.create({
 		opacity: 0,
 		height: 0,
 		marginTop: 0,
+	},
+	headerCard: {
+		width: 290,
+		minHeight: 44,
+		backgroundColor: "rgba(255,255,255,0.50)",
+		position: "absolute",
+		top: "9.5%",
+		right: "5%",
+		zIndex: 10,
+		borderRadius: 12,
+		justifyContent: "center",
+		alignItems: "center",
+		paddingHorizontal: 10,
+		paddingVertical: 6,
+		borderWidth: 1,
+		borderColor: "rgba(255,255,255,0.38)",
+	},
+
+	headerCardConsolidated: {
+		backgroundColor: "rgba(30,144,255,0.24)",
+		borderWidth: 1,
+		borderColor: "rgba(255,255,255,0.36)",
+	},
+
+
+
+	headerCardTitle: {
+		fontWeight: "900",
+		color: Colors.primary[900],
+		fontSize: 13,
+	},
+
+	headerCardSubtitle: {
+		marginTop: 2,
+		fontSize: 10,
+		fontWeight: "800",
+		color: "rgba(0,0,0,0.62)",
+	},
+
+	headerCardConsolidatedTitle: {
+		color: "white",
+	},
+	mapOperationsWrap: {
+		marginTop: 5,
+		flexDirection: "row",
+		flexWrap: "wrap",
+		justifyContent: "center",
+		gap: 4,
+		maxWidth: 220,
+	},
+
+	mapOperationChip: {
+		paddingHorizontal: 7,
+		paddingVertical: 2,
+		borderRadius: 999,
+		backgroundColor: "rgba(255,255,255,0.18)",
+		borderWidth: 1,
+		borderColor: "rgba(255,255,255,0.28)",
+	},
+
+	mapOperationChipText: {
+		fontSize: 9,
+		fontWeight: "800",
+		color: "rgba(255,255,255,0.9)",
 	},
 });
 

@@ -79,11 +79,39 @@ export const checkUserStatus = async (dispatch, userFromRedux) => {
             }),
         });
 
-        console.log("response check-user:", response.status);
+        let payload = null;
 
-        if (response.status !== 200) {
-            console.log("Usuário inválido no backend. Fazendo logout.");
+        try {
+            payload = await response.json();
+        } catch (error) {
+            console.log("check-user retornou resposta sem JSON válido.", error);
+        }
+
+        console.log("response check-user:", response.status, payload);
+
+        const shouldLogout =
+            (response.status === 403 && payload?.code === "USER_DISABLED") ||
+            (response.status === 404 && payload?.code === "USER_NOT_FOUND");
+
+        if (shouldLogout) {
+            console.log("Usuário não existe ou está desativado. Fazendo logout.", {
+                status: response.status,
+                code: payload?.code,
+                message: payload?.message,
+            });
+
             dispatch(logout());
+            return;
+        }
+
+        if (!response.ok) {
+            console.log("Falha temporária ao verificar usuário. Mantendo sessão.", {
+                status: response.status,
+                code: payload?.code,
+                message: payload?.message,
+            });
+
+            return;
         }
     } catch (error) {
         console.log("Falha silenciosa ao verificar usuário. Tentará novamente em outra abertura.", error);
