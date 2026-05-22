@@ -19,6 +19,7 @@ import { Divider } from "@rneui/themed";
 import * as Progress from "react-native-progress";
 import * as Haptics from "expo-haptics";
 import FontAwesome5 from "@expo/vector-icons/FontAwesome5";
+import * as Clipboard from "expo-clipboard";
 
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { HeaderBackButton } from "@react-navigation/elements";
@@ -81,6 +82,7 @@ const CardFarmBox = ({ route, navigation }) => {
     const [selectedParcelasByCardKey, setSelectedParcelasByCardKey] = useState({});
     const [activeCardKey, setActiveCardKey] = useState(null);
     const [totalSelected, setTotalSelected] = useState(0);
+    const [expandedProductKeys, setExpandedProductKeys] = useState({});
 
     const [farmData, setfarmData] = useState([]);
     const [isLoading, setIsLoading] = useState(false);
@@ -113,6 +115,59 @@ const CardFarmBox = ({ route, navigation }) => {
             month: '2-digit',
             year: '2-digit',
         });
+    };
+
+    const normalizeOnlyNumbers = (value) => {
+        if (!value) return "";
+        return String(value).replace(/\D/g, "");
+    };
+
+    const formatFarmboxId = (value) => {
+        const onlyNumbers = normalizeOnlyNumbers(value);
+
+        if (!onlyNumbers) return "";
+
+        const sixDigits = onlyNumbers.padStart(6, "0").slice(-6);
+
+        return `${sixDigits.slice(0, 3)}.${sixDigits.slice(3)}`;
+    };
+
+    const getProductFarmboxId = (produto) => {
+        const possibleId =
+            produto?.idFarmbox ??
+            produto?.id_farmbox ??
+            produto?.farmboxId ??
+            produto?.farmbox_id ??
+            produto?.defensivo__id_farmbox ??
+            produto?.defensivo_id_farmbox;
+
+        if (possibleId === undefined || possibleId === null || possibleId === "") {
+            return "";
+        }
+
+        return String(possibleId);
+    };
+
+    const handleToggleProductId = (productKey) => {
+        Haptics.selectionAsync();
+
+        setExpandedProductKeys((prev) => ({
+            ...prev,
+            [productKey]: !prev[productKey],
+        }));
+    };
+
+    const handleCopyFarmboxId = async (farmboxId) => {
+        if (!farmboxId) return;
+
+        try {
+            await Clipboard.setStringAsync(farmboxId);
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            Alert.alert("ID FarmBox copiado", `Código ${farmboxId} copiado.`);
+        } catch (error) {
+            console.log("Erro ao copiar ID FarmBox:", error);
+            Alert.alert("Não foi possível copiar", "Tente novamente.");
+        }
     };
 
     const VIEW_MODE_STORAGE_KEY = "@farmbox_card_view_mode";
@@ -611,7 +666,7 @@ const CardFarmBox = ({ route, navigation }) => {
                 ),
         });
     }, [navigation, stackNavigator, farm, viewMode, farmData]);
-    
+
     const handleShareCard = async (cardData) => {
         try {
             await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
@@ -848,11 +903,24 @@ const CardFarmBox = ({ route, navigation }) => {
                 const filteredData = applications
                     .filter((farmName) => farmName.farmName === farm)
                     .filter((data) =>
-                        data.prods.some((prod) =>
-                            removeAccents(prod.product)
+                        data.prods.some((prod) => {
+                            const normalizedQuery = removeAccents(searchQuery)?.toLowerCase();
+                            const normalizedQueryNumbers = normalizeOnlyNumbers(searchQuery);
+
+                            const productMatches = removeAccents(prod.product)
                                 ?.toLowerCase()
-                                .includes(removeAccents(searchQuery)?.toLowerCase())
-                        )
+                                .includes(normalizedQuery);
+
+                            const farmboxId = formatFarmboxId(getProductFarmboxId(prod));
+                            const farmboxIdNumbers = normalizeOnlyNumbers(farmboxId);
+
+                            const farmboxMatches =
+                                farmboxId.toLowerCase().includes(normalizedQuery) ||
+                                (normalizedQueryNumbers &&
+                                    farmboxIdNumbers.includes(normalizedQueryNumbers));
+
+                            return productMatches || farmboxMatches;
+                        })
                     );
 
                 setfarmData(filteredData);
@@ -899,7 +967,7 @@ const CardFarmBox = ({ route, navigation }) => {
             <SafeAreaView style={{ flex: 1 }} edges={[""]}>
                 {showSearch && (
                     <SearchBar
-                        placeholder="Selecione um produto ou operação..."
+                        placeholder="Selecione um produto, operação ou ID FarmBox..."
                         value={searchQuery}
                         onChangeText={(e) => dispatch(setFarmboxSearchQuery(e))}
                     />
@@ -1329,69 +1397,90 @@ const CardFarmBox = ({ route, navigation }) => {
 
                                                                     return (
                                                                         <Animated.View
-                                                                            entering={FadeInRight.duration(
-                                                                                200 + prodIndex * 50
-                                                                            )}
+                                                                            entering={FadeInRight.duration(200 + prodIndex * 50)}
                                                                             exiting={FadeOutUp.duration(20)}
                                                                             layout={Layout.springify()}
                                                                             key={uniKey}
-                                                                            style={[
-                                                                                styles.prodsView,
-                                                                                {
-                                                                                    backgroundColor:
-                                                                                        produto.colorChip ===
-                                                                                            "rgb(255,255,255,0.1)"
-                                                                                            ? "whitesmoke"
-                                                                                            : produto.colorChip,
-                                                                                },
-                                                                            ]}
                                                                         >
-                                                                            <Text
-                                                                                style={[
-                                                                                    styles.textProds,
+                                                                            <Pressable
+                                                                                style={({ pressed }) => [
+                                                                                    styles.prodsView,
+                                                                                    pressed && styles.productPressed,
+                                                                                    expandedProductKeys[uniKey] && styles.prodsViewExpanded,
                                                                                     {
-                                                                                        color:
-                                                                                            produto.colorChip ===
-                                                                                                "rgb(255,255,255,0.1)"
-                                                                                                ? "#455d7a"
-                                                                                                : "whitesmoke",
+                                                                                        backgroundColor:
+                                                                                            produto.colorChip === "rgb(255,255,255,0.1)"
+                                                                                                ? "whitesmoke"
+                                                                                                : produto.colorChip,
                                                                                     },
                                                                                 ]}
+                                                                                onPress={() => handleToggleProductId(uniKey)}
                                                                             >
-                                                                                {formatNumberProds(
-                                                                                    produto.doseSolicitada
+                                                                                <View style={styles.productMainRow}>
+                                                                                    <Text
+                                                                                        style={[
+                                                                                            styles.textProds,
+                                                                                            {
+                                                                                                color:
+                                                                                                    produto.colorChip === "rgb(255,255,255,0.1)"
+                                                                                                        ? "#455d7a"
+                                                                                                        : "whitesmoke",
+                                                                                            },
+                                                                                        ]}
+                                                                                    >
+                                                                                        {formatNumberProds(produto.doseSolicitada)}
+                                                                                    </Text>
+
+                                                                                    <Text
+                                                                                        style={[
+                                                                                            styles.textProdsName,
+                                                                                            {
+                                                                                                color:
+                                                                                                    produto.colorChip === "rgb(255,255,255,0.1)"
+                                                                                                        ? "#455d7a"
+                                                                                                        : "whitesmoke",
+                                                                                            },
+                                                                                        ]}
+                                                                                        numberOfLines={1}
+                                                                                    >
+                                                                                        {produto.product}
+                                                                                    </Text>
+
+                                                                                    <Text
+                                                                                        style={[
+                                                                                            styles.totalprods,
+                                                                                            {
+                                                                                                color:
+                                                                                                    produto.colorChip === "rgb(255,255,255,0.1)"
+                                                                                                        ? "#455d7a"
+                                                                                                        : "whitesmoke",
+                                                                                            },
+                                                                                        ]}
+                                                                                    >
+                                                                                        {formatNumber(totalProduto)}
+                                                                                    </Text>
+                                                                                </View>
+
+                                                                                {expandedProductKeys[uniKey] && (
+                                                                                    <Pressable
+                                                                                        style={styles.farmboxIdInlinePill}
+                                                                                        onLongPress={() =>
+                                                                                            handleCopyFarmboxId(formatFarmboxId(getProductFarmboxId(produto)))
+                                                                                        }
+                                                                                        delayLongPress={260}
+                                                                                    >
+                                                                                        <Text style={styles.farmboxIdInlineLabel}>ID FarmBox</Text>
+
+                                                                                        <Text style={styles.farmboxIdInlineText}>
+                                                                                            {formatFarmboxId(getProductFarmboxId(produto)) || "não informado"}
+                                                                                        </Text>
+
+                                                                                        {!!formatFarmboxId(getProductFarmboxId(produto)) && (
+                                                                                            <Text style={styles.farmboxIdInlineHint}>segure para copiar</Text>
+                                                                                        )}
+                                                                                    </Pressable>
                                                                                 )}
-                                                                            </Text>
-
-                                                                            <Text
-                                                                                style={[
-                                                                                    styles.textProdsName,
-                                                                                    {
-                                                                                        color:
-                                                                                            produto.colorChip ===
-                                                                                                "rgb(255,255,255,0.1)"
-                                                                                                ? "#455d7a"
-                                                                                                : "whitesmoke",
-                                                                                    },
-                                                                                ]}
-                                                                            >
-                                                                                {produto.product}
-                                                                            </Text>
-
-                                                                            <Text
-                                                                                style={[
-                                                                                    styles.totalprods,
-                                                                                    {
-                                                                                        color:
-                                                                                            produto.colorChip ===
-                                                                                                "rgb(255,255,255,0.1)"
-                                                                                                ? "#455d7a"
-                                                                                                : "whitesmoke",
-                                                                                    },
-                                                                                ]}
-                                                                            >
-                                                                                {formatNumber(totalProduto)}
-                                                                            </Text>
+                                                                            </Pressable>
                                                                         </Animated.View>
                                                                     );
                                                                 })}
@@ -1778,13 +1867,11 @@ const styles = StyleSheet.create({
     },
 
     prodsView: {
-        flexDirection: "row",
         width: 300,
         backgroundColor: "blue",
-        gap: 10,
         borderRadius: 6,
-        justifyContent: "flex-start",
-        padding: 2,
+        paddingVertical: 3,
+        paddingHorizontal: 8,
     },
 
     textProds: {
@@ -2038,5 +2125,53 @@ const styles = StyleSheet.create({
         fontSize: 7.5,
         fontWeight: "900",
         marginLeft: 3,
+    },
+    productPressed: {
+        opacity: 0.78,
+    },
+
+    prodsViewExpanded: {
+        paddingBottom: 6,
+    },
+
+    productMainRow: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 10,
+    },
+
+    farmboxIdInlinePill: {
+        marginTop: 4,
+        alignSelf: "flex-start",
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 5,
+        paddingHorizontal: 7,
+        paddingVertical: 3,
+        borderRadius: 999,
+        backgroundColor: "rgba(255,255,255,0.22)",
+        borderWidth: 1,
+        borderColor: "rgba(255,255,255,0.26)",
+    },
+
+    farmboxIdInlineLabel: {
+        color: "rgba(255,255,255,0.72)",
+        fontSize: 8.5,
+        fontWeight: "950",
+        letterSpacing: 0.3,
+    },
+
+    farmboxIdInlineText: {
+        color: "#FFFFFF",
+        fontSize: 9.5,
+        fontWeight: "bold",
+        letterSpacing: 0.2,
+    },
+
+    farmboxIdInlineHint: {
+        color: "rgba(255,255,255,0.62)",
+        fontSize: 8.5,
+        fontWeight: "800",
+        marginLeft: 2,
     },
 });

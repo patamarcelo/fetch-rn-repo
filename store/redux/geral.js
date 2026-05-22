@@ -10,6 +10,14 @@ const DEFAULT_NAVIGATION_FILTERS = {
 	status: [],
 };
 
+const DEFAULT_COLHEITA_FILTERS = {
+	safra_ciclo: [],
+	farm: [],
+	proj: [],
+	culture: [],
+	variety: [],
+};
+
 const ensureNavigationMapState = (state) => {
 	if (!Array.isArray(state.navigationMapData)) {
 		state.navigationMapData = [];
@@ -52,12 +60,6 @@ const ensureNavigationMapState = (state) => {
 	}
 };
 
-/**
- * Zera somente os dados operacionais vindos da API.
- * Não limpa seleção/filtros de UI, para não perder contexto visual do usuário.
- *
- * Esta função deve ser chamada somente quando já existe payload novo válido.
- */
 const resetNavigationMapRuntimeState = (state) => {
 	state.navigationMapData = [];
 	state.navigationMapFilters = null;
@@ -71,10 +73,6 @@ const resetNavigationMapRuntimeState = (state) => {
 	state.navigationMapLastFetch = null;
 };
 
-/**
- * Normaliza e valida a resposta do endpoint.
- * Se a API respondeu 200 mas veio payload inválido, rejeita e mantém o Redux antigo.
- */
 const normalizeNavigationMapResponse = ({ response, safra, ciclo }) => {
 	const responseData = response?.data || response?.dados;
 
@@ -126,10 +124,6 @@ export const fetchNavigationMapData = createAsyncThunk(
 				},
 			});
 
-			/**
-			 * Se não for 2xx, NÃO sobrescreve nada.
-			 * Cai no rejected e mantém a última base válida no Redux.
-			 */
 			if (!response.ok) {
 				const errorText = await response.text();
 				throw new Error(errorText || "Erro ao buscar dados de navegação");
@@ -137,10 +131,6 @@ export const fetchNavigationMapData = createAsyncThunk(
 
 			const data = await response.json();
 
-			/**
-			 * Validação mínima de segurança:
-			 * Mesmo com HTTP 200, só aceitamos sobrescrever se data/dados for array.
-			 */
 			const responseData = data?.data || data?.dados;
 
 			if (!Array.isArray(responseData)) {
@@ -184,10 +174,9 @@ const initialState = {
 	farmboxSearchBar: false,
 	farmBoxSearchQuery: "",
 	colheitaData: null,
-	colheitaDataFilterSelected: null,
+	colheitaDataFilterSelected: { ...DEFAULT_COLHEITA_FILTERS },
 	currentFilterSelected: null,
 
-	// Navegação / mapa full screen
 	navigationMapData: [],
 	navigationMapFilters: null,
 	navigationMapTotals: null,
@@ -263,26 +252,40 @@ const geralSlice = createSlice({
 		},
 
 		clearColheitaFilter: (state) => {
-			state.colheitaDataFilterSelected = null;
+			state.colheitaDataFilterSelected = { ...DEFAULT_COLHEITA_FILTERS };
 		},
 
 		setColheitaFilter: (state, action) => {
-			const { key, value } = action.payload;
+			const { key, value } = action.payload || {};
+
+			if (!key) return;
 
 			if (!state.colheitaDataFilterSelected) {
-				state.colheitaDataFilterSelected = {
-					farm: [],
-					proj: [],
-					variety: [],
-					culture: [],
-				};
+				state.colheitaDataFilterSelected = { ...DEFAULT_COLHEITA_FILTERS };
 			}
 
-			if (!state.colheitaDataFilterSelected[key]) {
+			if (!Array.isArray(state.colheitaDataFilterSelected[key])) {
 				state.colheitaDataFilterSelected[key] = [];
 			}
 
-			const index = state.colheitaDataFilterSelected[key].indexOf(value);
+			const current = state.colheitaDataFilterSelected[key];
+			const index = current.indexOf(value);
+
+			if (key === "safra_ciclo") {
+				if (index === -1) {
+					state.colheitaDataFilterSelected = {
+						...DEFAULT_COLHEITA_FILTERS,
+						safra_ciclo: [value],
+					};
+				} else {
+					state.colheitaDataFilterSelected = {
+						...DEFAULT_COLHEITA_FILTERS,
+						safra_ciclo: [],
+					};
+				}
+
+				return;
+			}
 
 			if (index === -1) {
 				state.colheitaDataFilterSelected[key].push(value);
@@ -295,14 +298,6 @@ const geralSlice = createSlice({
 			state.currentFilterSelected = action.payload;
 		},
 
-		// -----------------------------
-		// Navegação / Mapa
-		// -----------------------------
-
-		/**
-		 * Apenas garante estrutura.
-		 * Não limpa dados, para não apagar a última base válida em caso de offline.
-		 */
 		hydrateNavigationMapState: (state) => {
 			ensureNavigationMapState(state);
 		},
@@ -316,10 +311,6 @@ const geralSlice = createSlice({
 			}
 		},
 
-		/**
-		 * Uso manual.
-		 * Aqui também só sobrescreve se o payload possuir data válido.
-		 */
 		setNavigationMapData: (state, action) => {
 			ensureNavigationMapState(state);
 
@@ -459,10 +450,6 @@ const geralSlice = createSlice({
 		builder
 			.addCase(logout.fulfilled, () => initialState)
 
-			/**
-			 * Não zera no pending.
-			 * Se estiver offline ou a API cair, mantém a última base válida em tela.
-			 */
 			.addCase(fetchNavigationMapData.pending, (state) => {
 				ensureNavigationMapState(state);
 
@@ -470,14 +457,6 @@ const geralSlice = createSlice({
 				state.navigationMapError = null;
 			})
 
-			/**
-			 * Só entra aqui se:
-			 * - fetch respondeu 2xx
-			 * - response.json() funcionou
-			 * - data/dados veio como array
-			 *
-			 * Aqui sim limpamos o antigo e salvamos o novo.
-			 */
 			.addCase(fetchNavigationMapData.fulfilled, (state, action) => {
 				ensureNavigationMapState(state);
 
@@ -521,11 +500,6 @@ const geralSlice = createSlice({
 				state.navigationMapError = null;
 				state.navigationMapLastFetch = now;
 
-				/**
-				 * Mantido por compatibilidade.
-				 * Se você já removeu navigationMapByKey dos componentes, ele não influencia mais.
-				 * Mas se algum componente antigo ainda ler isso, ele recebe só a base nova.
-				 */
 				state.navigationMapByKey = {
 					[key || `${resolvedSafra || "default"}__${resolvedCiclo || "default"}`]: {
 						data: normalizedData,
@@ -546,10 +520,6 @@ const geralSlice = createSlice({
 				});
 			})
 
-			/**
-			 * Não zera no rejected.
-			 * Falha de internet/API mantém a última base válida.
-			 */
 			.addCase(fetchNavigationMapData.rejected, (state, action) => {
 				ensureNavigationMapState(state);
 
