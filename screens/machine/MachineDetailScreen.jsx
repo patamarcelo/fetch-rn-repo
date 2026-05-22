@@ -364,6 +364,14 @@ const MachineDetailScreen = ({ route, navigation }) => {
 
 	const statusConfig = getStatusConfig(machine?.status);
 
+	const statusObservation = String(
+		machine?.last_status_change?.notes || ""
+	).trim();
+
+	const shouldShowStatusObservation =
+		statusObservation && ["maintenance", "revision"].includes(machine?.status);
+
+
 	useFocusEffect(
 		useCallback(() => {
 			StatusBar.setBarStyle("dark-content");
@@ -564,6 +572,39 @@ const MachineDetailScreen = ({ route, navigation }) => {
 							<Text style={styles.transferFarmText}>Transferir fazenda</Text>
 						</Pressable>
 					</View>
+					{shouldShowStatusObservation ? (
+						<View
+							style={[
+								styles.statusObservationBox,
+								{
+									backgroundColor: statusConfig.bg,
+									borderColor: statusConfig.border,
+								},
+							]}
+						>
+							<View style={styles.statusObservationHeader}>
+								<Ionicons
+									name="document-text-outline"
+									size={14}
+									color={statusConfig.text}
+								/>
+								<Text
+									style={[
+										styles.statusObservationLabel,
+										{
+											color: statusConfig.text,
+										},
+									]}
+								>
+									Observação do status
+								</Text>
+							</View>
+
+							<Text style={styles.statusObservationText}>
+								{statusObservation}
+							</Text>
+						</View>
+					) : null}
 
 				</View>
 
@@ -1521,6 +1562,34 @@ const styles = StyleSheet.create({
 		fontSize: 10.5,
 		fontWeight: "700",
 		lineHeight: 15,
+	},
+	statusObservationBox: {
+		marginTop: 14,
+		borderRadius: 18,
+		paddingHorizontal: 12,
+		paddingVertical: 11,
+		borderWidth: 1,
+	},
+
+	statusObservationHeader: {
+		flexDirection: "row",
+		alignItems: "center",
+		gap: 6,
+		marginBottom: 5,
+	},
+
+	statusObservationLabel: {
+		fontSize: 10,
+		fontWeight: "900",
+		textTransform: "uppercase",
+		letterSpacing: 0.3,
+	},
+
+	statusObservationText: {
+		color: "rgba(15,23,42,0.68)",
+		fontSize: 12,
+		fontWeight: "700",
+		lineHeight: 17,
 	},
 });
 
