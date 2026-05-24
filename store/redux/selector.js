@@ -598,6 +598,10 @@ export const selectNavigationMapSelectedProject = (state) =>
 export const selectNavigationSelectedParcels = (state) =>
 	state.geral.navigationMapSelectedParcels;
 
+// Alias para manter compatibilidade com NavigationMapScreen.jsx
+export const selectNavigationMapSelectedParcels = (state) =>
+	state.geral.navigationMapSelectedParcels;
+
 export const selectNavigationMapByKey = (state) => state.geral.navigationMapByKey;
 
 export const selectNavigationMapFiltersIndex = (state) =>
