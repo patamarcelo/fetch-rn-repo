@@ -12,14 +12,19 @@ import { geralActions } from "../../store/redux/geral";
 
 import Button from "../ui/Button";
 import Icon from "react-native-vector-icons/MaterialCommunityIcons";
-import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
+
+import {
+	CUSTOM_TAB_BAR_TOTAL_HEIGHT,
+	CUSTOM_TAB_BAR_CONTENT_PADDING,
+	CUSTOM_TAB_BAR_FAB_BOTTOM,
+} from "../../constants/layout";
 
 const FilterPlantioComponent = () => {
 	const navigation = useNavigation();
 	const dispatch = useDispatch();
 
 	const filters = useSelector(selectColheitaDataToggle);
-	const tabBarHeight = useBottomTabBarHeight();
+	
 
 	const { clearColheitaFilter } = geralActions;
 
@@ -48,7 +53,7 @@ const FilterPlantioComponent = () => {
 						styles.fabClear,
 						{
 							backgroundColor: Colors.error[300],
-							marginBottom: tabBarHeight,
+							marginBottom: CUSTOM_TAB_BAR_TOTAL_HEIGHT,
 						},
 					]}
 					onPress={handleClearFilters}
@@ -64,7 +69,7 @@ const FilterPlantioComponent = () => {
 						backgroundColor: hasFilters
 							? "rgba(153,204,153,0.4)"
 							: "rgba(200, 200, 200, 0.3)",
-						marginBottom: tabBarHeight,
+						marginBottom: CUSTOM_TAB_BAR_TOTAL_HEIGHT,
 					},
 				]}
 				icon="magnify"
@@ -81,7 +86,7 @@ const styles = StyleSheet.create({
 	fabContainer: {
 		position: "absolute",
 		right: 20,
-		bottom: 20,
+		bottom: 26,
 	},
 
 	fab: {

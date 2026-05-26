@@ -31,7 +31,7 @@ import { LINK } from "../utils/api";
 
 import { useScrollToTop } from "@react-navigation/native";
 
-import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
+
 
 import formatDataServer from "../utils/data-program";
 import CardListApp from "../components/HomeScreen/CardListApp";
@@ -46,6 +46,13 @@ const INITIAL_FETCH_BODY = {
 	safra: "2024/2025",
 	ciclo: "1",
 };
+
+
+import {
+	CUSTOM_TAB_BAR_TOTAL_HEIGHT,
+	CUSTOM_TAB_BAR_CONTENT_PADDING,
+	CUSTOM_TAB_BAR_FAB_BOTTOM,
+} from "../constants/layout";
 
 const normalizeText = (value) => {
 	if (!value) return "";
@@ -408,7 +415,7 @@ const HomeScreen = ({ navigation }) => {
 	const dataPlantioServer = useSelector(selectDataPlantio);
 
 	const ref = useRef(null);
-	const tabBarHeight = useBottomTabBarHeight();
+	
 
 	const [isLoading, setIsLoading] = useState(false);
 	const [isPrinting, setIsPrinting] = useState(false);
@@ -1015,7 +1022,7 @@ const HomeScreen = ({ navigation }) => {
 							) : listToCardApp.length > 0 ? (
 								<FlatList
 									contentContainerStyle={{
-										paddingBottom: tabBarHeight + 108,
+										paddingBottom: CUSTOM_TAB_BAR_TOTAL_HEIGHT + 108,
 										paddingTop: 5,
 									}}
 									ref={ref}
@@ -1087,7 +1094,7 @@ const HomeScreen = ({ navigation }) => {
 								styles.filterFab,
 								showFilters && styles.filterFabActive,
 								pressed && styles.filterFabPressed,
-								{ bottom: tabBarHeight + 18 },
+								{ bottom: CUSTOM_TAB_BAR_FAB_BOTTOM + 22 },
 							]}
 						>
 							<View style={styles.fabIconWrap}>

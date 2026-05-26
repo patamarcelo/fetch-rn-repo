@@ -1,10 +1,10 @@
 import { useRef, useEffect, useState, useLayoutEffect, useMemo, useCallback } from "react";
 
-import BottomSheet, {
+import {
+	BottomSheetModal,
 	BottomSheetBackdrop,
 	BottomSheetScrollView,
 } from "@gorhom/bottom-sheet";
-
 
 import IconButton from "../components/ui/IconButton";
 
@@ -45,7 +45,6 @@ import * as Haptics from 'expo-haptics';
 
 // import { logout } from "../store/redux/authSlice";
 
-import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 
 
 
@@ -54,8 +53,10 @@ const ProgramScreen = ({ navigation }) => {
 	const sheetRef = useRef(null);
 	const [isLoading, setIsLoading] = useState();
 	const ref = useRef(null);
-	const tabBarHeight = useBottomTabBarHeight();
 	const insets = useSafeAreaInsets();
+
+	const tabBarHeight = Platform.OS === "ios" ? 84 : 72;
+	const tabBarBottomOffset = Platform.OS === "ios" ? 6 : 8;
 	const [isSheetOpen, setIsSheetOpen] = useState(false);
 
 
@@ -109,14 +110,14 @@ const ProgramScreen = ({ navigation }) => {
 
 	const handleSelectProgram = () => {
 		console.log("selecionar um programa");
-		sheetRef.current?.snapToIndex(0)
-		setIsSheetOpen(true)
-		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy)
+		sheetRef.current?.present();
+		setIsSheetOpen(true);
+		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
 	};
 
 	const handleClose = () => {
-		sheetRef.current?.close();
-		setIsSheetOpen(false)
+		sheetRef.current?.dismiss();
+		setIsSheetOpen(false);
 	};
 
 	const renderBackdrop = useCallback(
@@ -360,7 +361,9 @@ const ProgramScreen = ({ navigation }) => {
 					style={({ pressed }) => [
 						styles.programFilterFab,
 						pressed && styles.programFilterFabPressed,
-						{ bottom: tabBarHeight + insets.bottom },
+						{
+							bottom: tabBarHeight + tabBarBottomOffset + 22,
+						}
 					]}
 				>
 					<IconButton
@@ -382,13 +385,13 @@ const ProgramScreen = ({ navigation }) => {
 					</View>
 				</Pressable>
 			)}
-			<BottomSheet
+			<BottomSheetModal
 				ref={sheetRef}
-				index={-1}
+				index={0}
 				snapPoints={snapPoints}
 				enablePanDownToClose
 				backdropComponent={renderBackdrop}
-				onClose={() => setIsSheetOpen(false)}
+				onDismiss={() => setIsSheetOpen(false)}
 				backgroundStyle={{ backgroundColor: Colors.primary800 }}
 				handleIndicatorStyle={{ backgroundColor: "#fff" }}
 			>
@@ -404,7 +407,7 @@ const ProgramScreen = ({ navigation }) => {
 						<BottomSheetList onClose={handleClose} />
 					</BottomSheetScrollView>
 				</SafeAreaView>
-			</BottomSheet>
+			</BottomSheetModal>
 
 		</>
 	);
@@ -505,6 +508,10 @@ const styles = StyleSheet.create({
 		color: "rgba(15,23,42,0.54)",
 		fontSize: 10,
 		fontWeight: "800",
+	},
+	bottomSheetContainer: {
+		zIndex: 99999,
+		elevation: 99999,
 	},
 });
 

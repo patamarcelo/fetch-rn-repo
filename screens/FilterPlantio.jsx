@@ -17,7 +17,7 @@ import {
 } from "../store/redux/selector";
 import { Colors } from "../constants/styles";
 import { useEffect, useMemo, useRef } from "react";
-import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
+
 import Icon from "react-native-vector-icons/MaterialCommunityIcons";
 import * as Haptics from "expo-haptics";
 import { geralActions } from "../store/redux/geral";
@@ -26,6 +26,12 @@ import Button from "../components/ui/Button";
 
 import { FadeInRight, FadeOut, Layout } from "react-native-reanimated";
 import Animated from "react-native-reanimated";
+
+import {
+	CUSTOM_TAB_BAR_TOTAL_HEIGHT,
+	CUSTOM_TAB_BAR_CONTENT_PADDING,
+	CUSTOM_TAB_BAR_FAB_BOTTOM,
+} from "../constants/layout";
 
 const makeSafraCicloKey = (item = {}) => {
 	const nome = item?.nome || item?.label || "";
@@ -67,7 +73,7 @@ const FilterPlantioScreen = ({ navigation }) => {
 		variety = [],
 	} = filterData;
 
-	const tabBarHeight = useBottomTabBarHeight();
+
 	const selectedIndex = useRef(new RealAnimated.Value(0)).current;
 
 	const handleFilterButtons = useMemo(
@@ -245,8 +251,8 @@ const FilterPlantioScreen = ({ navigation }) => {
 			</View>
 
 			<ScrollView
-				style={{ paddingBottom: tabBarHeight }}
-				contentContainerStyle={{ paddingBottom: tabBarHeight + 100 }}
+				style={{ paddingBottom: CUSTOM_TAB_BAR_TOTAL_HEIGHT }}
+				contentContainerStyle={{ paddingBottom: CUSTOM_TAB_BAR_TOTAL_HEIGHT + 100 }}
 			>
 				{safra_ciclo?.length > 0 &&
 					filterSelected === "safra_ciclo" &&
@@ -480,7 +486,7 @@ const FilterPlantioScreen = ({ navigation }) => {
 						flex: 1,
 						gap: 20,
 						alignItems: "flex-end",
-						marginBottom: tabBarHeight,
+						marginBottom: CUSTOM_TAB_BAR_TOTAL_HEIGHT,
 					},
 				]}
 			>
@@ -532,7 +538,7 @@ const styles = StyleSheet.create({
 	fabContainer: {
 		position: "absolute",
 		right: 20,
-		bottom: 20,
+		bottom: 26,
 	},
 
 	farmTitle: {

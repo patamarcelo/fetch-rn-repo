@@ -20,7 +20,11 @@ import {
 	dataProgramSelector,
 } from "../../store/redux/selector";
 
-import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
+import {
+	CUSTOM_TAB_BAR_TOTAL_HEIGHT,
+	CUSTOM_TAB_BAR_CONTENT_PADDING,
+	CUSTOM_TAB_BAR_FAB_BOTTOM,
+} from '../../constans/layout'
 
 import * as Haptics from "expo-haptics";
 import * as Clipboard from "expo-clipboard";
@@ -333,7 +337,7 @@ const EmptyRow = () => {
 };
 
 const ProgramList = ({ refresh, isLoading, innerRef, setPrintableData }) => {
-	const tabBarHeight = useBottomTabBarHeight();
+
 
 	const estagios = useSelector(estagiosSelector);
 	const programa = useSelector(programSelector);
@@ -505,7 +509,7 @@ const ProgramList = ({ refresh, isLoading, innerRef, setPrintableData }) => {
 				showsVerticalScrollIndicator
 				style={[styles.mainContainer, { marginTop: topOffset }]}
 				contentContainerStyle={{
-					paddingBottom: tabBarHeight + 18,
+					paddingBottom: CUSTOM_TAB_BAR_TOTAL_HEIGHT + 18,
 					paddingTop: 0,
 				}}
 				contentInsetAdjustmentBehavior="never"
@@ -530,7 +534,7 @@ const ProgramList = ({ refresh, isLoading, innerRef, setPrintableData }) => {
 				}
 			/>
 
-			<View style={[styles.fabContainer, { bottom: tabBarHeight + 20 }]}>
+			<View style={[styles.fabContainer, { bottom: CUSTOM_TAB_BAR_TOTAL_HEIGHT + 20 }]}>
 				<FAB
 					style={styles.fab}
 					icon={showSearch ? "close" : "magnify"}

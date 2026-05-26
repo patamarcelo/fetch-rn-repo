@@ -1,4 +1,4 @@
-import { View, FlatList, Text, Platform, StatusBar, RefreshControl, Alert, StyleSheet} from 'react-native'
+import { View, FlatList, Text, Platform, StatusBar, RefreshControl, Alert, StyleSheet } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -10,7 +10,7 @@ import { useSelector, shallowEqual, useDispatch } from 'react-redux';
 import { selectColheitaData } from '../store/redux/selector';
 import PlantioTalhoesCard from '../components/PlantioTalhoes';
 
-import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
+
 import FilterPlantioComponent from '../components/Global/FilterPlantioComponent';
 
 import { useEffect, useState } from 'react';
@@ -27,6 +27,12 @@ import * as Haptics from 'expo-haptics';
 import { useMemo } from 'react';
 
 
+import {
+    CUSTOM_TAB_BAR_TOTAL_HEIGHT,
+    CUSTOM_TAB_BAR_CONTENT_PADDING,
+    CUSTOM_TAB_BAR_FAB_BOTTOM,
+} from '../constans/layout'
+
 
 const PlantioTalhoesCardScreen = (itemData) => {
     return (
@@ -36,7 +42,7 @@ const PlantioTalhoesCardScreen = (itemData) => {
     );
 };
 const PlantioTalhoesDescription = ({ navigation }) => {
-    const tabBarHeight = useBottomTabBarHeight();
+
     const isFocused = useIsFocused(); // Track screen focus
     const insets = useSafeAreaInsets(); // Get dynamic insets for Android & iOS
     // Get route object
@@ -164,7 +170,10 @@ const PlantioTalhoesDescription = ({ navigation }) => {
                             windowSize={7}
                             removeClippedSubviews={true}
                             scrollEnabled={true}
-                            contentContainerStyle={{ paddingBottom: tabBarHeight + 50, paddingTop: 10 }}
+                            contentContainerStyle={{
+                                paddingBottom: CUSTOM_TAB_BAR_CONTENT_PADDING + 50,
+                                paddingTop: 10,
+                            }}
                             data={filteredData}
                             keyExtractor={(item, i) => item.id.toString()}
                             renderItem={PlantioTalhoesCardScreen}
@@ -184,7 +193,7 @@ const PlantioTalhoesDescription = ({ navigation }) => {
                         <FilterPlantioComponent />
                         <SaveView style={styles.fabContainer} edges={[]}>
                             <FAB
-                                style={[styles.fab, { marginBottom: tabBarHeight }]}
+                                style={[styles.fab, { marginBottom: CUSTOM_TAB_BAR_TOTAL_HEIGHT }]}
                                 icon={filterByDate ? "calendar" : "sort-alphabetical-variant"}
                                 color="black" // Icon color
                                 onPress={handleFilterPlant}
@@ -192,7 +201,7 @@ const PlantioTalhoesDescription = ({ navigation }) => {
                         </SaveView>
                         <SaveView style={styles.fabContainer2}>
                             <FAB
-                                style={[styles.fab, { marginBottom: tabBarHeight, backgroundColor: filterdByLoad ? 'rgba(153,204,153,0.4)' : 'rgba(200, 200, 200, 0.3)' }]}
+                                style={[styles.fab, { marginBottom: CUSTOM_TAB_BAR_TOTAL_HEIGHT, backgroundColor: filterdByLoad ? 'rgba(153,204,153,0.4)' : 'rgba(200, 200, 200, 0.3)' }]}
                                 icon={"truck"}
                                 color="black" // Icon color
                                 onPress={handleFilterLoad}
@@ -201,7 +210,7 @@ const PlantioTalhoesDescription = ({ navigation }) => {
                         </SaveView>
                         <SaveView style={styles.fabContainer3}>
                             <FAB
-                                style={[styles.fab, { marginBottom: tabBarHeight, backgroundColor: filteredNotLoading ? 'rgba(255,102,102,0.4)' : 'rgba(200, 200, 200, 0.3)' }]}
+                                style={[styles.fab, { marginBottom: CUSTOM_TAB_BAR_TOTAL_HEIGHT, backgroundColor: filteredNotLoading ? 'rgba(255,102,102,0.4)' : 'rgba(200, 200, 200, 0.3)' }]}
                                 icon={"truck-remove"}
                                 color="black" // Icon color
                                 onPress={handleFilterNotLoad}

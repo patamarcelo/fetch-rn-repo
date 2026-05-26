@@ -21,7 +21,7 @@ import * as Haptics from "expo-haptics";
 import FontAwesome5 from "@expo/vector-icons/FontAwesome5";
 import * as Clipboard from "expo-clipboard";
 
-import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
+
 import { HeaderBackButton } from "@react-navigation/elements";
 import { useScrollToTop } from "@react-navigation/native";
 
@@ -63,13 +63,19 @@ import ViewShot from "react-native-view-shot";
 
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
+import {
+	CUSTOM_TAB_BAR_TOTAL_HEIGHT,
+	CUSTOM_TAB_BAR_CONTENT_PADDING,
+	CUSTOM_TAB_BAR_FAB_BOTTOM,
+} from '../../constans/layout'
+
 
 const CardFarmBox = ({ route, navigation }) => {
     const { indexParent, farm } = route.params;
     const { setFarmboxSearchBar, setFarmboxSearchQuery, setFarmBoxData } = geralActions;
 
     const stackNavigator = navigation.getParent();
-    const tabBarHeight = useBottomTabBarHeight();
+    
     const ref = useRef(null);
     const dispatch = useDispatch();
 
@@ -1036,7 +1042,7 @@ const CardFarmBox = ({ route, navigation }) => {
                         />
                     }
                     contentContainerStyle={{
-                        paddingBottom: tabBarHeight + (showSearch ? 40 : -15),
+                        paddingBottom: CUSTOM_TAB_BAR_TOTAL_HEIGHT + (showSearch ? 40 : -15),
                     }}
                     renderSectionHeader={({ section }) => (
                         <View style={styles.sectionStickyRow}>
@@ -1657,7 +1663,7 @@ const styles = StyleSheet.create({
     fabContainer: {
         position: "absolute",
         right: 20,
-        bottom: 20,
+        bottom: 30
     },
 
     fab: {

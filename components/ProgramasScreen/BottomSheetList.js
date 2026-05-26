@@ -3,13 +3,10 @@ import { useDispatch, useSelector } from "react-redux";
 import { programasSelector } from "../../store/redux/selector";
 import { geralActions } from "../../store/redux/geral";
 import { Colors } from "../../constants/styles";
-import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 
 const BottomSheetList = ({ onClose }) => {
-	const tabBarHeight = useBottomTabBarHeight();
-
 	const dispatch = useDispatch();
-	const { setProgramsAvaiable, setSelectedProgram } = geralActions;
+	const { setSelectedProgram } = geralActions;
 	const programasAvai = useSelector(programasSelector);
 
 	const handleSelect = (program, index) => {
@@ -19,19 +16,19 @@ const BottomSheetList = ({ onClose }) => {
 	};
 
 	return (
-		<View style={{ marginBottom: tabBarHeight + 50 }}>
+		<View style={styles.listContent}>
 			{programasAvai?.map((data, i) => {
 				return (
 					<Pressable
 						key={i}
 						onPress={handleSelect.bind(this, data, i)}
 						style={({ pressed }) => [
+							styles.mainContainer,
 							pressed && styles.pressed,
-							styles.mainContainer
 						]}
 					>
 						<View style={{ width: "100%" }}>
-							<Text style={{ color: "whitesmoke", fontSize: 18 }}>
+							<Text style={styles.programName}>
 								{data.nome}
 							</Text>
 						</View>
@@ -41,16 +38,26 @@ const BottomSheetList = ({ onClose }) => {
 		</View>
 	);
 };
+
 const styles = StyleSheet.create({
+	listContent: {
+		paddingBottom: 40,
+	},
+
 	mainContainer: {
 		width: "100%",
 		padding: 10,
 		borderRadius: 12,
-		zIndex: 999
-		// margin: 5
 	},
+
+	programName: {
+		color: "whitesmoke",
+		fontSize: 18,
+	},
+
 	pressed: {
-		backgroundColor: Colors.primary[500]
-	}
+		backgroundColor: Colors.primary[500],
+	},
 });
+
 export default BottomSheetList;

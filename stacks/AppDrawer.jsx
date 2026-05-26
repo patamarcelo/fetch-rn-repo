@@ -6,6 +6,7 @@ import {
 	Pressable,
 	Image,
 	StatusBar,
+	Platform
 } from "react-native";
 import {
 	createDrawerNavigator,
@@ -184,10 +185,22 @@ const AppDrawer = () => {
 					title: "Polígonos",
 					headerStyle: {
 						backgroundColor: Colors.primary[901],
+						height: Platform.OS === "ios" ? 104 : 72,
 					},
 					headerTintColor: "whitesmoke",
 					headerTitleStyle: {
 						fontWeight: "900",
+					},
+					headerTitleAlign: "center",
+					headerLeftContainerStyle: {
+						paddingLeft: 8,
+						justifyContent: "center",
+						alignItems: "center",
+					},
+					headerRightContainerStyle: {
+						paddingRight: 8,
+						justifyContent: "center",
+						alignItems: "center",
 					},
 					headerLeft: () => buildBackToHomeButton(navigation),
 					headerRight: () => buildDrawerButton(navigation),

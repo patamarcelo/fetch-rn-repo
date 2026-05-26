@@ -1,5 +1,6 @@
 import { Platform } from "react-native";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
+import LiquidLikeTabBar from "../components/navigation/LiquidLikeTabBar";
 
 import { Colors } from "../constants/styles";
 
@@ -19,19 +20,12 @@ const Tab = createBottomTabNavigator();
 const HomeStack = () => {
 	return (
 		<Tab.Navigator
+			tabBar={(props) => <LiquidLikeTabBar {...props} />}
 			screenOptions={{
 				headerStyle: { backgroundColor: Colors.primary[901] },
 				headerTintColor: "whitesmoke",
 				contentStyle: { backgroundColor: Colors.primary100 },
-				tabBarStyle: {
-					backgroundColor: Colors.primary[901],
-					elevation: 0,
-					height: Platform.OS === "ios" ? 80 : 60,
-					paddingHorizontal: 5,
-					paddingTop: 0,
-					position: "absolute",
-					borderTopWidth: 0,
-				},
+				
 			}}
 		>
 			<Tab.Screen
@@ -44,7 +38,7 @@ const HomeStack = () => {
 					),
 				}}
 			/>
-			
+
 			<Tab.Screen
 				name="NavigationTab"
 				component={NavigationHomeScreen}

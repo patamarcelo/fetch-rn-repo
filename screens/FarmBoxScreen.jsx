@@ -23,7 +23,6 @@ import { selectFarmBoxData, selectMapDataPlot, selectFarmboxSearchBar, selectFar
 
 
 import { useScrollToTop } from "@react-navigation/native";
-import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 
 
 import CardFarmBox from '../components/FarmBox/CardFarmBox';
@@ -50,6 +49,12 @@ import { HeaderBackButton } from '@react-navigation/elements';
 import SearchBar from '../components/Global/SearchBar';
 
 
+import {
+	CUSTOM_TAB_BAR_TOTAL_HEIGHT,
+	CUSTOM_TAB_BAR_CONTENT_PADDING,
+	CUSTOM_TAB_BAR_FAB_BOTTOM,
+} from "../constants/layout";
+
 
 
 const FarmBoxScreen = (props) => {
@@ -69,7 +74,7 @@ const FarmBoxScreen = (props) => {
     const ref = useRef(null);
     const [farmData, setfarmData] = useState([]);
     const [onlyFarms, setOnlyFarms] = useState([]);
-    const tabBarHeight = useBottomTabBarHeight();
+    
 
     const farmBoxData = useSelector(selectFarmBoxData)
     const mapPlotData = useSelector(selectMapDataPlot)
@@ -371,7 +376,7 @@ const FarmBoxScreen = (props) => {
                 contentInsetAdjustmentBehavior='automatic'
                 ref={ref}
                 contentContainerStyle={{
-                    paddingBottom: tabBarHeight,
+                    paddingBottom: CUSTOM_TAB_BAR_CONTENT_PADDING,
                     // paddingTop: 10
                 }}
                 // style={[styles.mainContainer]}

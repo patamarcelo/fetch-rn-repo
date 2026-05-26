@@ -19,7 +19,6 @@ import { LINK } from "../utils/api";
 import { EXPO_PUBLIC_REACT_APP_DJANGO_TOKEN } from "@env";
 
 import FarmsPlantioScreen from "../components/Plantio";
-import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { Colors } from "../constants/styles";
 
 import { useDispatch, useSelector } from "react-redux";
@@ -36,6 +35,10 @@ import {
 
 import Icon from "react-native-vector-icons/MaterialCommunityIcons";
 import FilterPlantioScreen from "../components/Global/FilterPlantioComponent";
+
+import {
+	CUSTOM_TAB_BAR_CONTENT_PADDING,
+} from "../constants/layout";
 
 const PlantioScreen = () => {
 	const dispatch = useDispatch();
@@ -58,7 +61,7 @@ const PlantioScreen = () => {
 	const [isSharingPrint, setIsSharingPrint] = useState(false);
 	const [isCapturingFullContent, setIsCapturingFullContent] = useState(false);
 
-	const tabBarHeight = useBottomTabBarHeight();
+	
 
 	const isPlantioMode = String(
 		activeSafraCiclo?.nome || activeSafraCiclo?.label || ""
@@ -262,7 +265,7 @@ const PlantioScreen = () => {
 				style={styles.scrollView}
 				contentContainerStyle={[
 					styles.scrollContent,
-					{ paddingBottom: tabBarHeight },
+					{ paddingBottom: CUSTOM_TAB_BAR_CONTENT_PADDING },
 				]}
 				contentInsetAdjustmentBehavior="automatic"
 				refreshControl={
