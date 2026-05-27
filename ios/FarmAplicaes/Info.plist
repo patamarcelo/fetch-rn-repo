@@ -19,7 +19,7 @@
     <key>CFBundlePackageType</key>
     <string>$(PRODUCT_BUNDLE_PACKAGE_TYPE)</string>
     <key>CFBundleShortVersionString</key>
-    <string>1.0.78</string>
+    <string>1.0.79</string>
     <key>CFBundleSignature</key>
     <string>????</string>
     <key>CFBundleURLTypes</key>
@@ -30,9 +30,15 @@
           <string>com.patamarcelo.fetchapp</string>
         </array>
       </dict>
+      <dict>
+        <key>CFBundleURLSchemes</key>
+        <array>
+          <string>exp+fetch-app</string>
+        </array>
+      </dict>
     </array>
     <key>CFBundleVersion</key>
-    <string>1.0.78</string>
+    <string>1.0.79</string>
     <key>GMSApiKey</key>
     <string>AIzaSyC74WnhqSXYu2RFGeIxKUC46yWAoSFRx9U</string>
     <key>ITSAppUsesNonExemptEncryption</key>
