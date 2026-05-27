@@ -1,105 +1,221 @@
 import { Platform } from "react-native";
+
+import { createNativeBottomTabNavigator } from "@react-navigation/bottom-tabs/unstable";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
-import LiquidLikeTabBar from "../components/navigation/LiquidLikeTabBar";
+
+import Ionicons from "@expo/vector-icons/Ionicons";
+import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 
 import { Colors } from "../constants/styles";
 
-import HomeScreen from "../screens/HomeScreen";
-import ProgramScreen from "../screens/ProgramScreen";
-// import PolygonHomeScreen from "../screens/polygon/PolygonHomeScreen";
-
-import Ionicons from "@expo/vector-icons/Ionicons";
-import { MaterialCommunityIcons } from "@expo/vector-icons";
-
+import ProgramacoesStack from "./ProgramacoesStack";
+import ProgramStack from "./ProgramStack";
 import FarmBoxStack from "./FarmBoxStack";
 import PlantioStack from "./PlantioStack";
 import NavigationHomeScreen from "../screens/navigation/NavigationHomeScreen";
 
-const Tab = createBottomTabNavigator();
+import { useSelector } from "react-redux";
+import { selectColheitaDataToggle } from "../store/redux/selector";
 
-const HomeStack = () => {
+const NativeTab = createNativeBottomTabNavigator();
+const JsTab = createBottomTabNavigator();
+
+const isIOS = Platform.OS === "ios";
+
+const getPlantioTabMeta = (filters = {}) => {
+	const selectedSafraCiclo = Array.isArray(filters?.safra_ciclo)
+		? filters.safra_ciclo[0]
+		: "";
+
+	const raw = String(selectedSafraCiclo || "").toLowerCase();
+
+	if (raw.includes("plantio")) {
+		return {
+			title: "Plantio",
+			iosIcon: "leaf",
+			androidIcon: "sprout",
+			key: "plantio",
+		};
+	}
+
+	if (raw.includes("colheita")) {
+		return {
+			title: "Colheita",
+			iosIcon: "box.truck",
+			androidIcon: "tractor",
+			key: "colheita",
+		};
+	}
+
+	return {
+		title: "Colheita",
+		iosIcon: "box.truck",
+		androidIcon: "tractor",
+		key: "colheita",
+	};
+};
+
+const iosIcon = (name) => ({
+	type: "sfSymbol",
+	name,
+});
+
+const AndroidTabs = ({ plantioTabMeta }) => {
+	const iconSize = 21;
+
 	return (
-		<Tab.Navigator
-			tabBar={(props) => <LiquidLikeTabBar {...props} />}
+		<JsTab.Navigator
 			screenOptions={{
-				headerStyle: { backgroundColor: Colors.primary[901] },
-				headerTintColor: "whitesmoke",
-				contentStyle: { backgroundColor: Colors.primary100 },
-				
+				headerShown: false,
+				tabBarActiveTintColor: "#FFFFFF",
+				tabBarInactiveTintColor: "rgba(255,255,255,0.62)",
+				tabBarStyle: {
+					backgroundColor: Colors.primary[901],
+					borderTopWidth: 0,
+					elevation: 0,
+					height: 60,
+					paddingTop: 5,
+					paddingBottom: 6,
+				},
+				tabBarItemStyle: {
+					paddingVertical: 2,
+				},
+				tabBarLabelStyle: {
+					fontSize: 9,
+					fontWeight: "600",
+					marginTop: -2,
+				},
 			}}
 		>
-			<Tab.Screen
+			<JsTab.Screen
 				name="Next"
-				component={ProgramScreen}
+				component={ProgramStack}
 				options={{
 					title: "Programas",
-					tabBarIcon: ({ color, size }) => (
-						<Ionicons name="book" color={color} size={size} />
+					tabBarIcon: ({ color }) => (
+						<Ionicons name="book" color={color} size={iconSize} />
 					),
 				}}
 			/>
 
-			<Tab.Screen
+			<JsTab.Screen
 				name="NavigationTab"
 				component={NavigationHomeScreen}
 				options={{
 					title: "Navegação",
-					headerShown: false,
-					tabBarIcon: ({ color, size }) => (
-						<Ionicons name="navigate-outline" color={color} size={size} />
+					tabBarIcon: ({ color }) => (
+						<Ionicons name="navigate-outline" color={color} size={iconSize} />
 					),
 				}}
 			/>
 
-			<Tab.Screen
+			<JsTab.Screen
 				name="FarmBoxStackT"
 				component={FarmBoxStack}
 				options={{
 					title: "FarmBox",
-					// headerShown: false,
-					tabBarIcon: ({ color, size }) => (
-						<Ionicons name="hourglass-outline" color={color} size={size} />
+					tabBarIcon: ({ color }) => (
+						<Ionicons name="hourglass-outline" color={color} size={iconSize} />
 					),
 				}}
 			/>
 
-			<Tab.Screen
+			<JsTab.Screen
 				name="Programações"
-				component={HomeScreen}
+				component={ProgramacoesStack}
 				options={{
-					tabBarIcon: ({ color, size }) => (
-						<Ionicons name="timer" color={color} size={size} />
+					title: "Programações",
+					tabBarIcon: ({ color }) => (
+						<Ionicons name="timer" color={color} size={iconSize} />
 					),
 				}}
 			/>
 
-			{/* <Tab.Screen
-				name="PoligonosTab"
-				component={PolygonHomeScreen}
-				options={{
-					title: "Polígonos",
-					tabBarIcon: ({ color, size }) => (
-						<Ionicons name="map" color={color} size={size} />
-					),
-				}}
-			/> */}
-
-
-
-			<Tab.Screen
+			<JsTab.Screen
+				key={`plantio-colheita-${plantioTabMeta.key}`}
 				name="Plantio / Colheita"
 				component={PlantioStack}
 				options={{
-					tabBarIcon: ({ color, size }) => (
-						<MaterialCommunityIcons name="sprout" color={color} size={size} />
+					title: plantioTabMeta.title,
+					tabBarIcon: ({ color }) => (
+						<MaterialCommunityIcons
+							name={plantioTabMeta.androidIcon}
+							color={color}
+							size={iconSize}
+						/>
 					),
-					headerTitle: "Colheita",
-					title: "Colheita",
-					headerShown: false,
 				}}
 			/>
-		</Tab.Navigator>
+		</JsTab.Navigator>
 	);
+};
+
+const IOSTabs = ({ plantioTabMeta }) => {
+	return (
+		<NativeTab.Navigator
+			screenOptions={{
+				tabBarActiveTintColor: Colors.primary[700],
+				tabBarInactiveTintColor: "rgba(15,23,42,0.46)",
+			}}
+		>
+			<NativeTab.Screen
+				name="Next"
+				component={ProgramStack}
+				options={{
+					title: "Programas",
+					tabBarIcon: iosIcon("book"),
+				}}
+			/>
+
+			<NativeTab.Screen
+				name="NavigationTab"
+				component={NavigationHomeScreen}
+				options={{
+					title: "Navegação",
+					tabBarIcon: iosIcon("location"),
+				}}
+			/>
+
+			<NativeTab.Screen
+				name="FarmBoxStackT"
+				component={FarmBoxStack}
+				options={{
+					title: "FarmBox",
+					tabBarIcon: iosIcon("hourglass"),
+				}}
+			/>
+
+			<NativeTab.Screen
+				name="Programações"
+				component={ProgramacoesStack}
+				options={{
+					title: "Programações",
+					tabBarIcon: iosIcon("timer"),
+				}}
+			/>
+
+			<NativeTab.Screen
+				key={`plantio-colheita-${plantioTabMeta.key}`}
+				name="Plantio / Colheita"
+				component={PlantioStack}
+				options={{
+					title: plantioTabMeta.title,
+					tabBarIcon: iosIcon(plantioTabMeta.iosIcon),
+				}}
+			/>
+		</NativeTab.Navigator>
+	);
+};
+
+const HomeStack = () => {
+	const colheitaFilters = useSelector(selectColheitaDataToggle);
+	const plantioTabMeta = getPlantioTabMeta(colheitaFilters);
+
+	if (isIOS) {
+		return <IOSTabs plantioTabMeta={plantioTabMeta} />;
+	}
+
+	return <AndroidTabs plantioTabMeta={plantioTabMeta} />;
 };
 
 export default HomeStack;

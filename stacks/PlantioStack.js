@@ -16,10 +16,45 @@ import { useFocusEffect } from "@react-navigation/native";
 import { useCallback } from "react";
 import FilterPlantioScreen from "../screens/FilterPlantio";
 
+import { useSelector } from "react-redux";
+import { selectColheitaDataToggle } from "../store/redux/selector";
+
+
+const getPlantioTabMeta = (filters = {}) => {
+    const selectedSafraCiclo = Array.isArray(filters?.safra_ciclo)
+        ? filters.safra_ciclo[0]
+        : "";
+
+    const raw = String(selectedSafraCiclo || "").toLowerCase();
+
+    if (raw.includes("plantio")) {
+        return {
+            title: "Plantio",
+            icon: "leaf",
+        };
+    }
+
+    if (raw.includes("colheita")) {
+        return {
+            title: "Colheita",
+            icon: "scissors",
+        };
+    }
+
+    return {
+        title: "Colheita",
+        icon: "leaf",
+    };
+};
+
+
 
 const PlantioStack = () => {
     // const route = useRoute();
     // const newData =  route.params.data
+
+    const filters = useSelector(selectColheitaDataToggle);
+    const meta = getPlantioTabMeta(filters);
     return (
         <Stack.Navigator
             screenOptions={{
@@ -41,7 +76,7 @@ const PlantioStack = () => {
                 name="PlantioScreen"
                 component={PlantioScreen}
                 options={{
-                    title: 'Colheitas', // Title to show in the header
+                    title: meta.title,
                 }}
             />
             <Stack.Screen

@@ -18,7 +18,8 @@ import {
 import { Colors } from "../constants/styles";
 import { useEffect, useMemo, useRef } from "react";
 
-import Icon from "react-native-vector-icons/MaterialCommunityIcons";
+// import Icon from "react-native-vector-icons/MaterialCommunityIcons";
+import Icon from "@expo/vector-icons/MaterialCommunityIcons";
 import * as Haptics from "expo-haptics";
 import { geralActions } from "../store/redux/geral";
 

@@ -8,7 +8,8 @@ import {
     Platform,
     ActivityIndicator,
     RefreshControl,
-    useWindowDimensions
+    useWindowDimensions,
+    InteractionManager
 } from "react-native";
 import { Colors } from "../../constants/styles";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -64,9 +65,9 @@ import ViewShot from "react-native-view-shot";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import {
-	CUSTOM_TAB_BAR_TOTAL_HEIGHT,
-	CUSTOM_TAB_BAR_CONTENT_PADDING,
-	CUSTOM_TAB_BAR_FAB_BOTTOM,
+    CUSTOM_TAB_BAR_TOTAL_HEIGHT,
+    CUSTOM_TAB_BAR_CONTENT_PADDING,
+    CUSTOM_TAB_BAR_FAB_BOTTOM,
 } from '../../constans/layout'
 
 
@@ -75,7 +76,7 @@ const CardFarmBox = ({ route, navigation }) => {
     const { setFarmboxSearchBar, setFarmboxSearchQuery, setFarmBoxData } = geralActions;
 
     const stackNavigator = navigation.getParent();
-    
+
     const ref = useRef(null);
     const dispatch = useDispatch();
 
@@ -94,6 +95,8 @@ const CardFarmBox = ({ route, navigation }) => {
     const [isLoading, setIsLoading] = useState(false);
     const [isSharing, setIsSharing] = useState(false);
     const [isSharingUnique, setIsSharingUnique] = useState(false);
+
+    const [isOpeningExport, setIsOpeningExport] = useState(false);
 
     const { width } = useWindowDimensions();
 
@@ -602,76 +605,98 @@ const CardFarmBox = ({ route, navigation }) => {
 
     const getCultura = (dataCult) => filteredIcon(dataCult.cultura);
 
-    const handleExprotData = () => {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+    const handleExprotData = async () => {
+        if (isOpeningExport) return;
 
-        const allApps = data.filter((farmName) => farmName.farmName === farm);
+        try {
+            setIsOpeningExport(true);
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
 
-        const apParcelasIndex = (allApps ?? []).map((ap) => ({
-            idAp: ap?.idAp,
-            parcelasIds: (ap?.parcelas ?? [])
-                .map((p) => p?.parcelaAppPlantationId)
-                .filter((id) => id != null),
-        }));
+            const allApps = data.filter((farmName) => farmName.farmName === farm);
 
-        const onlyIds = Array.from(new Set(apParcelasIndex.flatMap((ap) => ap.parcelasIds)));
+            const apParcelasIndex = (allApps ?? []).map((ap) => ({
+                idAp: ap?.idAp,
+                parcelasIds: (ap?.parcelas ?? [])
+                    .map((p) => p?.parcelaAppPlantationId)
+                    .filter((id) => id != null),
+            }));
 
-        const params = {
-            farm: allApps[0]?.farmId,
-            apParcelasIndex,
-            onlyIds,
-        };
+            const onlyIds = Array.from(
+                new Set(apParcelasIndex.flatMap((ap) => ap.parcelasIds))
+            );
 
-        dispatch(exportPdf(params));
+            const params = {
+                farm: allApps[0]?.farmId,
+                apParcelasIndex,
+                onlyIds,
+            };
 
-        navigation.navigate("FarmBoxFilterApps", {
-            data,
-            farm,
-            viewMode,
-        });
+            // Navega primeiro para dar resposta visual imediata
+            navigation.navigate("FarmBoxFilterApps", {
+                data,
+                farm,
+                viewMode,
+            });
+
+            // Deixa a animação da navegação acontecer antes do processamento
+            InteractionManager.runAfterInteractions(() => {
+                dispatch(exportPdf(params));
+                setIsOpeningExport(false);
+            });
+        } catch (error) {
+            console.log("Erro ao abrir exportação:", error);
+            setIsOpeningExport(false);
+            Alert.alert("Erro", "Não foi possível abrir a exportação.");
+        }
     };
 
 
     useLayoutEffect(() => {
-        const currentStack = navigation.getState();
-        const currentRoute = currentStack.routes[currentStack.index];
-        const stackName = currentRoute?.name;
-
-        const isRoot = stackName === "FarmBoxStack";
-
-        stackNavigator?.setOptions({
-            title: isRoot ? "FarmBox" : farm?.replace("Fazenda ", ""),
+        navigation.setOptions({
+            title: farm ? farm.replace("Fazenda ", "") : "Aplicações",
             headerShadowVisible: false,
             headerRight: ({ tintColor }) => (
-                <View style={{ flexDirection: "row", alignItems: "center", paddingRight: 20 }}>
-                    <IconButton
-                        type={"awesome"}
-                        icon={"print"}
-                        color={tintColor}
-                        size={22}
-                        onPress={handleExprotData}
-                        btnStyles={{ marginLeft: 5, marginTop: 10 }}
-                    />
+                <View style={{ flexDirection: "row", alignItems: "center"}}>
+                    {isOpeningExport ? (
+                        <View
+                            style={{
+                                width: 42,
+                                height: 42,
+                                alignItems: "center",
+                                justifyContent: "center",
+                            }}
+                        >
+                            <ActivityIndicator size="small" color={tintColor} />
+                        </View>
+                    ) : (
+                        <IconButton
+                            type="awesome"
+                            icon="print"
+                            color={tintColor}
+                            size={22}
+                            onPress={handleExprotData}
+                            btnStyles={{ marginLeft: 5, marginTop: 0 }}
+                        />
+                    )}
                 </View>
             ),
-            headerLeft: isRoot
-                ? null
-                : (props) => (
-                    <HeaderBackButton
-                        {...props}
-                        label="Voltar"
-                        onPress={() => {
-                            if (navigation.canGoBack()) {
-                                navigation.goBack();
-                                return;
-                            }
+            headerLeft: (props) => (
+                <HeaderBackButton
+                    {...props}
+                    label="Voltar"
+                    onPress={() => {
+                        if (navigation.canGoBack()) {
+                            navigation.goBack();
+                            return;
+                        }
 
-                            navigation.popToTop();
-                        }}
-                    />
-                ),
+                        navigation.popToTop();
+                    }}
+                />
+            ),
         });
-    }, [navigation, stackNavigator, farm, viewMode, farmData]);
+    }, [navigation, farm, viewMode, farmData, isOpeningExport]);
+
 
     const handleShareCard = async (cardData) => {
         try {

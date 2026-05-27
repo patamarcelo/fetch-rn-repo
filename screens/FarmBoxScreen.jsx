@@ -7,355 +7,308 @@ import {
     Pressable,
     Alert,
     ActivityIndicator,
-    TextInput,
-    TouchableOpacity
-} from 'react-native'
-import { useFocusEffect } from '@react-navigation/native';
+    Platform,
+} from "react-native";
+import { useState, useCallback, useEffect, useLayoutEffect, useRef } from "react";
+import { useRoute, useScrollToTop } from "@react-navigation/native";
 
-
-
-import { useState, useCallback, useEffect, useLayoutEffect, useRef } from 'react'
-import { Colors } from '../constants/styles';
+import { Colors } from "../constants/styles";
 
 import { useDispatch, useSelector } from "react-redux";
 import { geralActions } from "../store/redux/geral";
-import { selectFarmBoxData, selectMapDataPlot, selectFarmboxSearchBar, selectFarmboxSearchQuery } from "../store/redux/selector";
+import {
+    selectFarmBoxData,
+    selectMapDataPlot,
+    selectFarmboxSearchBar,
+    selectFarmboxSearchQuery,
+} from "../store/redux/selector";
 
-
-import { useScrollToTop } from "@react-navigation/native";
-
-
-import CardFarmBox from '../components/FarmBox/CardFarmBox';
-
-import { NODELINK } from "../utils/api";
+import { NODELINK, LINK } from "../utils/api";
 import { EXPO_PUBLIC_REACT_APP_DJANGO_TOKEN } from "@env";
 
-import * as Haptics from 'expo-haptics';
-
-import { MaterialCommunityIcons } from '@expo/vector-icons';
-
-import { LINK } from '../utils/api';
+import * as Haptics from "expo-haptics";
+import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 
 import { newMapArr } from "./plot-helper";
 
-import { FAB } from "react-native-paper"; // Floating Action Button
+import { FAB } from "react-native-paper";
+import SearchBar from "../components/Global/SearchBar";
 
-import { useNavigation } from '@react-navigation/native';
-import { useRoute } from '@react-navigation/native';
+import { CUSTOM_TAB_BAR_CONTENT_PADDING } from "../constants/layout";
 
+const FarmBoxScreen = ({ navigation }) => {
+    const {
+        setFarmBoxData,
+        setMapPlot,
+        setFarmboxSearchBar,
+        setFarmboxSearchQuery,
+    } = geralActions;
 
-import MaterialIcons from 'react-native-vector-icons/MaterialIcons'
-import { HeaderBackButton } from '@react-navigation/elements';
-import SearchBar from '../components/Global/SearchBar';
-
-
-import {
-	CUSTOM_TAB_BAR_TOTAL_HEIGHT,
-	CUSTOM_TAB_BAR_CONTENT_PADDING,
-	CUSTOM_TAB_BAR_FAB_BOTTOM,
-} from "../constants/layout";
-
-
-
-const FarmBoxScreen = (props) => {
-    const { setFarmBoxData, setMapPlot, setFarmboxSearchBar, setFarmboxSearchQuery } = geralActions;
-
-    const stackNavigator = props.navigation.getParent()
-    // const navigation = useNavigation();
-    const { navigation } = props
     const route = useRoute();
+    const dispatch = useDispatch();
 
-
-
-
-    const dispatch = useDispatch()
-
-    const sheetRef = useRef(null);
     const ref = useRef(null);
+
+    const farmBoxData = useSelector(selectFarmBoxData);
+    const mapPlotData = useSelector(selectMapDataPlot);
+    const searchQuery = useSelector(selectFarmboxSearchQuery);
+    const showSearch = useSelector(selectFarmboxSearchBar);
+
     const [farmData, setfarmData] = useState([]);
     const [onlyFarms, setOnlyFarms] = useState([]);
-    
-
-    const farmBoxData = useSelector(selectFarmBoxData)
-    const mapPlotData = useSelector(selectMapDataPlot)
-    const searchQuery = useSelector(selectFarmboxSearchQuery)
-    const showSearch = useSelector(selectFarmboxSearchBar)
 
     const [showFarm, setShowFarm] = useState(null);
-
-    const [isLoading, setIsLoading] = useState(false);
-
-    const [isloadingDbFarm, setIsloadingDbFarm] = useState(false);
-    const [isLoadingMapData, setIsLoadingMapData] = useState(false);
-
-    const [showPlotMap, setshowPlotMap] = useState(false);
-
-
     const [selectedFarm, setSelectedFarm] = useState(null);
 
-    const formatNumber = number => {
+    const [isLoading, setIsLoading] = useState(false);
+    const [isloadingDbFarm, setIsloadingDbFarm] = useState(false);
+    const [isLoadingMapData, setIsLoadingMapData] = useState(false);
+    const [showPlotMap, setshowPlotMap] = useState(false);
+
+    const formatNumber = (number) => {
         return number?.toLocaleString("pt-br", {
             minimumFractionDigits: 2,
-            maximumFractionDigits: 2
-        })
-    }
-
-    useEffect(() => {
-        if (mapPlotData?.length > 0 && showFarm) {
-            const dataFromMap = newMapArr(mapPlotData)
-            const filteredFarm = dataFromMap.filter((data) => data.farmName == showFarm.replace('Fazenda', 'Projeto').replace('Cacique', 'Cacíque'))
-            if (filteredFarm.length > 0) {
-                setshowPlotMap(true)
-            } else {
-                setshowPlotMap(false)
-            }
-        }
-    }, [showFarm]);
-
-    const handleUpdateApiData = async () => {
-        setIsloadingDbFarm(true)
-        try {
-            const response = await fetch(LINK + "/defensivo/update_farmbox_mongodb_data/", {
-                method: "GET",
-                headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Token ${EXPO_PUBLIC_REACT_APP_DJANGO_TOKEN}`,
-                },
-            });
-            if (response.status === 200) {
-                Alert.alert('Tudo Certo', 'Aplicações Atualizadas com sucesso!!')
-            }
-
-        } catch (error) {
-            console.error(error);
-            setIsloadingDbFarm(false)
-            Alert.alert('Problema em atualizar o banco de dados', `Erro: ${error}`)
-        } finally {
-            setIsloadingDbFarm(false)
-        }
-    }
-
-    const handleClearFarm = () => {
-        setShowFarm(null)
-    }
-
-
-    useLayoutEffect(() => {
-        const unsubscribeFocus = navigation.addListener("focus", () => {
-            const currentStack = navigation.getState();
-            const currentRoute = currentStack.routes[currentStack.index];
-            const stackName = currentRoute?.name;
-
-            stackNavigator.setOptions({
-                title: stackName === 'FarmBoxStack' ? 'FarmBox' : selectedFarm?.replace('Fazenda ', ''),
-                headerShadowVisible: false,
-                headerRight: ({ tintColor }) => (
-                    <View style={{ flexDirection: "row", alignItems: 'center', paddingRight: 20 }}>
-                        <MaterialCommunityIcons
-                            name="database-refresh-outline"
-                            size={24}
-                            color={tintColor}
-                            onPress={handleUpdateApiData}
-                        />
-                    </View>
-                ),
-                headerLeft: stackName !== 'FarmBoxStack'
-                    ? () => (
-                        <HeaderBackButton
-                            {...props}
-                            onPress={() => {
-                                if (navigation.canGoBack()) {
-                                    navigation.goBack();
-                                } else {
-                                    navigation.popToTop();
-                                } navigation.navigate('FarmBoxStack');
-                            }}
-                        />
-                    )
-                    : null, // No arrow-back if on FarmBoxStack
-            });
-            // Add logic specific to FarmBoxStack screen
+            maximumFractionDigits: 2,
         });
+    };
 
-        return unsubscribeFocus
-
-    }, [selectedFarm, navigation, route]);
-
-
-    useEffect(() => {
-        const getMapData = async () => {
-            setIsLoadingMapData(true);
-            try {
-                const response = await fetch(
-                    `${LINK}/plantio/get_map_plot_app_fetch_app/`,
-                    {
-                        headers: {
-                            Authorization: `Token ${EXPO_PUBLIC_REACT_APP_DJANGO_TOKEN}`,
-                            "Content-Type": "application/json"
-                        },
-                        method: "GET"
-                    }
-                );
-                if (response.status === 200) {
-                    console.log('atualização OK')
-                    const data = await response.json();
-                    dispatch(setMapPlot(data.dados))
-                    setIsLoadingMapData(false)
-                }
-            } catch (error) {
-                console.log("erro ao pegar os dados", error);
-                Alert.alert(
-                    `Problema na API', 'possível erro de internet para pegar os dados para plotar o mapa ${error}`
-                );
-                setIsLoadingMapData(false)
-            } finally {
-                setIsLoadingMapData(false);
-            }
+    const triggerHeavyHaptic = useCallback(() => {
+        try {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+        } catch (error) {
+            // Haptics pode falhar em alguns ambientes/simuladores. Não precisa travar a ação.
         }
-        getMapData()
     }, []);
 
-
-
-    const getData = async () => {
+    const getData = useCallback(async () => {
         setIsLoading(true);
+
         try {
-            const response = await fetch(
-                `${NODELINK}/data-open-apps-fetch-app/`,
-                {
-                    headers: {
-                        Authorization: `Token ${EXPO_PUBLIC_REACT_APP_DJANGO_TOKEN}`,
-                        "Content-Type": "application/json"
-                    },
-                    method: "GET"
-                }
-            );
+            const response = await fetch(`${NODELINK}/data-open-apps-fetch-app/`, {
+                headers: {
+                    Authorization: `Token ${EXPO_PUBLIC_REACT_APP_DJANGO_TOKEN}`,
+                    "Content-Type": "application/json",
+                },
+                method: "GET",
+            });
+
             if (response.status === 200) {
-                console.log('atualização OK')
+                console.log("atualização OK");
                 const data = await response.json();
-                dispatch(setFarmBoxData(data))
+                dispatch(setFarmBoxData(data));
+            } else {
+                Alert.alert(
+                    "Atenção",
+                    `Não foi possível atualizar as aplicações. Status ${response.status}.`
+                );
             }
         } catch (error) {
             console.log("erro ao pegar os dados", error);
             Alert.alert(
-                `Problema na API', 'possível erro de internet para pegar os dados ${error}`
+                "Problema na API",
+                `Possível erro de internet para pegar os dados: ${error}`
             );
         } finally {
             setIsLoading(false);
         }
-    }
+    }, [dispatch, setFarmBoxData]);
+
+    const handleUpdateApiData = useCallback(async () => {
+        if (isloadingDbFarm) return;
+
+        setIsloadingDbFarm(true);
+        triggerHeavyHaptic();
+
+        try {
+            const response = await fetch(
+                LINK + "/defensivo/update_farmbox_mongodb_data/",
+                {
+                    method: "GET",
+                    headers: {
+                        "Content-Type": "application/json",
+                        Authorization: `Token ${EXPO_PUBLIC_REACT_APP_DJANGO_TOKEN}`,
+                    },
+                }
+            );
+
+            if (response.status === 200) {
+                Alert.alert("Tudo Certo", "Aplicações atualizadas com sucesso!");
+                await getData();
+            } else {
+                Alert.alert(
+                    "Atenção",
+                    `A atualização retornou status ${response.status}.`
+                );
+            }
+        } catch (error) {
+            console.error(error);
+            Alert.alert("Problema em atualizar o banco de dados", `Erro: ${error}`);
+        } finally {
+            setIsloadingDbFarm(false);
+        }
+    }, [isloadingDbFarm, triggerHeavyHaptic, getData]);
+
+    const renderHeaderUpdateButton = useCallback(
+        (tintColor) => {
+            return (
+                <View style={styles.headerRightBox}>
+                    <Pressable
+                        onPress={handleUpdateApiData}
+                        disabled={isloadingDbFarm}
+                        hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                        style={({ pressed }) => [
+                            styles.headerIconButton,
+                            pressed && !isloadingDbFarm && styles.headerIconButtonPressed,
+                            isloadingDbFarm && styles.headerIconButtonLoading,
+                        ]}
+                    >
+                        {isloadingDbFarm ? (
+                            <ActivityIndicator size="small" color={tintColor} />
+                        ) : (
+                            <MaterialCommunityIcons
+                                name="database-refresh-outline"
+                                size={23}
+                                color={tintColor}
+                            />
+                        )}
+                    </Pressable>
+                </View>
+            );
+        },
+        [handleUpdateApiData, isloadingDbFarm]
+    );
+
+    useLayoutEffect(() => {
+        navigation.setOptions({
+            title: "FarmBox",
+            headerShadowVisible: false,
+            headerRight: ({ tintColor }) => renderHeaderUpdateButton(tintColor),
+            headerLeft: undefined,
+        });
+    }, [navigation, renderHeaderUpdateButton]);
 
     useEffect(() => {
-        const getData = async () => {
-            setIsLoading(true);
+        const getMapData = async () => {
+            setIsLoadingMapData(true);
+
             try {
-                const response = await fetch(
-                    `${NODELINK}/data-open-apps-fetch-app/`,
-                    {
-                        headers: {
-                            Authorization: `Token ${EXPO_PUBLIC_REACT_APP_DJANGO_TOKEN}`,
-                            "Content-Type": "application/json"
-                        },
-                        method: "GET"
-                    }
-                );
+                const response = await fetch(`${LINK}/plantio/get_map_plot_app_fetch_app/`, {
+                    headers: {
+                        Authorization: `Token ${EXPO_PUBLIC_REACT_APP_DJANGO_TOKEN}`,
+                        "Content-Type": "application/json",
+                    },
+                    method: "GET",
+                });
+
                 if (response.status === 200) {
-                    console.log('atualização OK here')
+                    console.log("atualização OK");
                     const data = await response.json();
-                    dispatch(setFarmBoxData(data))
+                    dispatch(setMapPlot(data.dados));
                 }
             } catch (error) {
                 console.log("erro ao pegar os dados", error);
                 Alert.alert(
-                    `Problema na API', 'possível erro de internet para pegar os dados ${error}`
+                    "Problema na API",
+                    `Possível erro de internet para pegar os dados para plotar o mapa: ${error}`
                 );
             } finally {
-                setIsLoading(false);
+                setIsLoadingMapData(false);
             }
-        }
-        getData()
-    }, []);
+        };
 
+        getMapData();
+    }, [dispatch, setMapPlot]);
 
+    useEffect(() => {
+        getData();
+    }, [getData]);
 
     useEffect(() => {
         if (farmBoxData) {
-            setfarmData(farmBoxData.data)
-            setOnlyFarms(farmBoxData.farms)
-        }
-    }, []);
-
-
-    useEffect(() => {
-        if (farmBoxData) {
-            setfarmData(farmBoxData.data)
-            setOnlyFarms(farmBoxData.farms)
+            setfarmData(farmBoxData.data || []);
+            setOnlyFarms(farmBoxData.farms || []);
         }
     }, [farmBoxData]);
+
+    useEffect(() => {
+        if (mapPlotData?.length > 0 && showFarm) {
+            const dataFromMap = newMapArr(mapPlotData);
+
+            const filteredFarm = dataFromMap.filter(
+                (data) =>
+                    data.farmName ===
+                    showFarm.replace("Fazenda", "Projeto").replace("Cacique", "Cacíque")
+            );
+
+            setshowPlotMap(filteredFarm.length > 0);
+        }
+    }, [mapPlotData, showFarm]);
+
+    useEffect(() => {
+        if (!farmBoxData?.data) return;
+
+        function removeAccents(str) {
+            return str
+                ?.normalize("NFD")
+                .replace(/[\u0300-\u036f]/g, "")
+                .replace(/\s+/g, "");
+        }
+
+        const applications = farmBoxData.data || [];
+
+        if (searchQuery?.trim() === "") {
+            setfarmData(applications);
+            return;
+        }
+
+        const normalizedQuery = removeAccents(searchQuery)?.toLowerCase();
+
+        const filteredData = applications.filter((data) =>
+            data.prods?.some((prod) =>
+                removeAccents(prod.product)?.toLowerCase().includes(normalizedQuery)
+            )
+        );
+
+        setfarmData(filteredData);
+    }, [searchQuery, farmBoxData]);
 
     useScrollToTop(ref);
 
     useScrollToTop(
         useRef({
-            scrollToTop: () => ref.current?.scrollTo({ y: 0 })
+            scrollToTop: () => ref.current?.scrollTo({ y: 0 }),
         })
     );
 
-    const handleShowFarm = (farms) => {
-        // const data = farmData.filter((farmName) => farmName.farmName === farms)
-        setSelectedFarm(farms)
-        // navigation.navigate('FarmBoxFarms', { data, farm: farms, showSearch });
-        navigation.navigate('FarmBoxFarms', { farm: farms, showSearch });
-        if (showFarm === farms) {
-            setShowFarm(null)
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy)
-        } else {
-            // setShowFarm(farms)
-            // ref.current?.scrollTo({
-            //     y: 0,
-            //     animated: true,
-            // });
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy)
-        }
-    }
+    const handleShowFarm = useCallback(
+        (farms) => {
+            setSelectedFarm(farms);
+            triggerHeavyHaptic();
 
-    const handleFilterProps = () => {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy)
-        dispatch(setFarmboxSearchBar(!showSearch))
-        dispatch(setFarmboxSearchQuery(""))
-    }
+            navigation.navigate("FarmBoxFarms", {
+                farm: farms,
+                showSearch,
+            });
 
-    useEffect(() => {
-        function removeAccents(str) {
-            return str?.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, '');
-        }
-
-        const filterApplications = (applications) => {
-            if (searchQuery?.trim() === "") {
-                // Return the full array if the search query is empty
-                setfarmData(applications);
-            } else {
-                const filteredData = applications
-                    .filter((data) =>
-                        data.prods.some((prod) =>
-                            removeAccents(prod.product)?.toLowerCase().includes(removeAccents(searchQuery)?.toLowerCase())
-                        )
-                    )
-                setfarmData(filteredData);
+            if (showFarm === farms) {
+                setShowFarm(null);
             }
-        };
+        },
+        [navigation, showSearch, showFarm, triggerHeavyHaptic]
+    );
 
-        filterApplications(farmBoxData.data);
-    }, [searchQuery, farmBoxData.data]);
+    const handleFilterProps = useCallback(() => {
+        triggerHeavyHaptic();
 
-
-    if (isloadingDbFarm) {
-        return (
-            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-                <ActivityIndicator size="large" color={'#1E90FF'} />
-            </View>
-        )
-    }
+        dispatch(setFarmboxSearchBar(!showSearch));
+        dispatch(setFarmboxSearchQuery(""));
+    }, [
+        dispatch,
+        setFarmboxSearchBar,
+        setFarmboxSearchQuery,
+        showSearch,
+        triggerHeavyHaptic,
+    ]);
 
     return (
         <View style={styles.mainContainer}>
@@ -366,20 +319,20 @@ const FarmBoxScreen = (props) => {
                     onChangeText={(e) => dispatch(setFarmboxSearchQuery(e))}
                 />
             )}
+
             {isLoading && (
                 <View style={styles.customRefreshContainer}>
                     <ActivityIndicator size="large" color="#1E90FF" />
                     <Text style={styles.customRefreshText}>Atualizando Aplicações...</Text>
                 </View>
             )}
+
             <ScrollView
-                contentInsetAdjustmentBehavior='automatic'
+                contentInsetAdjustmentBehavior="automatic"
                 ref={ref}
                 contentContainerStyle={{
                     paddingBottom: CUSTOM_TAB_BAR_CONTENT_PADDING,
-                    // paddingTop: 10
                 }}
-                // style={[styles.mainContainer]}
                 horizontal={false}
                 refreshControl={
                     <RefreshControl
@@ -393,148 +346,183 @@ const FarmBoxScreen = (props) => {
             >
                 {farmData &&
                     onlyFarms.map((farms, i) => {
-                        const totalByFarm = farmData.filter((farmName) => farmName.farmName === farms).reduce((acc, curr) => acc += curr.saldoAreaAplicar, 0)
-                        const getTeste = farmData[0]
-                        if (totalByFarm > 0) {
-                            return (
-                                <View key={i}>
-                                    <Pressable
-                                        style={({ pressed }) => [
-                                            styles.headerContainer,
-                                            pressed && styles.pressed,
-                                            i === 0 && styles.firstHeader
-                                        ]}
-                                        onPress={handleShowFarm.bind(this, farms)}
-                                    >
-                                        <Text style={{ color: 'white', fontSize: 18, fontWeight: 'bold' }}>
-                                            {farms.replace('Fazenda ', '')}
-                                        </Text>
-                                        <Text style={{ fontSize: 10, color: Colors.secondary[200] }}>{formatNumber(totalByFarm)}</Text>
-                                    </Pressable>
-                                </View>
-                            )
-                        }
-                    })
-                }
+                        const totalByFarm = farmData
+                            .filter((farmName) => farmName.farmName === farms)
+                            .reduce((acc, curr) => acc + curr.saldoAreaAplicar, 0);
+
+                        if (totalByFarm <= 0) return null;
+
+                        return (
+                            <View key={farms || i}>
+                                <Pressable
+                                    style={({ pressed }) => [
+                                        styles.headerContainer,
+                                        pressed && styles.pressed,
+                                        i === 0 && styles.firstHeader,
+                                    ]}
+                                    onPress={() => handleShowFarm(farms)}
+                                >
+                                    <Text style={styles.farmTitle}>
+                                        {farms.replace("Fazenda ", "")}
+                                    </Text>
+
+                                    <Text style={styles.farmTotal}>
+                                        {formatNumber(totalByFarm)}
+                                    </Text>
+                                </Pressable>
+                            </View>
+                        );
+                    })}
             </ScrollView>
-            {/* Floating Action Button */}
+
             <View style={styles.fabContainer}>
                 <FAB
                     style={styles.fab}
                     icon={showSearch ? "close" : "magnify"}
-                    color="black" // Icon color
+                    color="black"
                     onPress={handleFilterProps}
                 />
             </View>
         </View>
     );
-}
+};
 
 export default FarmBoxScreen;
 
 const styles = StyleSheet.create({
     firstHeader: {
-        marginTop: 0
+        marginTop: 0,
     },
-    // searchBar: {
-    //     height: 40,
-    //     marginHorizontal: 5,
-    //     marginVertical: 10,
-    //     paddingHorizontal: 15,
-    //     borderRadius: 12,
-    //     backgroundColor: Colors.secondary[200],
-    //     backgroundColor: "#f0f0f0",
-    //     borderWidth: 1,
-    //     borderColor: "#ddd",
-    //     color: "#333",
-    //     shadowColor: '#000', // Shadow color
-    //     shadowOffset: {
-    //         width: 0, // No horizontal shadow
-    //         height: 4, // Bottom shadow
-    //     },
-    //     shadowOpacity: 0.25, // Adjust opacity
-    //     shadowRadius: 4, // Adjust the blur radius
-    //     elevation: 5, // Add elevation for Android (optional, see below)
-    // },
+
+    headerRightBox: {
+        // paddingRight: 14,
+        alignItems: "center",
+        justifyContent: "center",
+    },
+
+    headerGlassButton: {
+        width: 42,
+        height: 42,
+        borderRadius: 21,
+        overflow: "hidden",
+        alignItems: "center",
+        justifyContent: "center",
+        borderWidth: 1,
+        borderColor:
+            Platform.OS === "ios"
+                ? "rgba(255,255,255,0.46)"
+                : "rgba(15,23,42,0.08)",
+        backgroundColor:
+            Platform.OS === "ios"
+                ? "rgba(255,255,255,0.22)"
+                : "rgba(255,255,255,0.92)",
+        shadowColor: "#000",
+        shadowOpacity: Platform.OS === "ios" ? 0.14 : 0,
+        shadowRadius: 14,
+        shadowOffset: { width: 0, height: 8 },
+        elevation: Platform.OS === "android" ? 4 : 0,
+    },
+
+    headerGlassButtonPressed: {
+        opacity: 0.72,
+        transform: [{ scale: 0.96 }],
+    },
+
+    headerGlassButtonLoading: {
+        opacity: 0.9,
+    },
+
+    headerGlassAndroidBg: {
+        ...StyleSheet.absoluteFillObject,
+        backgroundColor: "rgba(255,255,255,0.92)",
+    },
+
+    headerGlassOverlay: {
+        ...StyleSheet.absoluteFillObject,
+        backgroundColor:
+            Platform.OS === "ios"
+                ? "rgba(255,255,255,0.14)"
+                : "rgba(255,255,255,0.06)",
+    },
+
+    headerIconCenter: {
+        width: 42,
+        height: 42,
+        alignItems: "center",
+        justifyContent: "center",
+        zIndex: 2,
+    },
+
     fabContainer: {
         position: "absolute",
         right: 20,
-        bottom: 20
+        bottom: 20,
     },
+
     fab: {
         position: "absolute",
         right: 30,
         bottom: 100,
-        backgroundColor: "rgba(200, 200, 200, 0.3)", // Grey, almost transparent
+        backgroundColor: "rgba(200, 200, 200, 0.3)",
         width: 50,
         height: 50,
-        borderRadius: 25, // Makes it perfectly circular
+        borderRadius: 25,
         borderColor: Colors.primary[300],
         borderWidth: 1,
         justifyContent: "center",
         alignItems: "center",
-        elevation: 4
+        elevation: 4,
     },
+
     mainContainer: {
         flex: 1,
-        shadowColor: '#000', // Shadow color
+        shadowColor: "#000",
         shadowOffset: {
-            width: 0, // No horizontal shadow
-            height: 4, // Bottom shadow
+            width: 0,
+            height: 4,
         },
-        shadowOpacity: 0.25, // Adjust opacity
-        shadowRadius: 4, // Adjust the blur radius
-        elevation: 5, // Add elevation for Android (optional, see below)
-        // marginBottom: 10
+        shadowOpacity: 0.25,
+        shadowRadius: 4,
+        elevation: 5,
     },
+
     headerContainer: {
-        // flex: 1,
-        // flexDirection: 'row',
         paddingVertical: 12,
         marginVertical: 8,
         backgroundColor: Colors.primary500,
         fontSize: 18,
-        // paddingLeft: 10,
-        justifyContent: 'center',
-        alignItems: 'center'
+        justifyContent: "center",
+        alignItems: "center",
     },
+
+    farmTitle: {
+        color: "white",
+        fontSize: 18,
+        fontWeight: "bold",
+    },
+
+    farmTotal: {
+        fontSize: 10,
+        color: Colors.secondary[200],
+    },
+
     pressed: {
-        opacity: 0.7
+        opacity: 0.7,
     },
+
     customRefreshContainer: {
         paddingVertical: 14,
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: 'rgba(30,144,255,0.08)',
+        alignItems: "center",
+        justifyContent: "center",
+        backgroundColor: "rgba(30,144,255,0.08)",
         borderBottomWidth: 1,
-        borderColor: 'rgba(30,144,255,0.25)',
+        borderColor: "rgba(30,144,255,0.25)",
     },
 
     customRefreshText: {
         marginTop: 8,
         fontSize: 12,
-        fontWeight: '700',
-        color: '#1E90FF',
+        fontWeight: "700",
+        color: "#1E90FF",
     },
-
-    refreshActionRow: {
-        paddingHorizontal: 12,
-        paddingTop: 10,
-    },
-
-    refreshButton: {
-        height: 42,
-        borderRadius: 10,
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: 'rgba(30,144,255,0.08)',
-        borderWidth: 1,
-        borderColor: 'rgba(30,144,255,0.25)',
-    },
-
-    refreshButtonText: {
-        color: '#1E90FF',
-        fontWeight: '800',
-        fontSize: 14,
-    },
-})
+});

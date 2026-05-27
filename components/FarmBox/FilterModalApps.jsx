@@ -14,7 +14,8 @@ import Button from "../ui/Button";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { Colors } from "../../constants/styles";
-import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons";
+// import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons";
+import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import * as Haptics from "expo-haptics";
 import { createApplicationPdf } from "../Global/PrintCronogramaPage";
 import { createApplicationPdfMap } from "../Global/PrintCronogramaPageMap";

@@ -275,10 +275,9 @@ const ProgramScreen = ({ navigation }) => {
 
 	useLayoutEffect(() => {
 		navigation.setOptions({
-			title: "",
 			tabBarLabel: "Programas",
 		});
-	}, []);
+	}, [navigation]);
 
 	const getData = async () => {
 		console.log("pegando os dados");
@@ -447,14 +446,14 @@ const styles = StyleSheet.create({
 	headerLeftActions: {
 		flexDirection: "row",
 		alignItems: "center",
-		marginLeft: 14,
+		// marginLeft: 14,
 		marginTop: 6,
 	},
 
 	headerRightActions: {
 		flexDirection: "row",
 		alignItems: "center",
-		marginRight: 10,
+		// marginRight: 10,
 	},
 
 	headerMenuButton: {

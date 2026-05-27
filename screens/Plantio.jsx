@@ -33,7 +33,8 @@ import {
 	selectColheitaDataToggle,
 } from "../store/redux/selector";
 
-import Icon from "react-native-vector-icons/MaterialCommunityIcons";
+// import Icon from "react-native-vector-icons/MaterialCommunityIcons";
+import Icon from "@expo/vector-icons/MaterialCommunityIcons";
 import FilterPlantioScreen from "../components/Global/FilterPlantioComponent";
 
 import {

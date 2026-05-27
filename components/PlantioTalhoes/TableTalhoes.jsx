@@ -4,7 +4,8 @@ import dayjs from 'dayjs';
 
 import Animated, { BounceIn, BounceOut, FadeIn, FadeInRight, FadeInUp, FadeOut, FadeOutUp, FlipInEasyX, FlipOutEasyX, Layout, SlideInLeft, SlideInRight, SlideOutRight, SlideOutUp, StretchInY, StretchOutX, ZoomIn, ZoomOut } from 'react-native-reanimated';
 import { Colors } from "../../constants/styles";
-import Icon from "react-native-vector-icons/MaterialCommunityIcons"; // Uses MaterialCommunityIcons
+// import Icon from "react-native-vector-icons/MaterialCommunityIcons"; // Uses MaterialCommunityIcons
+import Icon from "@expo/vector-icons/MaterialCommunityIcons";
 
 const formatNumber = number => {
     return number?.toLocaleString("pt-br", {

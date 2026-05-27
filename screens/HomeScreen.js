@@ -841,7 +841,7 @@ const HomeScreen = ({ navigation }) => {
 								color={selFarm ? "#3d8bfd" : tintColor}
 								size={22}
 								onPress={handlerFarms}
-								btnStyles={{ marginLeft: 25, marginTop: 10 }}
+								btnStyles={{ marginTop: 10 }}
 							/>
 
 							<IconButton
@@ -892,7 +892,7 @@ const HomeScreen = ({ navigation }) => {
 						color={date ? "#3d8bfd" : tintColor}
 						size={22}
 						onPress={handlerOpenCalendar}
-						btnStyles={{ marginRight: date ? 4 : 25, marginTop: 10 }}
+						btnStyles={{ marginTop: 10 }}
 					/>
 
 					{date && (
@@ -1213,7 +1213,7 @@ const styles = StyleSheet.create({
 		flex: 1,
 		backgroundColor: "#D6E3F3",
 		width: "100%",
-		paddingTop: 8,
+		// paddingTop: 8,
 		position: "relative",
 	},
 
@@ -1228,6 +1228,7 @@ const styles = StyleSheet.create({
 		borderRadius: 22,
 		paddingHorizontal: 14,
 		paddingTop: 14,
+		marginTop: 12,
 		paddingBottom: 12,
 		marginBottom: 10,
 		borderWidth: 1,

@@ -11,7 +11,8 @@ import { Colors } from "../../constants/styles";
 import { geralActions } from "../../store/redux/geral";
 
 import Button from "../ui/Button";
-import Icon from "react-native-vector-icons/MaterialCommunityIcons";
+// import Icon from "react-native-vector-icons/MaterialCommunityIcons";
+import Icon from "@expo/vector-icons/MaterialCommunityIcons";
 
 import {
 	CUSTOM_TAB_BAR_TOTAL_HEIGHT,

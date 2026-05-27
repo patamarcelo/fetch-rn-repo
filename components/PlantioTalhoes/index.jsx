@@ -1,5 +1,6 @@
 import { StyleSheet, Text, View, ScrollView, Dimensions, TouchableOpacity, Image } from 'react-native'
-import Icon from "react-native-vector-icons/MaterialCommunityIcons"; // Uses MaterialCommunityIcons
+// import Icon from "react-native-vector-icons/MaterialCommunityIcons"; // Uses MaterialCommunityIcons
+import Icon from "@expo/vector-icons/MaterialCommunityIcons";
 
 import { useState, useEffect, useRef } from 'react'
 import { Colors } from '../../constants/styles'
