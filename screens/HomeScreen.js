@@ -11,6 +11,7 @@ import {
 	ScrollView,
 	Animated,
 	Easing,
+	Platform
 } from "react-native";
 
 import Button from "../components/ui/Button";
@@ -114,6 +115,32 @@ const getFormattedVariedade = (item) => {
 	);
 };
 
+const getRawEstagio = (item) => {
+	return (
+		item?.dados?.estagio ||
+		item?.dados?.operacao ||
+		item?.estagio ||
+		item?.operacao ||
+		item?.nome_operacao ||
+		item?.programa?.estagio ||
+		item?.plantio?.estagio ||
+		null
+	);
+};
+
+const getFormattedEstagio = (item) => {
+	return (
+		item?.estagio ||
+		item?.operacao ||
+		item?.nome_operacao ||
+		item?.dados?.estagio ||
+		item?.dados?.operacao ||
+		item?.programa?.estagio ||
+		item?.plantio?.estagio ||
+		null
+	);
+};
+
 const getUniqueSorted = (values = [], sortMode = "text") => {
 	const unique = [...new Set(values.filter(Boolean).map(String))];
 
@@ -133,7 +160,8 @@ const getRawFilterOptions = (
 	selectedFarm = null,
 	selectedSafra = null,
 	selectedCiclo = null,
-	selectedCultura = null
+	selectedCultura = null,
+	selectedVariedade = null
 ) => {
 	const safeData = Array.isArray(rawData) ? rawData : [];
 
@@ -156,11 +184,20 @@ const getRawFilterOptions = (
 		return normalizeText(getRawCultura(item)) === normalizedCultura;
 	});
 
+	const normalizedVariedade = normalizeText(selectedVariedade);
+
+	const estagioBaseData = variedadeBaseData.filter((item) => {
+		if (!selectedVariedade) return true;
+
+		return normalizeText(getRawVariedade(item)) === normalizedVariedade;
+	});
+
 	return {
 		safras: getUniqueSorted(farmFilteredData.map(getRawSafra), "safra"),
 		ciclos: getUniqueSorted(farmFilteredData.map(getRawCiclo), "number"),
 		culturas: getUniqueSorted(baseFilteredData.map(getRawCultura), "text"),
 		variedades: getUniqueSorted(variedadeBaseData.map(getRawVariedade), "text"),
+		estagios: getUniqueSorted(estagioBaseData.map(getRawEstagio), "text"),
 	};
 };
 
@@ -171,9 +208,11 @@ const filterRawData = ({
 	selectedCiclo,
 	selectedCultura,
 	selectedVariedade,
+	selectedEstagios = [],
 }) => {
 	const normalizedCultura = normalizeText(selectedCultura);
 	const normalizedVariedade = normalizeText(selectedVariedade);
+	const normalizedEstagios = selectedEstagios.map(normalizeText);
 
 	return rawData.filter((item) => {
 		const matchesFarm = !selectedFarm || item?.fazenda === selectedFarm;
@@ -188,12 +227,18 @@ const filterRawData = ({
 		const matchesVariedade =
 			!selectedVariedade || normalizeText(itemVariedade) === normalizedVariedade;
 
+		const itemEstagio = getRawEstagio(item);
+		const matchesEstagio =
+			!selectedEstagios.length ||
+			normalizedEstagios.includes(normalizeText(itemEstagio));
+
 		return (
 			matchesFarm &&
 			matchesSafra &&
 			matchesCiclo &&
 			matchesCultura &&
-			matchesVariedade
+			matchesVariedade &&
+			matchesEstagio
 		);
 	});
 };
@@ -201,12 +246,16 @@ const filterRawData = ({
 const filterFormattedDataByFilters = (
 	formattedData = [],
 	selectedCultura,
-	selectedVariedade
+	selectedVariedade,
+	selectedEstagios = []
 ) => {
-	if (!selectedCultura && !selectedVariedade) return formattedData;
+	if (!selectedCultura && !selectedVariedade && !selectedEstagios.length) {
+		return formattedData;
+	}
 
 	const normalizedSelectedCultura = normalizeText(selectedCultura);
 	const normalizedSelectedVariedade = normalizeText(selectedVariedade);
+	const normalizedSelectedEstagios = selectedEstagios.map(normalizeText);
 
 	return formattedData
 		.map((card) => {
@@ -221,7 +270,13 @@ const filterFormattedDataByFilters = (
 						normalizeText(getFormattedVariedade(item)) ===
 						normalizedSelectedVariedade;
 
-					return matchesCultura && matchesVariedade;
+					const matchesEstagio =
+						!selectedEstagios.length ||
+						normalizedSelectedEstagios.includes(
+							normalizeText(getFormattedEstagio(item))
+						);
+
+					return matchesCultura && matchesVariedade && matchesEstagio;
 				})
 				: [];
 
@@ -232,6 +287,259 @@ const filterFormattedDataByFilters = (
 		})
 		.filter((card) => card.app.length > 0);
 };
+
+
+
+
+const getItemDap = (item, fallbackText = "") => {
+	const value =
+		item?.dap ??
+		item?.dados?.dap ??
+		item?.prazo_dap ??
+		item?.dados?.prazo_dap ??
+		getNumberFromText(fallbackText);
+
+	const numberValue = Number(value);
+
+	return Number.isFinite(numberValue) ? numberValue : Number.MAX_SAFE_INTEGER;
+};
+
+const getItemProgramaText = (item, fallbackText = "") => {
+	return String(
+		item?.programa ||
+		item?.nome_programa ||
+		item?.dados?.programa ||
+		item?.dados?.nome_programa ||
+		item?.aplicacao ||
+		item?.dados?.aplicacao ||
+		fallbackText ||
+		""
+	);
+};
+
+const getProgramaNumberFromText = (value) => {
+	const text = String(value || "");
+
+	const afterDashMatch = text.match(/-\s*(\d+)/);
+
+	if (afterDashMatch?.[1]) {
+		return Number(afterDashMatch[1]);
+	}
+
+	const programaMatch = text.match(/programa\s*(\d+)/i);
+
+	if (programaMatch?.[1]) {
+		return Number(programaMatch[1]);
+	}
+
+	const firstNumberMatch = text.match(/\b(\d{1,3})\b/);
+
+	if (firstNumberMatch?.[1]) {
+		return Number(firstNumberMatch[1]);
+	}
+
+	return Number.MAX_SAFE_INTEGER;
+};
+
+const getItemProgramaNumber = (item, fallbackText = "") => {
+	const programaText = getItemProgramaText(item, fallbackText);
+	return getProgramaNumberFromText(programaText);
+};
+
+const getNumberFromText = (value) => {
+	const match = String(value || "").match(/\d+/);
+	return match?.[0] ? Number(match[0]) : Number.MAX_SAFE_INTEGER;
+};
+
+const getDapFromEstagioText = (value) => {
+	const text = String(value || "");
+
+	const diasMatch = text.match(/(\d+)\s*dias?/i);
+
+	if (diasMatch?.[1]) {
+		return Number(diasMatch[1]);
+	}
+
+	return getNumberFromText(text);
+};
+
+const getProgramaTextFromCard = (card) => {
+	return String(
+		card?.programa ||
+		card?.nome_programa ||
+		card?.dados?.programa ||
+		card?.dados?.nome_programa ||
+		card?.app?.[0]?.programa ||
+		card?.app?.[0]?.nome_programa ||
+		card?.app?.[0]?.dados?.programa ||
+		card?.app?.[0]?.dados?.nome_programa ||
+		card?.aplicacao ||
+		card?.app?.[0]?.aplicacao ||
+		""
+	);
+};
+
+const getProgramaNumberFromProgramText = (value) => {
+	const text = String(value || "");
+
+	// Exemplo: "P25/26 - 08 Soja" => 8
+	const afterDashMatch = text.match(/-\s*(\d+)/);
+
+	if (afterDashMatch?.[1]) {
+		return Number(afterDashMatch[1]);
+	}
+
+	// Exemplo: "Programa 08" => 8
+	const programaMatch = text.match(/programa\s*(\d+)/i);
+
+	if (programaMatch?.[1]) {
+		return Number(programaMatch[1]);
+	}
+
+	return Number.MAX_SAFE_INTEGER;
+};
+
+const getEstagioOptionsFromFormattedData = (formattedData = []) => {
+	const map = new Map();
+
+	formattedData.forEach((card) => {
+		if (!Array.isArray(card?.app)) return;
+
+		const programaText = getProgramaTextFromCard(card);
+		const programaNumber = getProgramaNumberFromProgramText(programaText);
+
+		card.app.forEach((item) => {
+			const estagio = getFormattedEstagio(item);
+
+			if (!estagio) return;
+
+			const currentData = {
+				label: estagio,
+				programaText,
+				programaNumber,
+				dap: getDapFromEstagioText(estagio),
+			};
+
+			const previousData = map.get(estagio);
+
+			if (!previousData) {
+				map.set(estagio, currentData);
+				return;
+			}
+
+			const shouldReplace =
+				currentData.programaNumber < previousData.programaNumber ||
+				(currentData.programaNumber === previousData.programaNumber &&
+					currentData.dap < previousData.dap);
+
+			if (shouldReplace) {
+				map.set(estagio, currentData);
+			}
+		});
+	});
+
+	return [...map.values()]
+		.sort((a, b) => {
+			if (a.programaNumber !== b.programaNumber) {
+				return a.programaNumber - b.programaNumber;
+			}
+
+			const programaTextCompare = a.programaText.localeCompare(
+				b.programaText,
+				"pt-BR",
+				{ numeric: true, sensitivity: "base" }
+			);
+
+			if (programaTextCompare !== 0) {
+				return programaTextCompare;
+			}
+
+			if (a.dap !== b.dap) {
+				return a.dap - b.dap;
+			}
+
+			return a.label.localeCompare(b.label, "pt-BR", {
+				numeric: true,
+				sensitivity: "base",
+			});
+		})
+		.map((item) => item.label);
+};
+
+const getCardDap = (card) => {
+	const value =
+		card?.dap ??
+		card?.dados?.dap ??
+		card?.app?.[0]?.dap ??
+		card?.app?.[0]?.dados?.dap ??
+		card?.app?.[0]?.prazo_dap ??
+		card?.app?.[0]?.dados?.prazo_dap ??
+		0;
+
+	const numberValue = Number(value);
+
+	return Number.isFinite(numberValue) ? numberValue : 0;
+};
+
+const getCardProgramaText = (card) => {
+	return String(
+		card?.programa ||
+		card?.nome_programa ||
+		card?.dados?.programa ||
+		card?.dados?.nome_programa ||
+		card?.app?.[0]?.programa ||
+		card?.app?.[0]?.nome_programa ||
+		card?.app?.[0]?.dados?.programa ||
+		card?.app?.[0]?.dados?.nome_programa ||
+		card?.aplicacao ||
+		card?.app?.[0]?.aplicacao ||
+		""
+	);
+};
+
+const getCardProgramaNumber = (card) => {
+	const programaText = getCardProgramaText(card);
+
+	// Prioriza número depois de hífen: "P25/26 - 08 Soja" => 8
+	const afterDashMatch = programaText.match(/-\s*(\d+)/);
+
+	if (afterDashMatch?.[1]) {
+		return Number(afterDashMatch[1]);
+	}
+
+	// Fallback: primeiro número isolado com 1 a 3 dígitos
+	const firstNumberMatch = programaText.match(/\b(\d{1,3})\b/);
+
+	if (firstNumberMatch?.[1]) {
+		return Number(firstNumberMatch[1]);
+	}
+
+	return Number.MAX_SAFE_INTEGER;
+};
+
+const sortCardsByProgramaAndDap = (cards = []) => {
+	return [...cards].sort((a, b) => {
+		const programaNumberA = getCardProgramaNumber(a);
+		const programaNumberB = getCardProgramaNumber(b);
+
+		if (programaNumberA !== programaNumberB) {
+			return programaNumberA - programaNumberB;
+		}
+
+		const dapA = getCardDap(a);
+		const dapB = getCardDap(b);
+
+		if (dapA !== dapB) {
+			return dapA - dapB;
+		}
+
+		return getCardProgramaText(a).localeCompare(getCardProgramaText(b), "pt-BR", {
+			numeric: true,
+			sensitivity: "base",
+		});
+	});
+};
+
 const FarmList = ({ item, filterByDate, index, selectedSafra, selectedCiclo }) => {
 	return (
 		<CardListApp
@@ -293,6 +601,10 @@ const ProgramacaoFilters = ({
 	onChangeVariedade,
 	onClearVariedade,
 	isLoading,
+	selectedEstagios,
+	estagioOptions,
+	onToggleEstagio,
+	onClearEstagios,
 }) => {
 	return (
 		<View style={styles.filtersPanel}>
@@ -304,6 +616,9 @@ const ProgramacaoFilters = ({
 						Safra {selectedSafra || "—"} · Ciclo {selectedCiclo || "—"}
 						{selectedCultura ? ` · ${selectedCultura}` : " · Todas as culturas"}
 						{selectedVariedade ? ` · ${selectedVariedade}` : " · Todas as variedades"}
+						{selectedEstagios?.length
+							? ` · ${selectedEstagios.length} estágio(s)`
+							: " · Todos os estágios"}
 					</Text>
 				</View>
 
@@ -378,6 +693,27 @@ const ProgramacaoFilters = ({
 					/>
 				))}
 			</FilterSection>
+
+			<FilterSection title="Estágio / Operação">
+				<FilterChip
+					label="Todos"
+					active={!selectedEstagios.length}
+					onPress={onClearEstagios}
+				/>
+
+				{!estagioOptions.length && (
+					<Text style={styles.emptyFilterText}>Nenhum estágio disponível</Text>
+				)}
+
+				{estagioOptions.map((estagio) => (
+					<FilterChip
+						key={estagio}
+						label={estagio}
+						active={selectedEstagios.includes(estagio)}
+						onPress={() => onToggleEstagio(estagio)}
+					/>
+				))}
+			</FilterSection>
 		</View>
 	);
 };
@@ -414,8 +750,11 @@ const HomeScreen = ({ navigation }) => {
 	const selFarm = useSelector(farmsSelected);
 	const dataPlantioServer = useSelector(selectDataPlantio);
 
+	const tabBarHeight = Platform.OS === "ios" ? 84 : 72;
+	const tabBarBottomOffset = Platform.OS === "ios" ? 6 : 8;
+
 	const ref = useRef(null);
-	
+
 
 	const [isLoading, setIsLoading] = useState(false);
 	const [isPrinting, setIsPrinting] = useState(false);
@@ -433,11 +772,13 @@ const HomeScreen = ({ navigation }) => {
 	const [selectedCiclo, setSelectedCiclo] = useState(null);
 	const [selectedCultura, setSelectedCultura] = useState(null);
 	const [selectedVariedade, setSelectedVariedade] = useState(null);
+	const [selectedEstagios, setSelectedEstagios] = useState([]);
 
 	const [safraOptions, setSafraOptions] = useState([]);
 	const [cicloOptions, setCicloOptions] = useState([]);
 	const [cultureOptions, setCultureOptions] = useState([]);
 	const [variedadeOptions, setVariedadeOptions] = useState([]);
+	const [estagioOptions, setEstagioOptions] = useState([]);
 
 	const [showFilters, setShowFilters] = useState(false);
 	const filtersAnim = useRef(new Animated.Value(0)).current;
@@ -455,15 +796,21 @@ const HomeScreen = ({ navigation }) => {
 		if (selectedCultura) count += 1;
 		if (selectedVariedade) count += 1;
 		if (filterEndDate) count += 1;
+		if (selectedEstagios.length) count += 1;
 
 		return count;
-	}, [selectedSafra, selectedCiclo, selectedCultura, selectedVariedade, filterEndDate]);
+	}, [selectedSafra,
+		selectedCiclo,
+		selectedCultura,
+		selectedVariedade,
+		selectedEstagios,
+		filterEndDate,]);
 
 	const filtersPanelStyle = {
 		opacity: filtersAnim,
 		maxHeight: filtersAnim.interpolate({
 			inputRange: [0, 1],
-			outputRange: [0, 470],
+			outputRange: [0, 560],
 		}),
 		transform: [
 			{
@@ -478,18 +825,21 @@ const HomeScreen = ({ navigation }) => {
 
 	const syncFilterOptionsFromRawData = useCallback(
 		(rawData) => {
-			const { safras, ciclos, culturas, variedades } = getRawFilterOptions(
+			const { safras, ciclos, culturas, variedades, estagios } = getRawFilterOptions(
 				rawData,
 				selFarm,
 				selectedSafra,
 				selectedCiclo,
-				selectedCultura
+				selectedCultura,
+				selectedVariedade
 			);
 
 			setSafraOptions(safras);
 			setCicloOptions(ciclos);
 			setCultureOptions(culturas);
 			setVariedadeOptions(variedades);
+			setEstagioOptions(estagios);
+
 
 			setSelectedSafra((current) => {
 				if (current && safras.includes(current)) return current;
@@ -513,8 +863,18 @@ const HomeScreen = ({ navigation }) => {
 				if (variedades.includes(current)) return current;
 				return null;
 			});
+
+			setSelectedEstagios((current) => {
+				if (!Array.isArray(current) || !current.length) return current;
+
+				const next = current.filter((estagio) => estagios.includes(estagio));
+
+				if (next.length === current.length) return current;
+
+				return next;
+			});
 		},
-		[selFarm, selectedSafra, selectedCiclo, selectedCultura]
+		[selFarm, selectedSafra, selectedCiclo, selectedCultura, selectedVariedade]
 	);
 
 	const getData = useCallback(async () => {
@@ -555,7 +915,6 @@ const HomeScreen = ({ navigation }) => {
 				: [];
 
 			dispatch(setDataPlantio(formDataServer));
-			syncFilterOptionsFromRawData(formDataServer);
 		} catch (error) {
 			console.log("erro ao pegar os dados", error);
 
@@ -566,7 +925,7 @@ const HomeScreen = ({ navigation }) => {
 		} finally {
 			setIsLoading(false);
 		}
-	}, [dispatch, setDataPlantio, syncFilterOptionsFromRawData]);
+	}, [dispatch, setDataPlantio]);
 
 	const toggleFilters = () => {
 		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -576,8 +935,10 @@ const HomeScreen = ({ navigation }) => {
 
 			Animated.timing(filtersAnim, {
 				toValue: nextValue ? 1 : 0,
-				duration: 240,
-				easing: Easing.out(Easing.cubic),
+				duration: nextValue ? 520 : 420,
+				easing: nextValue
+					? Easing.inOut(Easing.cubic)
+					: Easing.out(Easing.cubic),
 				useNativeDriver: false,
 			}).start();
 
@@ -629,6 +990,7 @@ const HomeScreen = ({ navigation }) => {
 		setSelectedSafra(safra);
 		setSelectedCultura(null);
 		setSelectedVariedade(null);
+		setSelectedEstagios([]);
 	};
 
 	const handleChangeCiclo = (ciclo) => {
@@ -636,17 +998,37 @@ const HomeScreen = ({ navigation }) => {
 		setSelectedCiclo(String(ciclo));
 		setSelectedCultura(null);
 		setSelectedVariedade(null);
+		setSelectedEstagios([]);
 	};
 
 	const handleChangeCultura = (cultura) => {
 		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 		setSelectedCultura(cultura);
 		setSelectedVariedade(null);
+		setSelectedEstagios([]);
 	};
 
 	const handleChangeVariedade = (variedade) => {
 		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 		setSelectedVariedade(variedade);
+		setSelectedEstagios([]);
+	};
+
+	const handleToggleEstagio = (estagio) => {
+		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+
+		setSelectedEstagios((current) => {
+			if (current.includes(estagio)) {
+				return current.filter((item) => item !== estagio);
+			}
+
+			return [...current, estagio];
+		});
+	};
+
+	const handleClearEstagios = () => {
+		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+		setSelectedEstagios([]);
 	};
 
 	const handlerPrintData = async () => {
@@ -676,6 +1058,7 @@ const HomeScreen = ({ navigation }) => {
 				ciclo: selectedCiclo || "—",
 				cultura: selectedCultura || "Todas",
 				variedade: selectedVariedade || "Todas",
+				estagios: selectedEstagios.length ? selectedEstagios.join(", ") : "Todos",
 			});
 		} catch (error) {
 			console.log("Erro ao imprimir programação:", error);
@@ -710,11 +1093,16 @@ const HomeScreen = ({ navigation }) => {
 
 	useEffect(() => {
 		if (!selFarm) {
-			setListToCardApp([]);
-			setTotalCalcArea(0);
-			setSelectedCultura(null);
-			setSelectedVariedade(null);
-			setVariedadeOptions([]);
+			setListToCardApp((current) => (current.length ? [] : current));
+			setTotalCalcArea((current) => (current !== 0 ? 0 : current));
+
+			setSelectedCultura((current) => (current ? null : current));
+			setSelectedVariedade((current) => (current ? null : current));
+
+			setVariedadeOptions((current) => (current.length ? [] : current));
+			setSelectedEstagios((current) => (current.length ? [] : current));
+			setEstagioOptions((current) => (current.length ? [] : current));
+
 			return;
 		}
 
@@ -729,13 +1117,16 @@ const HomeScreen = ({ navigation }) => {
 			selFarm,
 			selectedSafra,
 			selectedCiclo,
-			selectedCultura
+			selectedCultura,
+			selectedVariedade
 		);
 
 		setSafraOptions(safras);
 		setCicloOptions(ciclos);
 		setCultureOptions(culturas);
 		setVariedadeOptions(variedades);
+
+
 
 		if (selectedSafra && !safras.includes(selectedSafra)) {
 			setSelectedSafra(safras?.[0] || null);
@@ -767,27 +1158,44 @@ const HomeScreen = ({ navigation }) => {
 			return;
 		}
 
+
 		const filteredRawData = filterRawData({
 			rawData: dataPlantioServer,
 			selectedFarm: selFarm,
 			selectedSafra,
 			selectedCiclo,
 			selectedCultura,
-			selectedVariedade
+			selectedVariedade,
+			selectedEstagios: [],
 		});
 
 		const result = formatDataServer(filteredRawData, filterEndDate);
+
+		const nextEstagioOptions = getEstagioOptionsFromFormattedData(result);
+
+		setEstagioOptions((current) => {
+			const currentKey = current.join("|");
+			const nextKey = nextEstagioOptions.join("|");
+
+			return currentKey === nextKey ? current : nextEstagioOptions;
+		});
+
+
+
 		const filteredResult = filterFormattedDataByFilters(
 			result,
 			selectedCultura,
-			selectedVariedade
+			selectedVariedade,
+			selectedEstagios
 		);
 
-		setListToCardApp(filteredResult);
+		const sortedResult = sortCardsByProgramaAndDap(filteredResult);
+
+		setListToCardApp(sortedResult);
 
 		let totalArea = 0;
 
-		filteredResult.forEach((element) => {
+		sortedResult.forEach((element) => {
 			element.app.forEach((appDetail) => {
 				totalArea += Number(appDetail.area || 0);
 			});
@@ -802,7 +1210,8 @@ const HomeScreen = ({ navigation }) => {
 		selectedSafra,
 		selectedCiclo,
 		selectedCultura,
-		selectedVariedade
+		selectedVariedade,
+		selectedEstagios
 	]);
 
 	useLayoutEffect(() => {
@@ -1003,10 +1412,20 @@ const HomeScreen = ({ navigation }) => {
 									onClearCultura={() => {
 										setSelectedCultura(null);
 										setSelectedVariedade(null);
+										setSelectedEstagios([]);
+									}}
+									onClearVariedade={() => {
+										setSelectedVariedade(null);
+										setSelectedEstagios([]);
 									}}
 									onChangeVariedade={handleChangeVariedade}
-									onClearVariedade={() => setSelectedVariedade(null)}
+
 									isLoading={isLoading}
+
+									selectedEstagios={selectedEstagios}
+									estagioOptions={estagioOptions}
+									onToggleEstagio={handleToggleEstagio}
+									onClearEstagios={handleClearEstagios}
 								/>
 							</Animated.View>
 
@@ -1071,6 +1490,9 @@ const HomeScreen = ({ navigation }) => {
 										{selectedCiclo || "—"}
 										{selectedCultura ? ` · ${selectedCultura}` : " · Todas as culturas"}
 										{selectedVariedade ? ` · ${selectedVariedade}` : " · Todas as variedades"}
+										{selectedEstagios.length
+											? ` · ${selectedEstagios.length} estágio(s)`
+											: " · Todos os estágios"}
 									</Text>
 
 									<Pressable
@@ -1094,7 +1516,7 @@ const HomeScreen = ({ navigation }) => {
 								styles.filterFab,
 								showFilters && styles.filterFabActive,
 								pressed && styles.filterFabPressed,
-								{ bottom: CUSTOM_TAB_BAR_FAB_BOTTOM + 22 },
+								{ bottom: Platform.OS === 'ios' ? tabBarHeight + tabBarBottomOffset : tabBarBottomOffset + 10 },
 							]}
 						>
 							<View style={styles.fabIconWrap}>
@@ -1134,6 +1556,7 @@ const HomeScreen = ({ navigation }) => {
 									{selectedSafra || "Safra"} · Ciclo {selectedCiclo || "—"}
 									{selectedCultura ? ` · ${selectedCultura}` : " · Todas"}
 									{selectedVariedade ? ` · ${selectedVariedade}` : ""}
+									{selectedEstagios.length ? ` · ${selectedEstagios.length} est.` : ""}
 								</Text>
 							</View>
 						</Pressable>
@@ -1334,6 +1757,7 @@ const styles = StyleSheet.create({
 	refreshInlinePill: {
 		alignSelf: "flex-start",
 		marginLeft: 14,
+		marginTop: 14,
 		marginBottom: 8,
 		flexDirection: "row",
 		alignItems: "center",

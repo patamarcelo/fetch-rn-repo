@@ -4,7 +4,7 @@ import * as FileSystem from 'expo-file-system/legacy';
 import { iconDict } from "../../utils/assets/icon-dict";
 
 
-const createAndPrintPDF = async (data, farmName, filterEndDate) => {
+const createAndPrintPDF = async (data, farmName, filterEndDate, filters = {}) => {
 
   const today = new Date();
   const lastSunday = (today) => {
@@ -29,6 +29,14 @@ const formatDoseNumber = number => number?.toLocaleString("pt-br", {
     maximumFractionDigits: 3
 });
   let areaTotalGeral = 0
+
+  const filterSummary = [
+      `Safra: ${filters?.safra || "—"}`,
+      `Ciclo: ${filters?.ciclo || "—"}`,
+      `Cultura: ${filters?.cultura || "Todas"}`,
+      `Variedade: ${filters?.variedade || "Todas"}`,
+      `Estágio/Operação: ${filters?.estagios || "Todos"}`,
+    ].join(" · ");
 
   const parcelaCountGlobal = {};
 
@@ -71,7 +79,25 @@ const formatDoseNumber = number => number?.toLocaleString("pt-br", {
 
     
 
-    const parcelasDiv = item.app.sort((a,b) => a.dataPrevAp.localeCompare(b.dataPrevAp)).map((parcela) =>{
+    const parcelasDiv = [...item.app]
+      .sort((a, b) => {
+        const dateCompare = String(a?.dataPrevAp || "").localeCompare(
+          String(b?.dataPrevAp || "")
+        );
+
+        if (dateCompare !== 0) return dateCompare;
+
+        const dapA = Number(a?.dap ?? a?.dapAp ?? 0);
+        const dapB = Number(b?.dap ?? b?.dapAp ?? 0);
+
+        if (dapA !== dapB) return dapA - dapB;
+
+        return String(a?.parcela || "").localeCompare(String(b?.parcela || ""), "pt-BR", {
+          numeric: true,
+          sensitivity: "base",
+        });
+      })
+      .map((parcela) => {
       const isDuplicate = parcelaCountGlobal[parcela.parcela] > 1;
       const rowStyle = isDuplicate
         ? 'style="color: #ffff00; font-weight: bold;text-align: left;"'
