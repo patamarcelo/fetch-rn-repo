@@ -7,6 +7,7 @@ import {
 	SectionList,
 	TouchableOpacity,
 	Alert,
+	Platform
 } from "react-native";
 
 import { useState, useEffect, useMemo } from "react";
@@ -347,6 +348,9 @@ const ProgramList = ({ refresh, isLoading, innerRef, setPrintableData }) => {
 	const [showSearch, setShowSearch] = useState(false);
 	const [filteredEstagios, setFilteredEstagios] = useState([]);
 
+	const tabBarHeight = Platform.OS === "ios" ? 84 : 72;
+	const tabBarBottomOffset = Platform.OS === "ios" ? 6 : 8;
+
 	const topOffset = showSearch ? 0 : 10;
 
 	useEffect(() => {
@@ -534,7 +538,7 @@ const ProgramList = ({ refresh, isLoading, innerRef, setPrintableData }) => {
 				}
 			/>
 
-			<View style={[styles.fabContainer, { bottom: CUSTOM_TAB_BAR_TOTAL_HEIGHT + 20 }]}>
+			<View style={[styles.fabContainer, { bottom: Platform.OS === 'ios' ? tabBarHeight + tabBarBottomOffset : tabBarBottomOffset + 10, }]}>
 				<FAB
 					style={styles.fab}
 					icon={showSearch ? "close" : "magnify"}
@@ -791,7 +795,7 @@ const styles = StyleSheet.create({
 	fab: {
 		position: "absolute",
 		right: 0,
-		bottom: 10,
+		bottom: 0,
 		backgroundColor: "rgba(200, 200, 200, 0.3)",
 		width: 50,
 		height: 50,

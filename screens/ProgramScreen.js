@@ -42,6 +42,7 @@ import { useFocusEffect, useScrollToTop } from "@react-navigation/native";
 import PrintProgramPage from "../components/Global/PrintProgramPage";
 
 import * as Haptics from 'expo-haptics';
+import { Ionicons, FontAwesome5 } from "@expo/vector-icons";
 
 // import { logout } from "../store/redux/authSlice";
 
@@ -110,6 +111,7 @@ const ProgramScreen = ({ navigation }) => {
 
 	const handleSelectProgram = () => {
 		console.log("selecionar um programa");
+		StatusBar.setBarStyle("light-content");
 		sheetRef.current?.present();
 		setIsSheetOpen(true);
 		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
@@ -204,55 +206,62 @@ const ProgramScreen = ({ navigation }) => {
 	// };
 
 	useEffect(() => {
+		const hasProgramSelected = !!programSelected;
+
 		navigation.setOptions({
 			headerShadowVisible: false,
+
 			title: programSelected
 				? programSelected.nome_fantasia
-					.replace("Programa", "")
-					.replace("Aplicação ", "")
+					?.replace("Programa", "")
+					?.replace("Aplicação ", "")
 				: "Programas",
 
 			headerLeft: ({ tintColor }) => (
-				<View style={styles.headerLeftActions}>
-					<IconButton
-						type=""
-						icon="menu-outline"
-						color={tintColor}
+				<Pressable
+					onPress={handleOpenDrawer}
+					hitSlop={12}
+					style={({ pressed }) => [
+						styles.headerIconButton,
+						pressed && styles.headerIconButtonPressed,
+					]}
+				>
+					<Ionicons
+						name="menu-outline"
 						size={28}
-						onPress={handleOpenDrawer}
-						btnStyles={styles.headerMenuButton}
+						color={tintColor}
 					/>
-				</View>
+				</Pressable>
 			),
 
-			headerRight: ({ tintColor }) => (
-				<View style={styles.headerRightActions}>
-					{programSelected !== "Programas" && programSelected !== null ? (
-						<Pressable
-							onPress={handlerPrintData}
-							disabled={isPrinting}
-							style={({ pressed }) => [
-								styles.headerPrintButton,
-								pressed && !isPrinting && styles.pressed,
-								isPrinting && styles.headerPrintButtonLoading,
-							]}
-						>
-							{isPrinting ? (
-								<ActivityIndicator size="small" color={tintColor} />
-							) : (
-								<IconButton
-									type="awesome"
-									icon="print"
-									color={tintColor}
-									size={22}
-									onPress={handlerPrintData}
-									btnStyles={styles.headerPrintIcon}
-								/>
-							)}
-						</Pressable>
-					) : null}
-				</View>
-			),
+			headerRight: ({ tintColor }) => {
+				if (!hasProgramSelected) {
+					return null;
+				}
+
+				return (
+					<Pressable
+						onPress={handlerPrintData}
+						disabled={isPrinting}
+						hitSlop={12}
+						style={({ pressed }) => [
+							styles.headerIconButton,
+							pressed && !isPrinting && styles.headerIconButtonPressed,
+							isPrinting && styles.headerIconButtonLoading,
+						]}
+					>
+						{isPrinting ? (
+							<ActivityIndicator size="small" color={tintColor} />
+						) : (
+							<FontAwesome5
+								name="print"
+								size={20}
+								color={tintColor}
+							/>
+						)}
+					</Pressable>
+				);
+			},
 		});
 	}, [navigation, programSelected, isPrinting, dataProgram, areaTotalPrograms]);
 
@@ -314,7 +323,7 @@ const ProgramScreen = ({ navigation }) => {
 		getData();
 	};
 
-	const snapPoints = useMemo(() => ["50%", "70%"], []);
+	const snapPoints = useMemo(() => ["72%", "100%"], []);
 
 
 
@@ -361,7 +370,7 @@ const ProgramScreen = ({ navigation }) => {
 						styles.programFilterFab,
 						pressed && styles.programFilterFabPressed,
 						{
-							bottom: tabBarHeight + tabBarBottomOffset + 22,
+							bottom: Platform.OS === 'ios' ? tabBarHeight + tabBarBottomOffset : tabBarBottomOffset + 10,
 						}
 					]}
 				>
@@ -388,24 +397,29 @@ const ProgramScreen = ({ navigation }) => {
 				ref={sheetRef}
 				index={0}
 				snapPoints={snapPoints}
+				topInset={Platform.OS === "ios" ? insets.top : 0}
 				enablePanDownToClose
 				backdropComponent={renderBackdrop}
-				onDismiss={() => setIsSheetOpen(false)}
-				backgroundStyle={{ backgroundColor: Colors.primary800 }}
+				onDismiss={() => {
+					StatusBar.setBarStyle("light-content");
+
+					if (Platform.OS === "android") {
+						StatusBar.setBackgroundColor(Colors.primary[901]);
+					}
+
+					setIsSheetOpen(false);
+				}}
+				backgroundStyle={{ backgroundColor: Colors.primary[901]}}
 				handleIndicatorStyle={{ backgroundColor: "#fff" }}
 			>
-				<SafeAreaView style={{ flex: 1 }}>
-					<BottomSheetScrollView
-						keyboardShouldPersistTaps="handled"
-						showsVerticalScrollIndicator={false}
-						contentContainerStyle={{
-							paddingBottom: 50,
-							backgroundColor: Colors.primary800,
-						}}
-					>
-						<BottomSheetList onClose={handleClose} />
-					</BottomSheetScrollView>
-				</SafeAreaView>
+				<BottomSheetScrollView
+					keyboardShouldPersistTaps="handled"
+					showsVerticalScrollIndicator
+					style={styles.bottomSheetScroll}
+					contentContainerStyle={styles.bottomSheetScrollContent}
+				>
+					<BottomSheetList onClose={handleClose} />
+				</BottomSheetScrollView>
 			</BottomSheetModal>
 
 		</>
@@ -511,6 +525,33 @@ const styles = StyleSheet.create({
 	bottomSheetContainer: {
 		zIndex: 99999,
 		elevation: 99999,
+	},
+	headerIconButton: {
+		width: 42,
+		height: 42,
+		borderRadius: 21,
+		alignItems: "center",
+		justifyContent: "center",
+		backgroundColor: "transparent",
+		marginTop: 2,
+	},
+
+	headerIconButtonPressed: {
+		backgroundColor: "rgba(255,255,255,0.10)",
+		transform: [{ scale: 0.96 }],
+	},
+
+	headerIconButtonLoading: {
+		opacity: 0.65,
+	},
+	bottomSheetScroll: {
+		flex: 1,
+		backgroundColor: Colors.primary[901],
+	},
+
+	bottomSheetScrollContent: {
+		paddingBottom: 120,
+		backgroundColor: Colors.primary[901],
 	},
 });
 

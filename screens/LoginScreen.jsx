@@ -17,15 +17,16 @@ import { ScrollView } from 'react-native-gesture-handler';
 
 
 const LoginScreen = ({ navigation }) => {
-    const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
+    const [email, setEmail] = useState("");
+    const [password, setPassword] = useState("");
     const [showPassword, setShowPassword] = useState(true);
+
+    const dispatch = useDispatch();
+    const { loading, error } = useSelector((state) => state.auth);
 
     const isDisabled = loading || !email || !password;
     const isDisabledRecover = loading || !email;
 
-    const dispatch = useDispatch();
-    const { loading, error } = useSelector((state) => state.auth);
 
     const handleLogin = async () => {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy)
@@ -76,16 +77,22 @@ const LoginScreen = ({ navigation }) => {
 
 
     return (
-        <TouchableWithoutFeedback>
-            <ScrollView contentContainerStyle={{ flex: 1 }}>
-                <View style={{ flex: 1 }}>
-                    <KeyboardAvoidingView
-                        behavior={Platform.OS === "ios" ? "padding" : undefined}
-                        style={styles.content}
-                    >
+        <KeyboardAvoidingView
+            style={styles.container}
+            behavior={Platform.OS === "ios" ? "padding" : "height"}
+            keyboardVerticalOffset={Platform.OS === "ios" ? 80 : 0}
+        >
+            <TouchableWithoutFeedback onPress={dismissKeyboard}>
+                <ScrollView
+                    keyboardShouldPersistTaps="handled"
+                    showsVerticalScrollIndicator={false}
+                    contentContainerStyle={styles.scrollContent}
+                >
+                    <View style={styles.content}>
                         <View style={styles.shadowContainer}>
                             <Text style={styles.title}>Applicações</Text>
                         </View>
+
                         <TextInput
                             style={styles.input}
                             placeholder="Email"
@@ -93,8 +100,12 @@ const LoginScreen = ({ navigation }) => {
                             value={email}
                             onChangeText={setEmail}
                             keyboardType="email-address"
-                            onBlur={handleBlur} // Clear errors when the input loses focus
+                            autoCapitalize="none"
+                            autoCorrect={false}
+                            returnKeyType="next"
+                            onBlur={handleBlur}
                         />
+
                         <View style={styles.iconCointainer}>
                             <TextInput
                                 style={styles.inputIcon}
@@ -103,8 +114,13 @@ const LoginScreen = ({ navigation }) => {
                                 value={password}
                                 onChangeText={setPassword}
                                 secureTextEntry={showPassword}
-                                onBlur={handleBlur} // Clear errors when the input loses focus
+                                autoCapitalize="none"
+                                autoCorrect={false}
+                                returnKeyType="done"
+                                onSubmitEditing={handleLogin}
+                                onBlur={handleBlur}
                             />
+
                             <Ionicons
                                 style={styles.icon}
                                 name={!showPassword ? "eye" : "eye-off"}
@@ -113,6 +129,7 @@ const LoginScreen = ({ navigation }) => {
                                 onPress={handleShowPassword}
                             />
                         </View>
+
                         <TouchableOpacity
                             style={[styles.button, isDisabled && styles.buttonDisabled]}
                             onPress={handleLogin}
@@ -124,15 +141,21 @@ const LoginScreen = ({ navigation }) => {
                                 <Text style={styles.buttonText}>Entrar</Text>
                             )}
                         </TouchableOpacity>
+
                         {error && <Text style={styles.error}>{error}</Text>}
+
                         <TouchableOpacity
-                            style={[styles.forgetPassContainer, isDisabledRecover && styles.buttonDisabledRecover]}
+                            style={[
+                                styles.forgetPassContainer,
+                                isDisabledRecover && styles.buttonDisabledRecover,
+                            ]}
                             onPress={handleForgotPass}
                             disabled={isDisabledRecover}
                         >
                             <Text style={styles.forgetPassText}>Esqueci a Senha</Text>
                         </TouchableOpacity>
-                    </KeyboardAvoidingView>
+                    </View>
+
                     <View style={styles.titleContainer}>
                         <View style={styles.shadowContainer}>
                             <Image
@@ -140,43 +163,65 @@ const LoginScreen = ({ navigation }) => {
                                 style={styles.image}
                             />
                         </View>
+
                         <Text
                             style={{
                                 color: "grey",
                                 opacity: 0.5,
-                                fontWeight: 'bold'
+                                fontWeight: "bold",
                             }}
                         >
                             {Constants.expoConfig.version}
                         </Text>
                     </View>
-                </View>
-            </ScrollView>
-        </TouchableWithoutFeedback>
+                </ScrollView>
+            </TouchableWithoutFeedback>
+        </KeyboardAvoidingView>
     );
 };
 
 const styles = StyleSheet.create({
-    shadowContainer: {
-        shadowColor: "#000",  // Shadow color
-        shadowOffset: { width: 3, height: 5 },  // Offset for drop shadow effect
-        shadowOpacity: 0.4,  // Opacity of shadow
-        shadowRadius: 4,  // Spread of shadow
-        elevation: 8,  // Required for Android
-    },
-    content: {
+    container: {
         flex: 1,
+    },
+
+    scrollContent: {
+        flexGrow: 1,
+        paddingHorizontal: 20,
+        paddingTop: 40,
+        paddingBottom: 32,
         justifyContent: "center",
-        padding: 20,
     },
+
+    content: {
+        width: "100%",
+        justifyContent: "center",
+    },
+
+    titleContainer: {
+        width: "100%",
+        alignItems: "center",
+        marginTop: 48,
+    },
+
+    shadowContainer: {
+        shadowColor: "#000",
+        shadowOffset: { width: 3, height: 5 },
+        shadowOpacity: 0.4,
+        shadowRadius: 4,
+        elevation: 8,
+    },
+
     forgetPassContainer: {
-        marginTop: 15
+        marginTop: 15,
     },
+
     forgetPassText: {
         color: Colors.gold[500],
-        textDecorationLine: 'underline',
-        textAlign: 'center',
+        textDecorationLine: "underline",
+        textAlign: "center",
     },
+
     iconCointainer: {
         flexDirection: "row",
         alignItems: "center",
@@ -186,68 +231,72 @@ const styles = StyleSheet.create({
         paddingHorizontal: 10,
         marginBottom: 10,
     },
-    titleContainer: {
-        position: "absolute",
-        bottom: 20,
-        width: "100%",
-        alignItems: "center",
-    },
+
     image: {
         width: 50,
         height: 50,
         marginBottom: 10,
     },
-    container: {
-        flex: 1,
-    },
+
     title: {
         fontSize: 24,
-        fontWeight: 'bold',
+        fontWeight: "bold",
         marginBottom: 20,
-        color: 'whitesmoke',
-        textAlign: 'center'
+        color: "whitesmoke",
+        textAlign: "center",
     },
+
     inputIcon: {
         flex: 1,
-        height: 40,
+        height: 44,
         fontSize: 16,
         paddingHorizontal: 5,
-        borderColor: 'gray',
-        color: 'whitesmoke'
+        borderColor: "gray",
+        color: "whitesmoke",
     },
+
     input: {
-        height: 40,
+        height: 44,
         borderColor: "#ccc",
         borderWidth: 1,
-        borderRadius: 5,
+        borderRadius: 8,
         marginBottom: 20,
         paddingHorizontal: 10,
-        color: 'white'
+        color: "white",
     },
+
     error: {
-        color: 'red',
+        color: "red",
         marginTop: 10,
+        textAlign: "center",
     },
+
     button: {
-        backgroundColor: '#007BFF', // Blue color
+        backgroundColor: "#007BFF",
         padding: 15,
         borderRadius: 6,
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginTop: 30
+        alignItems: "center",
+        justifyContent: "center",
+        marginTop: 30,
     },
+
     buttonDisabled: {
-        backgroundColor: Colors.secondary[300], // Lighter blue when disabled
-        opacity: 0.5
+        backgroundColor: Colors.secondary[300],
+        opacity: 0.5,
     },
+
     buttonDisabledRecover: {
-        color: Colors.gold[100], // Lighter blue when disabled
-        opacity: 0.5
+        opacity: 0.5,
     },
+
     buttonText: {
-        color: '#FFF',
+        color: "#FFF",
         fontSize: 16,
-        fontWeight: 'bold',
+        fontWeight: "bold",
+    },
+
+    icon: {
+        paddingLeft: 8,
     },
 });
 
