@@ -34,7 +34,12 @@ export const createApplicationPdfMap = async (data, farm, plotMap, options = {})
 
     const formatDate = (dateString) => {
         if (!dateString) return "-";
-        const [year, month, day] = dateString.split("-");
+
+        const cleanDate = String(dateString).slice(0, 10);
+        const [year, month, day] = cleanDate.split("-");
+
+        if (!year || !month || !day) return "-";
+
         return `${day}/${month}/${year}`;
     };
 
@@ -76,23 +81,27 @@ export const createApplicationPdfMap = async (data, farm, plotMap, options = {})
     const getAppDateStart = (card) => {
         if (card?.isConsolidated) {
             const dates = (card?.aps || [])
-                .map((ap) => ap?.dateAp)
+                .map((ap) => ap?.dateApKey || ap?.dateAp)
                 .filter(Boolean)
                 .sort();
+
             return dates[0] || null;
         }
-        return card?.dateAp;
+
+        return card?.dateApKey || card?.dateAp;
     };
 
     const getAppDateEnd = (card) => {
         if (card?.isConsolidated) {
             const dates = (card?.aps || [])
-                .map((ap) => ap?.endDateAp)
+                .map((ap) => ap?.endDateApKey || ap?.endDateAp)
                 .filter(Boolean)
                 .sort();
+
             return dates[dates.length - 1] || null;
         }
-        return card?.endDateAp;
+
+        return card?.endDateApKey || card?.endDateAp;
     };
 
     const getMergedProducts = (card) => {

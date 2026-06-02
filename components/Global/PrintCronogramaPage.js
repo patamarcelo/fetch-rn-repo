@@ -38,7 +38,11 @@ export const createApplicationPdf = async (data, farm, options = {}) => {
     const formatDate = (dateString) => {
         if (!dateString) return "-";
 
-        const [year, month, day] = dateString.split("-");
+        const cleanDate = String(dateString).slice(0, 10);
+        const [year, month, day] = cleanDate.split("-");
+
+        if (!year || !month || !day) return "-";
+
         return `${day}/${month}/${year}`;
     };
 
@@ -64,27 +68,27 @@ export const createApplicationPdf = async (data, farm, options = {}) => {
     const getAppDateStart = (card) => {
         if (card?.isConsolidated) {
             const dates = (card?.aps || [])
-                .map((ap) => ap?.dateAp)
+                .map((ap) => ap?.dateApKey || ap?.dateAp)
                 .filter(Boolean)
                 .sort();
 
             return dates[0] || null;
         }
 
-        return card?.dateAp;
+        return card?.dateApKey || card?.dateAp;
     };
 
     const getAppDateEnd = (card) => {
         if (card?.isConsolidated) {
             const dates = (card?.aps || [])
-                .map((ap) => ap?.endDateAp)
+                .map((ap) => ap?.endDateApKey || ap?.endDateAp)
                 .filter(Boolean)
                 .sort();
 
             return dates[dates.length - 1] || null;
         }
 
-        return card?.endDateAp;
+        return card?.endDateApKey || card?.endDateAp;
     };
 
     const getMergedProducts = (card) => {
@@ -164,16 +168,15 @@ export const createApplicationPdf = async (data, farm, options = {}) => {
                     )} há</span>`;
 
                     return `
-                        <div class="parcela-detail-container bordered ${
-                            parcela.areaSolicitada == parcela.areaAplicada
-                                ? "finish-parcela"
-                                : ""
+                        <div class="parcela-detail-container bordered ${parcela.areaSolicitada == parcela.areaAplicada
+                            ? "finish-parcela"
+                            : ""
                         }">
                             <div class="detail-variedade-area">
                                 <b class="parcela-code">${parcela.parcela}${iconTagInside}</b>
                                 <span class="parcela-area">${formatNumber(
-                                    parcela.areaSolicitada
-                                )} há</span>
+                            parcela.areaSolicitada
+                        )} há</span>
                             </div>
                             <div class="detail-variedade-dap">
                                 <span class="variedade-text">${parcela.variedade || "?"}</span>
@@ -192,15 +195,14 @@ export const createApplicationPdf = async (data, farm, options = {}) => {
             const prodsCards = mergedProducts
                 .map((prod, i) => {
                     return `
-                        <div class="grid-produtos detail-prod-container ${
-                            i === 0 ? "first-prod-here" : ""
+                        <div class="grid-produtos detail-prod-container ${i === 0 ? "first-prod-here" : ""
                         } ${i % 2 !== 0 ? "even-row-prod" : ""}" style="background-color: ${withOpacity(
-                        prod.colorChip
-                    )}">
+                            prod.colorChip
+                        )}">
                             <span style="margin-left:0px;padding-left:2px;justify-self:start">
                                 ${formatDoseNumber(prod.doseSolicitada)
-                                    .toString()
-                                    .trim()}
+                            .toString()
+                            .trim()}
                                 <small style="margin-left:3px;color:#777777">${prod?.unit}</small>
                             </span>
                             <span>${String(prod.type || "").replace(
@@ -224,8 +226,8 @@ export const createApplicationPdf = async (data, farm, options = {}) => {
                     <div class="consolidated-codes-block">
                         <b>APs consolidadas:</b>
                         ${(app?.aps || [])
-                            .map((ap) => `${ap.code} - ${ap.operation}`)
-                            .join(" • ")}
+                    .map((ap) => `${ap.code} - ${ap.operation}`)
+                    .join(" • ")}
                     </div>
                 `
                 : "";
@@ -239,22 +241,22 @@ export const createApplicationPdf = async (data, farm, options = {}) => {
                         </div>
                         <div class="resumo-container-app-date">
                             <span><b>Início:</b> ${formatDate(
-                                getAppDateStart(app)
-                            )}</span>
+                getAppDateStart(app)
+            )}</span>
                             <span><b>Limite:</b> ${formatDate(
-                                getAppDateEnd(app)
-                            )}</span>
+                getAppDateEnd(app)
+            )}</span>
                         </div>
                         <div class="resumo-container-app-area">
                             <span><b>Área:</b> ${formatNumber(
-                                app?.areaSolicitada
-                            )} há</span>
+                app?.areaSolicitada
+            )} há</span>
                             <span><b>Realizado:</b> ${formatNumber(
-                                totalRealizado
-                            )} há</span>
+                totalRealizado
+            )} há</span>
                             <span><b>Saldo:</b> ${formatNumber(
-                                app?.saldoAreaAplicar
-                            )} há</span>
+                app?.saldoAreaAplicar
+            )} há</span>
                         </div>
                     </div>
 
@@ -575,9 +577,8 @@ export const createApplicationPdf = async (data, farm, options = {}) => {
             .replace(/\//g, "-");
 
         const modeSuffix = viewMode === "consolidated" ? "consolidado" : "aps";
-        const filename = `${
-            farm.replace("Fazenda ", "")
-        } openApss - ${modeSuffix} - ${formattedDate}_app.pdf`;
+        const filename = `${farm.replace("Fazenda ", "")
+            } openApss - ${modeSuffix} - ${formattedDate}_app.pdf`;
 
         const newUri = `${FileSystem.documentDirectory}${filename}`;
 
