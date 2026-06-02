@@ -12,19 +12,20 @@ import {
     Dimensions,
     Image,
     PanResponder,
+    Modal,
+    KeyboardAvoidingView,
+    StatusBar
 } from "react-native";
+
+import { SafeAreaView } from "react-native-safe-area-context";
 
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { Colors } from "../../constants/styles";
 
-
 const SCREEN_HEIGHT = Dimensions.get("window").height;
 
 const APPLICATIONS_SHEET_COLLAPSED_HEIGHT = Platform.OS === "ios" ? 360 : 340;
-const APPLICATIONS_SHEET_TOP_OFFSET = Platform.OS === "ios" ? 54 : 28;
-const APPLICATIONS_SHEET_EXPANDED_HEIGHT =
-    SCREEN_HEIGHT - APPLICATIONS_SHEET_TOP_OFFSET;
-
+const APPLICATIONS_SHEET_EXPANDED_HEIGHT = SCREEN_HEIGHT;
 
 const cropIconDict = [
     {
@@ -126,7 +127,12 @@ const formatDose = (value) => {
 };
 
 const formatAreaBR = (value) => {
-    if (value === null || value === undefined || value === "" || Number.isNaN(Number(value))) {
+    if (
+        value === null ||
+        value === undefined ||
+        value === "" ||
+        Number.isNaN(Number(value))
+    ) {
         return "—";
     }
 
@@ -137,7 +143,12 @@ const formatAreaBR = (value) => {
 };
 
 const formatDap = (value) => {
-    if (value === null || value === undefined || value === "" || Number.isNaN(Number(value))) {
+    if (
+        value === null ||
+        value === undefined ||
+        value === "" ||
+        Number.isNaN(Number(value))
+    ) {
         return "—";
     }
 
@@ -310,16 +321,6 @@ const ParcelApplicationsSheet = ({
 
     const applications = Array.isArray(data?.applications) ? data.applications : [];
 
-    // console.log("DEBUG FRONT APPLICATIONS", data?.applications?.map((ap) => ({
-    //     code: ap.code,
-    //     status: ap.status,
-    //     originalStatus: ap.originalStatus,
-    //     statusLabel: ap.statusLabel,
-    //     progress: !!ap.progress,
-    //     closedDate: ap.closedDate,
-    // })));
-
-
     const applicationsMatchingProduct = useMemo(() => {
         const searchText = normalizeSearchText(productSearch);
 
@@ -343,7 +344,6 @@ const ParcelApplicationsSheet = ({
                 })
         );
     }, [applications, productSearch]);
-
 
     const visibleTotals = useMemo(() => {
         return applicationsMatchingProduct.reduce(
@@ -461,20 +461,36 @@ const ParcelApplicationsSheet = ({
             ? `${parcelData?.ciclo || parcel?.ciclo}`
             : "—";
 
-
     useEffect(() => {
-        if (!visible) return;
+        if (!visible) {
+            applicationsSheetHeight.stopAnimation();
+            applicationsSheetHeight.setValue(APPLICATIONS_SHEET_COLLAPSED_HEIGHT);
+            return;
+        }
 
-        Animated.spring(applicationsSheetHeight, {
-            toValue: expanded
-                ? APPLICATIONS_SHEET_EXPANDED_HEIGHT
-                : APPLICATIONS_SHEET_COLLAPSED_HEIGHT,
+        const nextHeight = expanded
+            ? APPLICATIONS_SHEET_EXPANDED_HEIGHT
+            : APPLICATIONS_SHEET_COLLAPSED_HEIGHT;
+
+        if (!expanded) {
+            applicationsSheetHeight.stopAnimation();
+            applicationsSheetHeight.setValue(APPLICATIONS_SHEET_COLLAPSED_HEIGHT);
+            return;
+        }
+
+        Animated.timing(applicationsSheetHeight, {
+            toValue: nextHeight,
+            duration: 420,
             useNativeDriver: false,
-            bounciness: 4,
-            speed: 14,
         }).start();
     }, [visible, expanded, applicationsSheetHeight]);
 
+    useEffect(() => {
+        if (!visible) {
+            setProductSearch("");
+            setStatusFilter("all");
+        }
+    }, [visible]);
 
     const expandApplicationsSheet = useCallback(() => {
         if (!expanded) {
@@ -488,31 +504,40 @@ const ParcelApplicationsSheet = ({
         }
     }, [expanded, onToggleExpanded]);
 
+    const handleBackdropPress = useCallback(() => {
+        if (expanded) return;
+        onClose?.();
+    }, [expanded, onClose]);
+
+
     const applicationsSheetPanResponder = useMemo(
         () =>
             PanResponder.create({
                 onStartShouldSetPanResponder: () => false,
 
                 onMoveShouldSetPanResponder: (_, gestureState) => {
-                    return Math.abs(gestureState.dy) > 6;
+                    if (!expanded) {
+                        return gestureState.dy < -6;
+                    }
+
+                    return gestureState.dy > 6;
                 },
 
                 onPanResponderTerminationRequest: () => false,
 
                 onPanResponderRelease: (_, gestureState) => {
-                    if (gestureState.dy < -18) {
+                    if (!expanded && gestureState.dy < -8) {
                         expandApplicationsSheet();
                         return;
                     }
 
-                    if (gestureState.dy > 18) {
-                        collapseApplicationsSheet();
+                    if (expanded && gestureState.dy > 18) {
+                        onClose?.();
                     }
                 },
             }),
-        [expandApplicationsSheet, collapseApplicationsSheet]
+        [expanded, expandApplicationsSheet, onClose]
     );
-
 
     const statusSummaryItems = [
         {
@@ -549,420 +574,515 @@ const ParcelApplicationsSheet = ({
         },
     ];
 
-
     if (!visible) return null;
 
     return (
-        <Animated.View
-            style={[
-                styles.sheet,
-                {
-                    height: applicationsSheetHeight,
-                },
-            ]}
+        <Modal
+            visible={visible}
+            transparent
+            animationType="fade"
+            statusBarTranslucent
+            onRequestClose={onClose}
         >
-            <View
-                style={styles.handleArea}
-                {...applicationsSheetPanResponder.panHandlers}
-            >
+            <StatusBar
+                barStyle={!expanded ? "light-content" : "dark-content"}
+                translucent={Platform.OS === "android"}
+            />
+            <View style={styles.modalRoot}>
                 <TouchableOpacity
-                    activeOpacity={0.86}
-                    onPress={onToggleExpanded}
-                    style={styles.handleIcon}
+                    activeOpacity={1}
+                    style={[
+                        styles.modalBackdrop,
+                        expanded && styles.modalBackdropExpanded,
+                    ]}
+                    onPress={handleBackdropPress}
+                />
+
+                <KeyboardAvoidingView
+                    style={styles.keyboardAvoiding}
+                    behavior={Platform.OS === "ios" ? "padding" : undefined}
                 >
-                    <Ionicons
-                        name={expanded ? "chevron-down" : "chevron-up"}
-                        size={22}
-                        color="rgba(15,23,42,0.62)"
-                    />
-                </TouchableOpacity>
-
-                <View style={styles.header}>
-                    <View style={styles.headerTopRow}>
-                        <View style={styles.titleRow}>
-                            {cropIcon ? (
-                                <View style={styles.cropIconWrap}>
-                                    <Image source={cropIcon} style={styles.cropIconImage} />
-                                </View>
-                            ) : (
-                                <View
-                                    style={[
-                                        styles.cropFallbackBadge,
-                                        { backgroundColor: fallbackCropColor },
-                                    ]}
-                                >
-                                    <Image source={fallbackCropIcon} style={styles.cropFallbackIcon} />
-                                </View>
-                            )}
-
-                            <View style={styles.titleTextRow}>
-                                <Text style={styles.title} numberOfLines={1}>
-                                    {parcelData?.name || parcel?.parcela || "Parcela"}
-                                </Text>
-
-                                <Text style={styles.titleArea} numberOfLines={1}>
-                                    {formatAreaBR(parcelData?.area ?? parcel?.area)} ha
-                                </Text>
-                            </View>
-                        </View>
-
-                        <View style={styles.headerActions}>
-                            <Text style={styles.harvestText} numberOfLines={1}>
-                                {safraValue} · {cicloValue}
-                            </Text>
-
-                            <TouchableOpacity
-                                activeOpacity={0.82}
-                                onPress={onClose}
-                                style={styles.closeButton}
-                            >
-                                <Ionicons name="close" size={18} color="#0F172A" />
-                            </TouchableOpacity>
-                        </View>
-                    </View>
-                    <View style={styles.metaCard}>
-                        <View style={styles.metaCardColumn}>
-                            <Text style={styles.metaCardLabel}>Cultura</Text>
-                            <Text style={styles.metaCardValue} numberOfLines={1}>
-                                {varietyValue || cropValue || "—"}
-                            </Text>
-                        </View>
-
-                        <View style={styles.metaCardDivider} />
-
-                        <View style={styles.metaCardColumn}>
-                            <Text style={styles.metaCardLabel}>Plantio</Text>
-                            <Text style={styles.metaCardValue} numberOfLines={1}>
-                                {formatDateBR(plantingDateValue)}
-                            </Text>
-                        </View>
-
-                        <View style={styles.metaCardDivider} />
-
-                        <View style={styles.metaCardColumn}>
-                            <Text style={styles.metaCardLabel}>DAP</Text>
-                            <Text style={styles.metaCardValue} numberOfLines={1}>
-                                {formatDap(dapValue)}
-                            </Text>
-                        </View>
-
-                        <View style={styles.metaCardDivider} />
-
-                        <View style={styles.metaCardColumn}>
-                            <Text style={styles.metaCardLabel}>Colheita</Text>
-                            <Text style={styles.metaCardValue} numberOfLines={1}>
-                                {formatDateBR(harvestPredictionDateValue)}
-                            </Text>
-                        </View>
-                    </View>
-
-                </View>
-            </View>
-
-            {loading ? (
-                <ApplicationSkeleton />
-            ) : error ? (
-                <View style={styles.errorBox}>
-                    <Text style={styles.errorTitle}>Erro ao carregar</Text>
-                    <Text style={styles.errorText}>{error}</Text>
-                </View>
-            ) : (
-                <>
-                    <View style={styles.summaryRow}>
-                        {statusSummaryItems.map((item) => {
-                            const isSelected = statusFilter === item.key;
-
-                            return (
-                                <TouchableOpacity
-                                    key={item.key}
-                                    activeOpacity={0.86}
-                                    onPress={() => setStatusFilter(item.key)}
-                                    style={[
-                                        styles.summaryItem,
-                                        {
-                                            backgroundColor: item.bg,
-                                            borderColor: item.border,
-                                        },
-                                        isSelected && [
-                                            styles.summaryItemSelected,
-                                            {
-                                                borderColor: item.color,
-                                            },
-                                        ],
-                                    ]}
-                                >
-                                    <Text
-                                        style={[
-                                            styles.summaryValue,
-                                            { color: item.color },
-                                        ]}
-                                    >
-                                        {item.value}
-                                    </Text>
-
-                                    <Text
-                                        style={[
-                                            styles.summaryLabel,
-                                            { color: item.color },
-                                        ]}
-                                        numberOfLines={1}
-                                    >
-                                        {item.label}
-                                    </Text>
-
-                                    {isSelected ? (
-                                        <View
-                                            style={[
-                                                styles.summarySelectedDot,
-                                                { backgroundColor: item.color },
-                                            ]}
-                                        />
-                                    ) : null}
-                                </TouchableOpacity>
-                            );
-                        })}
-                    </View>
-                    <View style={styles.searchBox}>
-                        <Ionicons
-                            name="search-outline"
-                            size={16}
-                            color="rgba(15,23,42,0.48)"
-                        />
-
-                        <TextInput
-                            value={productSearch}
-                            onChangeText={setProductSearch}
-                            placeholder="Buscar produto aplicado na parcela..."
-                            placeholderTextColor="rgba(15,23,42,0.42)"
-                            style={styles.searchInput}
-                            autoCorrect={false}
-                            autoCapitalize="none"
-                        />
-
-                        {productSearch ? (
-                            <TouchableOpacity
-                                activeOpacity={0.75}
-                                onPress={() => setProductSearch("")}
-                                style={styles.searchClearButton}
-                            >
-                                <Ionicons
-                                    name="close"
-                                    size={14}
-                                    color="rgba(15,23,42,0.62)"
-                                />
-                            </TouchableOpacity>
-                        ) : null}
-                    </View>
-
-                    <ScrollView
-                        style={styles.scroll}
-                        contentContainerStyle={styles.scrollContent}
-                        showsVerticalScrollIndicator
-                        indicatorStyle="black"
-                        scrollIndicatorInsets={{
-                            right: 2,
-                            bottom: 8,
-                        }}
+                    <Animated.View
+                        style={[
+                            styles.sheet,
+                            expanded && styles.sheetExpanded,
+                            {
+                                height: applicationsSheetHeight,
+                            },
+                        ]}
                     >
-                        {filteredApplications.length === 0 ? (
-                            <View style={styles.emptyBox}>
-                                <Ionicons
-                                    name="leaf-outline"
-                                    size={26}
-                                    color="rgba(15,23,42,0.38)"
-                                />
-                                <Text style={styles.emptyTitle}>Nenhuma aplicação encontrada</Text>
-                                <Text style={styles.emptyText}>
-                                    {productSearch
-                                        ? "Nenhuma aplicação dessa parcela possui esse produto."
-                                        : "Essa parcela ainda não possui aplicações nesse filtro."}
-                                </Text>
-                            </View>
-                        ) : (
-                            filteredApplications.map((ap, apIndex) => {
-                                const parcelAreaValue = parcelData?.area ?? parcel?.area;
-                                const progressPercent = getApplicationProgressPercent(ap, parcelAreaValue);
-                                const progressColor = getProgressCircleColor(progressPercent ?? 0, ap.status);
-                                const statusColor = getStatusColor(ap.status);
+                        <SafeAreaView
+                            style={styles.sheetSafeArea}
+                            edges={expanded ? ["top", ""] : [""]}
+                        >
+                            <View
+                                style={[
+                                    styles.handleArea,
+                                    expanded && styles.handleAreaExpanded,
+                                ]}
+                                {...applicationsSheetPanResponder.panHandlers}
+                            >
+                                {!expanded ? (
+                                    <View style={styles.dragHandleWrap}>
+                                        <TouchableOpacity
+                                            activeOpacity={0.86}
+                                            onPress={expandApplicationsSheet}
+                                            style={styles.handleIcon}
+                                        >
+                                            <Ionicons
+                                                name="chevron-up"
+                                                size={22}
+                                                color="rgba(15,23,42,0.62)"
+                                            />
+                                        </TouchableOpacity>
+                                    </View>
+                                ) : null}
 
-                                return (
-                                    <View
-                                        key={`${ap.id || ap.mongoId || ap.code || "ap"}-${apIndex}`}
-                                        style={styles.applicationCard}
-                                    >
-                                        <View style={styles.apHeader}>
-                                            <View style={styles.apHeaderLeft}>
-                                                <View style={styles.apTitleRow}>
-                                                    <Ionicons
-                                                        name="shield"
-                                                        size={17}
-                                                        color={statusColor}
-                                                    />
-
-                                                    <Text style={styles.apCode}>{ap.code}</Text>
+                                <View style={styles.header}>
+                                    <View style={styles.headerTopRow}>
+                                        <View style={styles.titleRow}>
+                                            {cropIcon ? (
+                                                <View style={styles.cropIconWrap}>
+                                                    <Image source={cropIcon} style={styles.cropIconImage} />
                                                 </View>
-
-                                                <View style={styles.apDateRow}>
-                                                    <Ionicons
-                                                        name="calendar-outline"
-                                                        size={15}
-                                                        color="rgba(15,23,42,0.56)"
-                                                    />
-
-                                                    <Text style={styles.apDate}>{formatDateBR(ap.date)}</Text>
-                                                </View>
-                                            </View>
-
-                                            <View
-                                                style={[
-                                                    styles.apStatusPill,
-                                                    {
-                                                        backgroundColor: `${statusColor}12`,
-                                                        borderColor: `${statusColor}30`,
-                                                    },
-                                                ]}
-                                            >
-                                                <Text
+                                            ) : (
+                                                <View
                                                     style={[
-                                                        styles.apStatusText,
-                                                        { color: statusColor },
+                                                        styles.cropFallbackBadge,
+                                                        { backgroundColor: fallbackCropColor },
                                                     ]}
-                                                    numberOfLines={1}
                                                 >
-                                                    {ap.statusLabel}
+                                                    <Image
+                                                        source={fallbackCropIcon}
+                                                        style={styles.cropFallbackIcon}
+                                                    />
+                                                </View>
+                                            )}
+
+                                            <View style={styles.titleTextRow}>
+                                                <Text style={styles.title} numberOfLines={1}>
+                                                    {parcelData?.name || parcel?.parcela || "Parcela"}
+                                                </Text>
+
+                                                <Text style={styles.titleArea} numberOfLines={1}>
+                                                    {formatAreaBR(parcelData?.area ?? parcel?.area)} ha
                                                 </Text>
                                             </View>
                                         </View>
 
-                                        <View style={styles.operationRow}>
-                                            <View style={styles.operationBox}>
-                                                <Text style={styles.operationLabel}>Operação</Text>
-                                                <Text style={styles.operationText}>{ap.operation}</Text>
-                                            </View>
+                                        <View style={styles.headerActions}>
+                                            <Text style={styles.harvestText} numberOfLines={1}>
+                                                {safraValue} · {cicloValue}
+                                            </Text>
 
-                                            <View style={styles.operationProgressWrap}>
-                                                <View
+                                            <TouchableOpacity
+                                                activeOpacity={0.82}
+                                                onPress={onClose}
+                                                style={[
+                                                    styles.closeButton,
+                                                    expanded && styles.closeButtonExpanded,
+                                                ]}
+                                            >
+                                                <Ionicons name="close" size={18} color="#0F172A" />
+                                            </TouchableOpacity>
+                                        </View>
+                                    </View>
+
+                                    <View style={styles.metaCard}>
+                                        <View style={styles.metaCardColumn}>
+                                            <Text style={styles.metaCardLabel}>Cultura</Text>
+                                            <Text style={styles.metaCardValue} numberOfLines={1}>
+                                                {varietyValue || cropValue || "—"}
+                                            </Text>
+                                        </View>
+
+                                        <View style={styles.metaCardDivider} />
+
+                                        <View style={styles.metaCardColumn}>
+                                            <Text style={styles.metaCardLabel}>Plantio</Text>
+                                            <Text style={styles.metaCardValue} numberOfLines={1}>
+                                                {formatDateBR(plantingDateValue)}
+                                            </Text>
+                                        </View>
+
+                                        <View style={styles.metaCardDivider} />
+
+                                        <View style={styles.metaCardColumn}>
+                                            <Text style={styles.metaCardLabel}>DAP</Text>
+                                            <Text style={styles.metaCardValue} numberOfLines={1}>
+                                                {formatDap(dapValue)}
+                                            </Text>
+                                        </View>
+
+                                        <View style={styles.metaCardDivider} />
+
+                                        <View style={styles.metaCardColumn}>
+                                            <Text style={styles.metaCardLabel}>Colheita</Text>
+                                            <Text style={styles.metaCardValue} numberOfLines={1}>
+                                                {formatDateBR(harvestPredictionDateValue)}
+                                            </Text>
+                                        </View>
+                                    </View>
+                                </View>
+                            </View>
+
+                            {loading ? (
+                                <ApplicationSkeleton />
+                            ) : error ? (
+                                <View style={styles.errorBox}>
+                                    <Text style={styles.errorTitle}>Erro ao carregar</Text>
+                                    <Text style={styles.errorText}>{error}</Text>
+                                </View>
+                            ) : (
+                                <>
+                                    <View style={styles.summaryRow}>
+                                        {statusSummaryItems.map((item) => {
+                                            const isSelected = statusFilter === item.key;
+
+                                            return (
+                                                <TouchableOpacity
+                                                    key={item.key}
+                                                    activeOpacity={0.86}
+                                                    onPress={() => setStatusFilter(item.key)}
                                                     style={[
-                                                        styles.progressCircle,
+                                                        styles.summaryItem,
                                                         {
-                                                            borderColor: `${progressColor}30`,
-                                                            backgroundColor: `${progressColor}08`,
+                                                            backgroundColor: item.bg,
+                                                            borderColor: item.border,
                                                         },
+                                                        isSelected && [
+                                                            styles.summaryItemSelected,
+                                                            {
+                                                                borderColor: item.color,
+                                                            },
+                                                        ],
                                                     ]}
                                                 >
-                                                    <View
+                                                    <Text
                                                         style={[
-                                                            styles.progressCircleFill,
-                                                            {
-                                                                height: `${progressPercent ?? 0}%`,
-                                                                backgroundColor: `${progressColor}20`,
-                                                            },
+                                                            styles.summaryValue,
+                                                            { color: item.color },
                                                         ]}
-                                                    />
-
-                                                    <View style={styles.progressCircleGloss} />
+                                                    >
+                                                        {item.value}
+                                                    </Text>
 
                                                     <Text
                                                         style={[
-                                                            styles.progressCircleValue,
-                                                            { color: progressColor },
+                                                            styles.summaryLabel,
+                                                            { color: item.color },
                                                         ]}
+                                                        numberOfLines={1}
                                                     >
-                                                        {progressPercent !== null ? `${progressPercent}%` : "—"}
+                                                        {item.label}
                                                     </Text>
-                                                </View>
-                                            </View>
-                                        </View>
 
-                                        {ap.progress ? (
-                                            <View style={styles.progressBox}>
-                                                <View style={styles.progressItem}>
-                                                    <Text style={styles.progressLabel}>Aplicado em</Text>
-                                                    <Text style={styles.progressValue}>
-                                                        {formatDateBRTime(ap.progress.date)}
-                                                    </Text>
-                                                </View>
-
-                                                <View style={styles.progressItem}>
-                                                    <Text style={styles.progressLabel}>Área aplicada</Text>
-                                                    <Text style={styles.progressValue}>
-                                                        {formatAreaBR(ap.progress.area)} ha
-                                                    </Text>
-                                                </View>
-
-                                                {ap.progress.equipment ? (
-                                                    <View style={styles.progressItem}>
-                                                        <Text style={styles.progressLabel}>Equipamento</Text>
-                                                        <Text style={styles.progressValue} numberOfLines={1}>
-                                                            {ap.progress.equipment}
-                                                        </Text>
-                                                    </View>
-                                                ) : null}
-                                            </View>
-                                        ) : null}
-
-                                        <View style={styles.productsList}>
-                                            {(ap.products || [])
-                                                .filter((product) => product.type !== "Operação")
-                                                .map((product, productIndex) => (
-                                                    <View
-                                                        key={`${ap.id || ap.mongoId || ap.code}-product-${product.id || product.product || productIndex}-${productIndex}`}
-                                                        style={styles.productRow}
-                                                    >
+                                                    {isSelected ? (
                                                         <View
                                                             style={[
-                                                                styles.productColorBar,
-                                                                { backgroundColor: product.colorChip },
+                                                                styles.summarySelectedDot,
+                                                                { backgroundColor: item.color },
                                                             ]}
                                                         />
+                                                    ) : null}
+                                                </TouchableOpacity>
+                                            );
+                                        })}
+                                    </View>
 
-                                                        <View style={styles.productInfo}>
-                                                            <Text
+                                    <View style={styles.searchBox}>
+                                        <Ionicons
+                                            name="search-outline"
+                                            size={16}
+                                            color="rgba(15,23,42,0.48)"
+                                        />
+
+                                        <TextInput
+                                            value={productSearch}
+                                            onChangeText={setProductSearch}
+                                            placeholder="Buscar produto aplicado na parcela..."
+                                            placeholderTextColor="rgba(15,23,42,0.42)"
+                                            style={styles.searchInput}
+                                            autoCorrect={false}
+                                            autoCapitalize="none"
+                                        />
+
+                                        {productSearch ? (
+                                            <TouchableOpacity
+                                                activeOpacity={0.75}
+                                                onPress={() => setProductSearch("")}
+                                                style={styles.searchClearButton}
+                                            >
+                                                <Ionicons
+                                                    name="close"
+                                                    size={14}
+                                                    color="rgba(15,23,42,0.62)"
+                                                />
+                                            </TouchableOpacity>
+                                        ) : null}
+                                    </View>
+
+                                    <ScrollView
+                                        style={styles.scroll}
+                                        contentContainerStyle={styles.scrollContent}
+                                        showsVerticalScrollIndicator
+                                        indicatorStyle="black"
+                                        keyboardShouldPersistTaps="handled"
+                                        scrollIndicatorInsets={{
+                                            right: 2,
+                                            bottom: 8,
+                                        }}
+                                    >
+                                        {filteredApplications.length === 0 ? (
+                                            <View style={styles.emptyBox}>
+                                                <Ionicons
+                                                    name="leaf-outline"
+                                                    size={26}
+                                                    color="rgba(15,23,42,0.38)"
+                                                />
+                                                <Text style={styles.emptyTitle}>
+                                                    Nenhuma aplicação encontrada
+                                                </Text>
+                                                <Text style={styles.emptyText}>
+                                                    {productSearch
+                                                        ? "Nenhuma aplicação dessa parcela possui esse produto."
+                                                        : "Essa parcela ainda não possui aplicações nesse filtro."}
+                                                </Text>
+                                            </View>
+                                        ) : (
+                                            filteredApplications.map((ap, apIndex) => {
+                                                const parcelAreaValue = parcelData?.area ?? parcel?.area;
+                                                const progressPercent = getApplicationProgressPercent(
+                                                    ap,
+                                                    parcelAreaValue
+                                                );
+                                                const progressColor = getProgressCircleColor(
+                                                    progressPercent ?? 0,
+                                                    ap.status
+                                                );
+                                                const statusColor = getStatusColor(ap.status);
+
+                                                return (
+                                                    <View
+                                                        key={`${ap.id || ap.mongoId || ap.code || "ap"}-${apIndex}`}
+                                                        style={styles.applicationCard}
+                                                    >
+                                                        <View style={styles.apHeader}>
+                                                            <View style={styles.apHeaderLeft}>
+                                                                <View style={styles.apTitleRow}>
+                                                                    <Ionicons
+                                                                        name="shield"
+                                                                        size={17}
+                                                                        color={statusColor}
+                                                                    />
+
+                                                                    <Text style={styles.apCode}>{ap.code}</Text>
+                                                                </View>
+
+                                                                <View style={styles.apDateRow}>
+                                                                    <Ionicons
+                                                                        name="calendar-outline"
+                                                                        size={15}
+                                                                        color="rgba(15,23,42,0.56)"
+                                                                    />
+
+                                                                    <Text style={styles.apDate}>
+                                                                        {formatDateBR(ap.date)}
+                                                                    </Text>
+                                                                </View>
+                                                            </View>
+
+                                                            <View
                                                                 style={[
-                                                                    styles.productType,
-                                                                    { color: product.colorChip },
+                                                                    styles.apStatusPill,
+                                                                    {
+                                                                        backgroundColor: `${statusColor}12`,
+                                                                        borderColor: `${statusColor}30`,
+                                                                    },
                                                                 ]}
-                                                                numberOfLines={1}
                                                             >
-                                                                {product.type}
-                                                            </Text>
-
-                                                            <Text style={styles.productName} numberOfLines={2}>
-                                                                {product.product}
-                                                            </Text>
+                                                                <Text
+                                                                    style={[
+                                                                        styles.apStatusText,
+                                                                        { color: statusColor },
+                                                                    ]}
+                                                                    numberOfLines={1}
+                                                                >
+                                                                    {ap.statusLabel}
+                                                                </Text>
+                                                            </View>
                                                         </View>
 
-                                                        <View style={styles.doseBox}>
-                                                            <Text style={styles.doseLabel}>Dose Solicitada</Text>
+                                                        <View style={styles.operationRow}>
+                                                            <View style={styles.operationBox}>
+                                                                <Text style={styles.operationLabel}>Operação</Text>
+                                                                <Text style={styles.operationText}>{ap.operation}</Text>
+                                                            </View>
 
-                                                            <Text style={styles.doseValue}>
-                                                                {formatDose(product.soughtDose ?? product.displayDose)}{" "}
-                                                                {product.soughtUnit ?? product.displayUnit}
-                                                            </Text>
+                                                            <View style={styles.operationProgressWrap}>
+                                                                <View
+                                                                    style={[
+                                                                        styles.progressCircle,
+                                                                        {
+                                                                            borderColor: `${progressColor}30`,
+                                                                            backgroundColor: `${progressColor}08`,
+                                                                        },
+                                                                    ]}
+                                                                >
+                                                                    <View
+                                                                        style={[
+                                                                            styles.progressCircleFill,
+                                                                            {
+                                                                                height: `${progressPercent ?? 0}%`,
+                                                                                backgroundColor: `${progressColor}20`,
+                                                                            },
+                                                                        ]}
+                                                                    />
+
+                                                                    {/* <View style={styles.progressCircleGloss} /> */}
+
+                                                                    <Text
+                                                                        style={[
+                                                                            styles.progressCircleValue,
+                                                                            { color: progressColor, fontWeight: 'bold' },
+                                                                        ]}
+                                                                    >
+                                                                        {progressPercent !== null
+                                                                            ? `${progressPercent}%`
+                                                                            : "—"}
+                                                                    </Text>
+                                                                </View>
+                                                            </View>
+                                                        </View>
+
+                                                        {ap.progress ? (
+                                                            <View style={styles.progressBox}>
+                                                                <View style={styles.progressItem}>
+                                                                    <Text style={styles.progressLabel}>Aplicado em</Text>
+                                                                    <Text style={styles.progressValue}>
+                                                                        {formatDateBRTime(ap.progress.date)}
+                                                                    </Text>
+                                                                </View>
+
+                                                                <View style={styles.progressItem}>
+                                                                    <Text style={styles.progressLabel}>
+                                                                        Área aplicada
+                                                                    </Text>
+                                                                    <Text style={styles.progressValue}>
+                                                                        {formatAreaBR(ap.progress.area)} ha
+                                                                    </Text>
+                                                                </View>
+
+                                                                {ap.progress.equipment ? (
+                                                                    <View style={styles.progressItem}>
+                                                                        <Text style={styles.progressLabel}>
+                                                                            Equipamento
+                                                                        </Text>
+                                                                        <Text
+                                                                            style={styles.progressValue}
+                                                                            numberOfLines={1}
+                                                                        >
+                                                                            {ap.progress.equipment}
+                                                                        </Text>
+                                                                    </View>
+                                                                ) : null}
+                                                            </View>
+                                                        ) : null}
+
+                                                        <View style={styles.productsList}>
+                                                            {(ap.products || [])
+                                                                .filter((product) => product.type !== "Operação")
+                                                                .map((product, productIndex) => (
+                                                                    <View
+                                                                        key={`${ap.id || ap.mongoId || ap.code}-product-${product.id || product.product || productIndex
+                                                                            }-${productIndex}`}
+                                                                        style={styles.productRow}
+                                                                    >
+                                                                        <View
+                                                                            style={[
+                                                                                styles.productColorBar,
+                                                                                { backgroundColor: product.colorChip },
+                                                                            ]}
+                                                                        />
+
+                                                                        <View style={styles.productInfo}>
+                                                                            <Text
+                                                                                style={[
+                                                                                    styles.productType,
+                                                                                    { color: product.colorChip },
+                                                                                ]}
+                                                                                numberOfLines={1}
+                                                                            >
+                                                                                {product.type}
+                                                                            </Text>
+
+                                                                            <Text
+                                                                                style={styles.productName}
+                                                                                numberOfLines={2}
+                                                                            >
+                                                                                {product.product}
+                                                                            </Text>
+                                                                        </View>
+
+                                                                        <View style={styles.doseBox}>
+                                                                            <Text style={styles.doseLabel}>
+                                                                                Dose Solicitada
+                                                                            </Text>
+
+                                                                            <Text style={styles.doseValue}>
+                                                                                {formatDose(
+                                                                                    product.soughtDose ??
+                                                                                    product.displayDose
+                                                                                )}{" "}
+                                                                                {product.soughtUnit ??
+                                                                                    product.displayUnit}
+                                                                            </Text>
+                                                                        </View>
+                                                                    </View>
+                                                                ))}
                                                         </View>
                                                     </View>
-                                                ))}
-                                        </View>
-                                    </View>
-                                );
-                            })
-                        )}
-                    </ScrollView>
-                </>
-            )}
-        </Animated.View>
+                                                );
+                                            })
+                                        )}
+                                    </ScrollView>
+                                </>
+                            )}
+                        </SafeAreaView>
+                    </Animated.View>
+                </KeyboardAvoidingView>
+            </View>
+        </Modal>
     );
 };
 
 export default ParcelApplicationsSheet;
 
 const styles = StyleSheet.create({
+    modalRoot: {
+        flex: 1,
+        justifyContent: "flex-end",
+    },
+
+    modalBackdrop: {
+        ...StyleSheet.absoluteFillObject,
+        backgroundColor: "rgba(0,0,0,0.22)",
+    },
+
+    modalBackdropExpanded: {
+        backgroundColor: "#FFFFFF",
+    },
+
+    keyboardAvoiding: {
+        flex: 1,
+        justifyContent: "flex-end",
+    },
+
     sheet: {
         position: "absolute",
         left: 0,
         right: 0,
         bottom: 0,
-        zIndex: 40,
         backgroundColor: "#FFFFFF",
         borderTopLeftRadius: 24,
         borderTopRightRadius: 24,
@@ -973,11 +1093,28 @@ const styles = StyleSheet.create({
         elevation: 16,
         overflow: "hidden",
     },
+
+    sheetExpanded: {
+        borderTopLeftRadius: 0,
+        borderTopRightRadius: 0,
+    },
+
+    sheetSafeArea: {
+        flex: 1,
+        backgroundColor: "#FFFFFF",
+    },
+
     handleArea: {
         paddingTop: 10,
         paddingHorizontal: 16,
         paddingBottom: 10,
+        backgroundColor: "#FFFFFF",
     },
+
+    handleAreaExpanded: {
+        paddingTop: Platform.OS === "android" ? 10 : 0,
+    },
+
     handleIcon: {
         alignSelf: "center",
         width: 38,
@@ -988,47 +1125,33 @@ const styles = StyleSheet.create({
         justifyContent: "center",
         marginBottom: 10,
     },
+
     header: {
-        flexDirection: "row",
-        alignItems: "flex-start",
-        gap: 10,
+        gap: 6,
     },
-    headerLeft: {
-        flex: 1,
-    },
-    titleRow: {
+
+    headerTopRow: {
         flexDirection: "row",
         alignItems: "center",
-        gap: 9,
-    },
-    title: {
-        flex: 1,
-        color: "#020617",
-        fontSize: 20,
-        fontWeight: "950",
-    },
-    subtitleLeft: {
-        flex: 1,
-        color: "rgba(15,23,42,0.68)",
-        fontSize: 13,
-        fontWeight: "800",
-        paddingRight: 8,
+        justifyContent: "space-between",
+        gap: 10,
     },
 
-    subtitleRight: {
+    titleRow: {
+        flex: 1,
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 3,
+        minWidth: 0,
+    },
+
+    headerActions: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 8,
         flexShrink: 0,
-        color: "rgba(15,23,42,0.68)",
-        fontSize: 13,
-        fontWeight: "800",
-        textAlign: "right",
     },
 
-    cycleText: {
-        marginTop: 4,
-        color: "#020617",
-        fontSize: 14,
-        fontWeight: "800",
-    },
     closeButton: {
         width: 32,
         height: 32,
@@ -1037,6 +1160,112 @@ const styles = StyleSheet.create({
         alignItems: "center",
         justifyContent: "center",
     },
+
+    closeButtonExpanded: {
+        backgroundColor: "rgba(15,23,42,0.09)",
+    },
+
+    harvestText: {
+        color: "#020617",
+        fontSize: 12.5,
+        fontWeight: "900",
+    },
+
+    cropIconWrap: {
+        width: 32,
+        height: 32,
+        borderRadius: 16,
+        alignItems: "center",
+        justifyContent: "center",
+    },
+
+    cropIconImage: {
+        width: 22,
+        height: 22,
+        resizeMode: "contain",
+    },
+
+    cropFallbackBadge: {
+        width: 32,
+        height: 32,
+        borderRadius: 16,
+        alignItems: "center",
+        justifyContent: "center",
+        borderWidth: 1,
+        borderColor: "rgba(15,23,42,0.10)",
+    },
+
+    cropFallbackIcon: {
+        width: 18,
+        height: 18,
+        resizeMode: "contain",
+        opacity: 0.86,
+    },
+
+    titleTextRow: {
+        flex: 1,
+        flexDirection: "row",
+        alignItems: "baseline",
+        gap: 5,
+        minWidth: 0,
+    },
+
+    title: {
+        flexShrink: 1,
+        color: "#020617",
+        fontSize: 20,
+        fontWeight: "950",
+    },
+
+    titleArea: {
+        flexShrink: 0,
+        color: "rgba(15,23,42,0.56)",
+        fontSize: 12,
+        fontWeight: "900",
+    },
+
+    metaCard: {
+        marginTop: 8,
+        flexDirection: "row",
+        alignItems: "stretch",
+        backgroundColor: "rgba(15,23,42,0.045)",
+        borderRadius: 14,
+        borderWidth: 1,
+        borderColor: "rgba(15,23,42,0.06)",
+        paddingVertical: 8,
+        paddingHorizontal: 6,
+    },
+
+    metaCardColumn: {
+        flex: 1,
+        minWidth: 0,
+        alignItems: "center",
+        justifyContent: "center",
+        paddingHorizontal: 5,
+    },
+
+    metaCardLabel: {
+        color: "rgba(15,23,42,0.5)",
+        fontSize: 9,
+        fontWeight: "bold",
+        textTransform: "uppercase",
+        letterSpacing: 0.25,
+    },
+
+    metaCardValue: {
+        marginTop: 3,
+        color: "#0F172A",
+        fontSize: 11.5,
+        fontWeight: "850",
+        textAlign: "center",
+    },
+
+    metaCardDivider: {
+        width: 1,
+        backgroundColor: "rgba(15,23,42,0.08)",
+        marginVertical: 2,
+    },
+
     skeletonContainer: {
         flex: 1,
     },
@@ -1193,6 +1422,7 @@ const styles = StyleSheet.create({
         width: 64,
         height: 14,
     },
+
     errorBox: {
         marginHorizontal: 16,
         marginBottom: 18,
@@ -1200,347 +1430,18 @@ const styles = StyleSheet.create({
         borderRadius: 16,
         padding: 14,
     },
+
     errorTitle: {
         color: "#92400E",
         fontSize: 14,
         fontWeight: "900",
     },
+
     errorText: {
         marginTop: 4,
         color: "#92400E",
         fontSize: 12,
         fontWeight: "700",
-    },
-    filterRow: {
-        flexDirection: "row",
-        paddingHorizontal: 16,
-        paddingBottom: 12,
-        gap: 8,
-    },
-    filterChip: {
-        borderRadius: 999,
-        paddingHorizontal: 13,
-        paddingVertical: 8,
-        backgroundColor: "rgba(15,23,42,0.055)",
-    },
-    filterChipSelected: {
-        backgroundColor: Colors.primary[700],
-    },
-    filterChipText: {
-        color: "rgba(15,23,42,0.68)",
-        fontSize: 12,
-        fontWeight: "900",
-    },
-    filterChipTextSelected: {
-        color: "#FFFFFF",
-    },
-    scroll: {
-        flex: 1,
-        backgroundColor: "#E5EAF2",
-        borderTopWidth: 1,
-        borderTopColor: "rgba(15,23,42,0.06)",
-    },
-    scrollContent: {
-        padding: 14,
-        paddingBottom: 34,
-    },
-    emptyBox: {
-        alignItems: "center",
-        paddingVertical: 34,
-    },
-    emptyTitle: {
-        marginTop: 8,
-        color: "#0F172A",
-        fontSize: 15,
-        fontWeight: "900",
-    },
-    emptyText: {
-        marginTop: 4,
-        color: "rgba(15,23,42,0.52)",
-        fontSize: 12,
-        fontWeight: "700",
-        textAlign: "center",
-    },
-    applicationCard: {
-        backgroundColor: "#FFFFFF",
-        borderRadius: 18,
-        marginBottom: 12,
-        borderWidth: 1,
-        borderColor: "rgba(15,23,42,0.08)",
-        overflow: "hidden",
-    },
-    apHeader: {
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "space-between",
-        padding: 14,
-        borderBottomWidth: 1,
-        borderBottomColor: "rgba(15,23,42,0.07)",
-        gap: 10,
-    },
-    apTitleRow: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 7,
-    },
-    apCode: {
-        color: "#0F172A",
-        fontSize: 18,
-        fontWeight: "950",
-    },
-    apDateRow: {
-        marginTop: 8,
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 5,
-    },
-    apDate: {
-        color: "rgba(15,23,42,0.68)",
-        fontSize: 14,
-        fontWeight: "750",
-    },
-    apStatusPill: {
-        borderRadius: 999,
-        paddingHorizontal: 12,
-        paddingVertical: 7,
-        alignSelf: "flex-start",
-        borderWidth: 1,
-        marginLeft: 10,
-    },
-    apStatusText: {
-        fontSize: 11,
-        fontWeight: "950",
-    },
-    operationBox: {
-        flex: 1,
-        justifyContent: "center",
-    },
-    operationLabel: {
-        color: "rgba(15,23,42,0.52)",
-        fontSize: 12,
-        fontWeight: "900",
-    },
-    operationText: {
-        marginTop: 4,
-        color: "#0F172A",
-        fontSize: 14,
-        fontWeight: "850",
-    },
-    productsList: {
-        paddingVertical: 6,
-    },
-    productRow: {
-        minHeight: 74,
-        flexDirection: "row",
-        alignItems: "center",
-        paddingHorizontal: 14,
-        paddingVertical: 10,
-    },
-    productColorBar: {
-        width: 6,
-        alignSelf: "stretch",
-        borderRadius: 999,
-        marginRight: 10,
-    },
-    productInfo: {
-        flex: 1,
-        paddingRight: 10,
-    },
-    productType: {
-        fontSize: 13,
-        fontWeight: "950",
-    },
-    productName: {
-        marginTop: 4,
-        color: "#111827",
-        fontSize: 14,
-        fontWeight: "750",
-        lineHeight: 18,
-    },
-    doseBox: {
-        width: 112,
-        alignItems: "flex-end",
-    },
-    doseLabel: {
-        color: "rgba(15,23,42,0.52)",
-        fontSize: 11,
-        fontWeight: "850",
-        textAlign: "right",
-    },
-    doseValue: {
-        marginTop: 5,
-        color: "#111827",
-        fontSize: 14,
-        fontWeight: "850",
-        textAlign: "right",
-    },
-    cropIconWrap: {
-        width: 32,
-        height: 32,
-        borderRadius: 16,
-        // backgroundColor: "rgba(15,23,42,0.045)",
-        alignItems: "center",
-        justifyContent: "center",
-        // borderWidth: 1,
-        // borderColor: "rgba(15,23,42,0.08)",
-    },
-
-    cropIconImage: {
-        width: 22,
-        height: 22,
-        resizeMode: "contain",
-    },
-
-    cropFallbackBadge: {
-        width: 32,
-        height: 32,
-        borderRadius: 16,
-        alignItems: "center",
-        justifyContent: "center",
-        borderWidth: 1,
-        borderColor: "rgba(15,23,42,0.10)",
-    },
-
-    cropFallbackIcon: {
-        width: 18,
-        height: 18,
-        resizeMode: "contain",
-        opacity: 0.86,
-    },
-    metaRow: {
-        marginTop: 4,
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "space-between",
-        gap: 8,
-    },
-
-
-    headerRight: {
-        alignItems: "flex-end",
-        paddingTop: 5,
-        maxWidth: 132,
-    },
-
-    harvestText: {
-        color: "#020617",
-        fontSize: 12.5,
-        fontWeight: "900",
-    },
-    header: {
-        gap: 6,
-    },
-
-    headerTopRow: {
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "space-between",
-        gap: 10,
-    },
-
-    titleRow: {
-        flex: 1,
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 3,
-        minWidth: 0,
-    },
-
-    headerActions: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 8,
-        flexShrink: 0,
-    },
-    metaCard: {
-        marginTop: 8,
-        flexDirection: "row",
-        alignItems: "stretch",
-        backgroundColor: "rgba(15,23,42,0.045)",
-        borderRadius: 14,
-        borderWidth: 1,
-        borderColor: "rgba(15,23,42,0.06)",
-        paddingVertical: 8,
-        paddingHorizontal: 6,
-    },
-
-    metaCardColumn: {
-        flex: 1,
-        minWidth: 0,
-        alignItems: "center",
-        justifyContent: "center",
-        paddingHorizontal: 5,
-    },
-
-    metaCardLabel: {
-        color: "rgba(15,23,42,0.5)",
-        fontSize: 9,
-        fontWeight: "bold",
-        textTransform: "uppercase",
-        letterSpacing: 0.25,
-    },
-
-    metaCardValue: {
-        marginTop: 3,
-        color: "#0F172A",
-        fontSize: 11.5,
-        fontWeight: "850",
-        textAlign: "center",
-    },
-
-    metaCardDivider: {
-        width: 1,
-        backgroundColor: "rgba(15,23,42,0.08)",
-        marginVertical: 2,
-    },
-    titleTextRow: {
-        flex: 1,
-        flexDirection: "row",
-        alignItems: "baseline",
-        gap: 5,
-        minWidth: 0,
-    },
-
-    title: {
-        flexShrink: 1,
-        color: "#020617",
-        fontSize: 20,
-        fontWeight: "950",
-    },
-
-    titleArea: {
-        flexShrink: 0,
-        color: "rgba(15,23,42,0.56)",
-        fontSize: 12,
-        fontWeight: "900",
-    },
-    progressBox: {
-        flexDirection: "row",
-        gap: 8,
-        paddingHorizontal: 14,
-        paddingVertical: 10,
-        backgroundColor: "rgba(22,101,52,0.055)",
-        borderBottomWidth: 1,
-        borderBottomColor: "rgba(22,101,52,0.08)",
-    },
-
-    progressItem: {
-        flex: 1,
-        minWidth: 0,
-    },
-
-    progressLabel: {
-        color: "rgba(22,101,52,0.68)",
-        fontSize: 10,
-        fontWeight: "900",
-        textTransform: "uppercase",
-    },
-
-    progressValue: {
-        marginTop: 3,
-        color: "#14532D",
-        fontSize: 12,
-        fontWeight: "900",
     },
 
     summaryRow: {
@@ -1548,6 +1449,7 @@ const styles = StyleSheet.create({
         paddingHorizontal: 16,
         paddingBottom: 12,
         gap: 8,
+        backgroundColor: "#FFFFFF",
     },
 
     summaryItem: {
@@ -1592,30 +1494,6 @@ const styles = StyleSheet.create({
         borderRadius: 2,
     },
 
-    progressBox: {
-        flexDirection: "row",
-        gap: 8,
-        paddingHorizontal: 14,
-        paddingVertical: 10,
-        backgroundColor: "rgba(15,118,110,0.055)",
-        borderBottomWidth: 1,
-        borderBottomColor: "rgba(15,118,110,0.10)",
-    },
-
-    progressLabel: {
-        color: "rgba(15,118,110,0.72)",
-        fontSize: 10,
-        fontWeight: "900",
-        textTransform: "uppercase",
-    },
-
-    progressValue: {
-        marginTop: 3,
-        color: "#0F766E",
-        fontSize: 12,
-        fontWeight: "900",
-    },
-
     searchBox: {
         marginHorizontal: 16,
         marginBottom: 12,
@@ -1647,36 +1525,48 @@ const styles = StyleSheet.create({
         alignItems: "center",
         justifyContent: "center",
     },
-    apHeaderRight: {
-        alignItems: "flex-end",
-        justifyContent: "flex-start",
-        gap: 7,
-        marginLeft: 10,
-        flexShrink: 0,
+
+    scroll: {
+        flex: 1,
+        backgroundColor: "#E5EAF2",
+        borderTopWidth: 1,
+        borderTopColor: "rgba(15,23,42,0.06)",
     },
 
-    progressCircle: {
-        width: 46,
-        height: 46,
-        borderRadius: 23,
-        borderWidth: 2,
+    scrollContent: {
+        padding: 14,
+        paddingBottom: Platform.OS === "ios" ? 44 : 34,
+    },
+
+    emptyBox: {
         alignItems: "center",
-        justifyContent: "center",
+        paddingVertical: 34,
     },
 
-    progressCircleValue: {
+    emptyTitle: {
+        marginTop: 8,
+        color: "#0F172A",
+        fontSize: 15,
+        fontWeight: "900",
+    },
+
+    emptyText: {
+        marginTop: 4,
+        color: "rgba(15,23,42,0.52)",
         fontSize: 12,
-        fontWeight: "950",
+        fontWeight: "700",
+        textAlign: "center",
     },
 
-    apStatusPill: {
-        backgroundColor: "rgba(15,23,42,0.045)",
-        borderRadius: 999,
-        paddingHorizontal: 10,
-        paddingVertical: 6,
-        alignSelf: "flex-end",
-        maxWidth: 118,
+    applicationCard: {
+        backgroundColor: "#FFFFFF",
+        borderRadius: 18,
+        marginBottom: 12,
+        borderWidth: 1,
+        borderColor: "rgba(15,23,42,0.08)",
+        overflow: "hidden",
     },
+
     apHeader: {
         flexDirection: "row",
         alignItems: "center",
@@ -1688,20 +1578,33 @@ const styles = StyleSheet.create({
     },
 
     apHeaderLeft: {
-        flex: 1.2,
+        flex: 1,
         minWidth: 0,
     },
 
-    apHeaderCenter: {
-        flex: 1,
+    apTitleRow: {
+        flexDirection: "row",
         alignItems: "center",
-        justifyContent: "center",
+        gap: 7,
     },
 
-    apHeaderRight: {
-        width: 62,
-        alignItems: "flex-end",
-        justifyContent: "center",
+    apCode: {
+        color: "#0F172A",
+        fontSize: 18,
+        fontWeight: "950",
+    },
+
+    apDateRow: {
+        marginTop: 8,
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 5,
+    },
+
+    apDate: {
+        color: "rgba(15,23,42,0.68)",
+        fontSize: 14,
+        fontWeight: "750",
     },
 
     apStatusPill: {
@@ -1721,43 +1624,6 @@ const styles = StyleSheet.create({
         textAlign: "center",
     },
 
-    progressCircle: {
-        width: 52,
-        height: 52,
-        borderRadius: 26,
-        borderWidth: 1,
-        overflow: "hidden",
-        alignItems: "center",
-        justifyContent: "center",
-        position: "relative",
-    },
-
-    progressCircleFill: {
-        position: "absolute",
-        left: 0,
-        right: 0,
-        bottom: 0,
-    },
-
-    progressCircleGloss: {
-        position: "absolute",
-        top: 7,
-        left: 7,
-        right: 7,
-        height: 8,
-        borderRadius: 999,
-    },
-
-    progressCircleValue: {
-        fontSize: 12,
-        fontWeight: "950",
-        zIndex: 2,
-    },
-    apHeaderLeft: {
-        flex: 1,
-        minWidth: 0,
-    },
-
     operationRow: {
         flexDirection: "row",
         alignItems: "stretch",
@@ -1767,19 +1633,28 @@ const styles = StyleSheet.create({
         backgroundColor: "rgba(15,23,42,0.02)",
     },
 
+    operationBox: {
+        flex: 1,
+        justifyContent: "center",
+    },
+
+    operationLabel: {
+        color: "rgba(15,23,42,0.52)",
+        fontSize: 12,
+        fontWeight: "900",
+    },
+
+    operationText: {
+        marginTop: 4,
+        color: "#0F172A",
+        fontSize: 14,
+        fontWeight: "850",
+    },
+
     operationProgressWrap: {
         width: 72,
         alignItems: "center",
         justifyContent: "center",
-    },
-
-    operationProgressLabel: {
-        marginBottom: 6,
-        color: "rgba(15,23,42,0.52)",
-        fontSize: 10,
-        fontWeight: "900",
-        textTransform: "uppercase",
-        textAlign: "center",
     },
 
     progressCircle: {
@@ -1814,5 +1689,97 @@ const styles = StyleSheet.create({
         fontSize: 12,
         fontWeight: "950",
         zIndex: 2,
+    },
+
+    progressBox: {
+        flexDirection: "row",
+        gap: 8,
+        paddingHorizontal: 14,
+        paddingVertical: 10,
+        backgroundColor: "rgba(15,118,110,0.055)",
+        borderBottomWidth: 1,
+        borderBottomColor: "rgba(15,118,110,0.10)",
+    },
+
+    progressItem: {
+        flex: 1,
+        minWidth: 0,
+    },
+
+    progressLabel: {
+        color: "rgba(15,118,110,0.72)",
+        fontSize: 10,
+        fontWeight: "900",
+        textTransform: "uppercase",
+    },
+
+    progressValue: {
+        marginTop: 3,
+        color: "#0F766E",
+        fontSize: 12,
+        fontWeight: "900",
+    },
+
+    productsList: {
+        paddingVertical: 6,
+    },
+
+    productRow: {
+        minHeight: 74,
+        flexDirection: "row",
+        alignItems: "center",
+        paddingHorizontal: 14,
+        paddingVertical: 10,
+    },
+
+    productColorBar: {
+        width: 6,
+        alignSelf: "stretch",
+        borderRadius: 999,
+        marginRight: 10,
+    },
+
+    productInfo: {
+        flex: 1,
+        paddingRight: 10,
+    },
+
+    productType: {
+        fontSize: 13,
+        fontWeight: "950",
+    },
+
+    productName: {
+        marginTop: 4,
+        color: "#111827",
+        fontSize: 14,
+        fontWeight: "750",
+        lineHeight: 18,
+    },
+
+    doseBox: {
+        width: 112,
+        alignItems: "flex-end",
+    },
+
+    doseLabel: {
+        color: "rgba(15,23,42,0.52)",
+        fontSize: 11,
+        fontWeight: "850",
+        textAlign: "right",
+    },
+
+    doseValue: {
+        marginTop: 5,
+        color: "#111827",
+        fontSize: 14,
+        fontWeight: "850",
+        textAlign: "right",
+    },
+    dragHandleWrap: {
+        alignItems: "center",
+        justifyContent: "center",
+        minHeight: 34,
+        marginBottom: 6,
     },
 });

@@ -589,7 +589,13 @@ const MapParcelLabel = memo(function MapParcelLabel({
 	isSelected,
 	showDetails,
 }) {
-	const shouldShowDap = status === "plantado" && dap !== null && dap !== undefined;
+	const shouldShowDap =
+		(status === "plantado" || status === "em_plantio") &&
+		dap !== null &&
+		dap !== undefined;
+
+	const isPlantingDap = status === "em_plantio";
+
 	return (
 		<View
 			collapsable={false}
@@ -627,7 +633,13 @@ const MapParcelLabel = memo(function MapParcelLabel({
 			)}
 
 			{shouldShowDap ? (
-				<Text style={styles.labelStatus} numberOfLines={1}>
+				<Text
+					style={[
+						styles.labelStatus,
+						isPlantingDap && styles.labelStatusPlanting,
+					]}
+					numberOfLines={1}
+				>
 					{dap} DAP
 				</Text>
 			) : !!statusLabel && isSelected ? (
@@ -1081,7 +1093,7 @@ const NavigationMapScreen = ({ navigation, route }) => {
 		selectedCiclo,
 	]);
 
-	
+
 	const safraOptions = useMemo(() => {
 		return [
 			...new Set(
@@ -3359,6 +3371,12 @@ const styles = StyleSheet.create({
 		borderRadius: 999,
 		overflow: "hidden",
 	},
+	labelStatusPlanting: {
+	backgroundColor: "rgba(253,224,71,0.88)",
+	color: "#1E3A2F",
+	borderWidth: 1,
+	borderColor: "rgba(254,249,195,0.85)",
+},
 
 	fabColumn: {
 		position: "absolute",
