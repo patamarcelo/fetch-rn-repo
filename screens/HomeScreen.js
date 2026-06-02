@@ -1240,31 +1240,31 @@ const HomeScreen = ({ navigation }) => {
 				</View>
 			),
 			tabBarLabel: "Programações",
-			headerLeft: ({ tintColor }) => (
-				<View style={{ flexDirection: "row" }}>
-					{selFarm && (
-						<>
-							<IconButton
-								type="awesome"
-								icon="filter"
-								color={selFarm ? "#3d8bfd" : tintColor}
-								size={22}
-								onPress={handlerFarms}
-								btnStyles={{ marginTop: 10 }}
-							/>
+			headerLeft: ({ tintColor }) => {
+				if (!selFarm) return null;
 
-							<IconButton
-								type=""
-								icon="close-circle-outline"
-								color={tintColor}
-								size={22}
-								onPress={handleClear}
-								btnStyles={{ marginLeft: 5, marginTop: 10 }}
-							/>
-						</>
-					)}
-				</View>
-			),
+				return (
+					<View style={{ flexDirection: "row" }}>
+						<IconButton
+							type="awesome"
+							icon="filter"
+							color="#3d8bfd"
+							size={22}
+							onPress={handlerFarms}
+							btnStyles={{ marginTop: 10 }}
+						/>
+
+						<IconButton
+							type=""
+							icon="close-circle-outline"
+							color={tintColor}
+							size={22}
+							onPress={handleClear}
+							btnStyles={{ marginLeft: 5, marginTop: 10 }}
+						/>
+					</View>
+				);
+			},
 			headerRight: ({ tintColor }) => (
 				<View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
 					{selFarm && listToCardApp.length > 0 && (

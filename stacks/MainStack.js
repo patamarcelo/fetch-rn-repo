@@ -26,14 +26,10 @@ const MainStack = () => {
 				name="FarmsScren"
 				component={FarmsScreen}
 				options={{
-					presentation: "modal",
-					title: "Redefinir a Senha",
+					presentation: "fullScreenModal",
+					headerShown: false,
 					contentStyle: {
 						backgroundColor: Colors.primary[901],
-						height: "70%",
-					},
-					cardStyle: {
-						height: "10%",
 					},
 				}}
 			/>

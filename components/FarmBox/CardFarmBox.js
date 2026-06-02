@@ -675,7 +675,6 @@ const CardFarmBox = ({ route, navigation }) => {
                             color={tintColor}
                             size={22}
                             onPress={handleExprotData}
-                            btnStyles={{ marginLeft: 5, marginTop: 0 }}
                         />
                     )}
                 </View>
@@ -1688,7 +1687,7 @@ const styles = StyleSheet.create({
     fabContainer: {
         position: "absolute",
         right: 20,
-        bottom: 30
+        bottom: 0
     },
 
     fab: {
