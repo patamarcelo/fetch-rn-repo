@@ -1,4 +1,5 @@
 import { Platform } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { createNativeBottomTabNavigator } from "@react-navigation/bottom-tabs/unstable";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
@@ -62,6 +63,10 @@ const iosIcon = (name) => ({
 
 const AndroidTabs = ({ plantioTabMeta }) => {
 	const iconSize = 21;
+	const insets = useSafeAreaInsets();
+
+	const TAB_HEIGHT = 60;
+	const bottomInset = Math.max(insets.bottom, 0);
 
 	return (
 		<JsTab.Navigator
@@ -73,9 +78,14 @@ const AndroidTabs = ({ plantioTabMeta }) => {
 					backgroundColor: Colors.primary[901],
 					borderTopWidth: 0,
 					elevation: 0,
-					height: 60,
+
+					// antes: height: 60
+					height: TAB_HEIGHT + bottomInset,
+
 					paddingTop: 5,
-					paddingBottom: 6,
+
+					// antes: paddingBottom: 6
+					paddingBottom: bottomInset > 0 ? bottomInset + 6 : 8,
 				},
 				tabBarItemStyle: {
 					paddingVertical: 2,

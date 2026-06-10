@@ -2,9 +2,10 @@ import "react-native-gesture-handler";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { NavigationContainer } from "@react-navigation/native";
 
-
 import { StatusBar } from "expo-status-bar";
 import { StyleSheet } from "react-native";
+
+import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { Provider } from "react-redux";
 import { PersistGate } from "redux-persist/integration/react";
@@ -18,7 +19,6 @@ import { useEffect, useRef, useState } from "react";
 
 import { checkUserStatus } from "./store/firebase/logged-checked";
 import AppSplash from "./components/Splash/AppSplash";
-
 
 import { fetchNavigationMapData, geralActions } from "./store/redux/geral";
 
@@ -108,6 +108,7 @@ const Navigation = () => {
 		</NavigationContainer>
 	);
 };
+
 const Root = () => {
 	return <Navigation />;
 };
@@ -115,15 +116,17 @@ const Root = () => {
 export default function App() {
 	return (
 		<GestureHandlerRootView style={{ flex: 1 }}>
-			<StatusBar style="light" />
+			<SafeAreaProvider>
+				<StatusBar style="light" />
 
-			<Provider store={store}>
-				<PersistGate loading={<AppSplash />} persistor={persistor}>
-					<BottomSheetModalProvider>
-						<Root />
-					</BottomSheetModalProvider>
-				</PersistGate>
-			</Provider>
+				<Provider store={store}>
+					<PersistGate loading={<AppSplash />} persistor={persistor}>
+						<BottomSheetModalProvider>
+							<Root />
+						</BottomSheetModalProvider>
+					</PersistGate>
+				</Provider>
+			</SafeAreaProvider>
 		</GestureHandlerRootView>
 	);
 }
