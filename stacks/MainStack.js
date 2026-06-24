@@ -1,14 +1,15 @@
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 
-const Stack = createNativeStackNavigator();
 import { Colors } from "../constants/styles";
 
-import HomeStack from "./HomeStack";
+import AppDrawer from "./AppDrawer";
 import FarmsScreen from "../screens/FarmsScreen";
 import MapStack from "./MapStack";
 import PolygonFlowStack from "./PolygonFlowStack";
 import NavigationMapScreen from "../screens/navigation/NavigationMapScreen";
-import AppDrawer from "./AppDrawer";
+import FarmBoxFlowStack from "./FarmBoxFlowStack";
+
+const Stack = createNativeStackNavigator();
 
 const MainStack = () => {
 	return (
@@ -19,8 +20,10 @@ const MainStack = () => {
 				headerTintColor: "white",
 			}}
 		>
-			{/* <Stack.Screen name="HomeStackScreen" component={HomeStack} /> */}
-			<Stack.Screen name="HomeStackScreen" component={AppDrawer} />
+			<Stack.Screen
+				name="HomeStackScreen"
+				component={AppDrawer}
+			/>
 
 			<Stack.Screen
 				name="FarmsScren"
@@ -56,6 +59,18 @@ const MainStack = () => {
 				options={{
 					presentation: "card",
 					headerShown: false,
+				}}
+			/>
+
+			<Stack.Screen
+				name="FarmBoxFlowStack"
+				component={FarmBoxFlowStack}
+				options={{
+					headerShown: false,
+					presentation: "card",
+					contentStyle: {
+						backgroundColor: Colors.secondary[100],
+					},
 				}}
 			/>
 		</Stack.Navigator>

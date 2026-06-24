@@ -1,818 +1,1765 @@
 import * as Print from "expo-print";
 import { shareAsync } from "expo-sharing";
-import * as FileSystem from 'expo-file-system/legacy';
+import * as FileSystem from "expo-file-system/legacy";
 
-import { Asset } from 'expo-asset';
-import { getMapSvgBase64 } from "./PrintCronogramaPagePlotMap.jsx";
-// import plotMap from './plot-map.json';   // caminho relativo ao arquivo
-
-import { iconDict } from "../../utils/assets/icon-dict.js";
 import { Platform } from "react-native";
 
-console.log('typeof [].at →', typeof [].at);
-export const createApplicationPdfMap = async (data, farm, plotMap, options = {}) => {
-    const { viewMode = "normal" } = options;
+import { getMapSvgBase64 } from "./PrintCronogramaPagePlotMap.jsx";
+import { iconDict } from "../../utils/assets/icon-dict.js";
 
-    const dataFromJson = plotMap?.data ?? [];
+const escapeHtml = (value) =>
+  String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
 
-    const sumNumber = (v) => {
-        const n = Number(v);
-        return Number.isFinite(n) ? n : 0;
-    };
+const sumNumber = (value) => {
+  const number = Number(value);
 
-    const formatNumber = (number) =>
-        Number(number || 0).toLocaleString("pt-br", {
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2,
+  return Number.isFinite(number) ? number : 0;
+};
+
+const formatNumber = (number) =>
+  Number(number || 0).toLocaleString("pt-BR", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+
+const formatDoseNumber = (number) =>
+  Number(number || 0).toLocaleString("pt-BR", {
+    minimumFractionDigits: 3,
+    maximumFractionDigits: 3,
+  });
+
+const formatDate = (value) => {
+  if (!value) return "-";
+
+  const text = String(value).trim();
+
+  const isoMatch = text.match(
+    /^(\d{4})-(\d{2})-(\d{2})/
+  );
+
+  if (isoMatch) {
+    const [, year, month, day] = isoMatch;
+
+    return `${day}/${month}/${year}`;
+  }
+
+  const brazilianMatch = text.match(
+    /^(\d{2})\/(\d{2})\/(\d{4})/
+  );
+
+  if (brazilianMatch) {
+    const [, day, month, year] =
+      brazilianMatch;
+
+    return `${day}/${month}/${year}`;
+  }
+
+  const malformedMatch = text.match(
+    /^(\d{2})T.*\/(\d{2})\/(\d{4})$/
+  );
+
+  if (malformedMatch) {
+    const [, day, month, year] =
+      malformedMatch;
+
+    return `${day}/${month}/${year}`;
+  }
+
+  const parsedDate = new Date(text);
+
+  if (!Number.isNaN(parsedDate.getTime())) {
+    return parsedDate.toLocaleDateString(
+      "pt-BR",
+      {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+      }
+    );
+  }
+
+  return "-";
+};
+
+const getDap = (date) => {
+  if (!date) return "-";
+
+  const planted = new Date(date);
+
+  if (Number.isNaN(planted.getTime())) {
+    return "-";
+  }
+
+  const today = new Date();
+
+  const differenceInTime =
+    today.getTime() - planted.getTime();
+
+  return Math.max(
+    0,
+    Math.floor(
+      differenceInTime /
+      (1000 * 60 * 60 * 24)
+    )
+  );
+};
+
+const withOpacity = (
+  rgb,
+  alpha = 0.08
+) => {
+  const numbers = String(rgb || "").match(
+    /\d+(\.\d+)?/g
+  );
+
+  if (!numbers || numbers.length < 3) {
+    return "#FFFFFF";
+  }
+
+  const [red, green, blue] = numbers;
+
+  return `rgba(${red}, ${green}, ${blue}, ${alpha})`;
+};
+
+
+const getFirstAp = (card) => {
+  if (card?.isConsolidated) {
+    return card?.aps?.[0] || {};
+  }
+
+  return card || {};
+};
+
+const getAppTitle = (card) => {
+  if (card?.isConsolidated) {
+    const quantity =
+      card?.codes?.length || 0;
+
+    return `${quantity} AP${quantity > 1 ? "s" : ""
+      }`;
+  }
+
+  return String(card?.code || "")
+    .replace(/^AP\s*/i, "AP ")
+    .trim();
+};
+
+const getAppOperation = (card) => {
+  if (card?.isConsolidated) {
+    return "Consolidado de Aplicações";
+  }
+
+  return card?.operation || "-";
+};
+
+const getAppDateStart = (card) => {
+  if (card?.isConsolidated) {
+    const dates = (card?.aps || [])
+      .map(
+        (application) =>
+          application?.dateApKey ||
+          application?.dateAp
+      )
+      .filter(Boolean)
+      .sort();
+
+    return dates[0] || null;
+  }
+
+  return card?.dateApKey || card?.dateAp;
+};
+
+const getAppDateEnd = (card) => {
+  if (card?.isConsolidated) {
+    const dates = (card?.aps || [])
+      .map(
+        (application) =>
+          application?.endDateApKey ||
+          application?.endDateAp
+      )
+      .filter(Boolean)
+      .sort();
+
+    return dates[dates.length - 1] || null;
+  }
+
+  return (
+    card?.endDateApKey ||
+    card?.endDateAp
+  );
+};
+
+const getMergedProducts = (card) => {
+  const sourceApplications =
+    card?.isConsolidated
+      ? card?.aps || []
+      : [card];
+
+  const grouped = new Map();
+
+  for (const application of sourceApplications) {
+    for (const product of application?.prods || []) {
+      if (product?.type === "Operação") {
+        continue;
+      }
+
+      const key = [
+        product?.product || "",
+        product?.type || "",
+        product?.unit || "",
+        product?.doseSolicitada || "",
+        product?.colorChip || "",
+      ].join("||");
+
+      if (!grouped.has(key)) {
+        grouped.set(key, {
+          ...product,
+
+          quantidadeSolicitada:
+            sumNumber(
+              product?.quantidadeSolicitada
+            ),
         });
 
-    const formatDoseNumber = (number) =>
-        Number(number || 0).toLocaleString("pt-br", {
-            minimumFractionDigits: 3,
-            maximumFractionDigits: 3,
-        });
+        continue;
+      }
 
-    const formatDate = (dateString) => {
-        if (!dateString) return "-";
+      const current =
+        grouped.get(key);
 
-        const cleanDate = String(dateString).slice(0, 10);
-        const [year, month, day] = cleanDate.split("-");
-
-        if (!year || !month || !day) return "-";
-
-        return `${day}/${month}/${year}`;
-    };
-
-    const getDap = (date) => {
-        const today = new Date();
-        const planted = new Date(date);
-        const differenceInTime = today - planted;
-        return Math.floor(differenceInTime / (1000 * 60 * 60 * 24));
-    };
-
-    const pickMapForApp = (allPlots, app) => {
-        const safra = String(app?.safra ?? "");
-        const ciclo = String(app?.ciclo ?? "");
-
-        return (allPlots ?? []).filter((p) => {
-            const pSafra = String(p?.["safra__safra"] ?? "");
-            const pCiclo = String(p?.["ciclo__ciclo"] ?? "");
-            return pSafra === safra && pCiclo === ciclo;
-        });
-    };
-
-    const getFirstAp = (card) => {
-        if (card?.isConsolidated) return card?.aps?.[0] || {};
-        return card || {};
-    };
-
-    const getAppTitle = (card) => {
-        if (card?.isConsolidated) {
-            return `${card?.codes?.length || 0} AP${(card?.codes?.length || 0) > 1 ? "s" : ""}`;
-        }
-        return String(card?.code || "").replace("AP", "AP ");
-    };
-
-    const getAppOperation = (card) => {
-        if (card?.isConsolidated) return "Consolidado de Aplicações";
-        return card?.operation || "-";
-    };
-
-    const getAppDateStart = (card) => {
-        if (card?.isConsolidated) {
-            const dates = (card?.aps || [])
-                .map((ap) => ap?.dateApKey || ap?.dateAp)
-                .filter(Boolean)
-                .sort();
-
-            return dates[0] || null;
-        }
-
-        return card?.dateApKey || card?.dateAp;
-    };
-
-    const getAppDateEnd = (card) => {
-        if (card?.isConsolidated) {
-            const dates = (card?.aps || [])
-                .map((ap) => ap?.endDateApKey || ap?.endDateAp)
-                .filter(Boolean)
-                .sort();
-
-            return dates[dates.length - 1] || null;
-        }
-
-        return card?.endDateApKey || card?.endDateAp;
-    };
-
-    const getMergedProducts = (card) => {
-        const sourceApps = card?.isConsolidated ? card?.aps || [] : [card];
-
-        const grouped = new Map();
-
-        for (const ap of sourceApps) {
-            for (const prod of ap?.prods || []) {
-                if (prod?.type === "Operação") continue;
-
-                const key = [
-                    prod?.product || "",
-                    prod?.type || "",
-                    prod?.unit || "",
-                    prod?.doseSolicitada || "",
-                    prod?.colorChip || "",
-                ].join("||");
-
-                if (!grouped.has(key)) {
-                    grouped.set(key, {
-                        ...prod,
-                        quantidadeSolicitada: sumNumber(prod?.quantidadeSolicitada),
-                    });
-                } else {
-                    const current = grouped.get(key);
-                    current.quantidadeSolicitada += sumNumber(prod?.quantidadeSolicitada);
-                }
-            }
-        }
-
-        return Array.from(grouped.values()).sort((a, b) =>
-            String(a.type || "").localeCompare(String(b.type || ""))
+      current.quantidadeSolicitada +=
+        sumNumber(
+          product?.quantidadeSolicitada
         );
-    };
+    }
+  }
 
+  return Array.from(
+    grouped.values()
+  ).sort((first, second) =>
+    String(
+      first?.type || ""
+    ).localeCompare(
+      String(second?.type || ""),
+      "pt-BR"
+    )
+  );
+};
 
+const getCultureIcon = (
+  culture,
+  size = 16
+) => {
+  const selectedIcon =
+    iconDict.find(
+      (item) =>
+        item.cultura === culture
+    ) ??
+    iconDict[
+    iconDict.length - 1
+    ];
 
-    const totalAplicar = (data || []).reduce(
-        (acc, curr) => acc + sumNumber(curr?.saldoAreaAplicar),
-        0
+  if (!selectedIcon?.base64) {
+    return "";
+  }
+
+  return `
+    <img
+      src="${selectedIcon.base64}"
+      alt="${escapeHtml(
+    selectedIcon.alt ||
+    culture ||
+    "Cultura"
+  )}"
+      style="
+        width:${size}px;
+        height:${size}px;
+        object-fit:contain;
+        vertical-align:middle;
+      "
+    />
+  `;
+};
+
+const buildParcelRows = (
+  parcels
+) =>
+  (parcels || [])
+    .map((parcel, index) => {
+      const requestedArea =
+        sumNumber(
+          parcel?.areaSolicitada
+        );
+
+      const appliedArea =
+        sumNumber(
+          parcel?.areaAplicada
+        );
+
+      const finished =
+        requestedArea > 0 &&
+        Math.abs(
+          requestedArea - appliedArea
+        ) < 0.001;
+
+      return `
+        <div
+          class="
+            parcel-table-row
+            ${index % 2 !== 0
+          ? "parcel-table-row-even"
+          : ""
+        }
+            ${finished
+          ? "parcel-table-row-finished"
+          : ""
+        }
+          "
+        >
+          <div class="parcel-table-code">
+            ${escapeHtml(
+          parcel?.parcela || "-"
+        )}
+          </div>
+
+          <div class="parcel-table-area">
+            ${formatNumber(
+          requestedArea
+        )}
+          </div>
+
+          <div class="parcel-table-variety">
+            ${escapeHtml(
+          parcel?.variedade || "-"
+        )}
+          </div>
+
+          <div class="parcel-table-dap">
+            ${getDap(
+          parcel?.date
+        )}
+          </div>
+
+          <div class="parcel-table-applied">
+            ${appliedArea > 0
+          ? formatNumber(
+            appliedArea
+          )
+          : "-"
+        }
+          </div>
+        </div>
+      `;
+    })
+    .join("");
+
+const buildProductRows = (
+  products
+) =>
+  (products || [])
+    .map((product) => {
+      const backgroundColor =
+        withOpacity(
+          product?.colorChip,
+          0.08
+        );
+
+      return `
+        <div
+          class="product-row product-grid"
+          style="
+            background-color:
+              ${backgroundColor};
+          "
+        >
+          <div class="product-dose">
+            <strong>
+              ${formatDoseNumber(
+        product?.doseSolicitada
+      )}
+            </strong>
+
+            <span>
+              ${escapeHtml(
+        product?.unit || ""
+      )}
+            </span>
+          </div>
+
+          <div class="product-type">
+            ${escapeHtml(
+        String(
+          product?.type || ""
+        ).replace(
+          "/Vegetal",
+          ""
+        )
+      )}
+          </div>
+
+          <div class="product-name">
+            ${escapeHtml(
+        product?.product || "-"
+      )}
+          </div>
+
+          <div class="product-quantity">
+            ${formatNumber(
+        product?.quantidadeSolicitada
+      )}
+          </div>
+        </div>
+      `;
+    })
+    .join("");
+
+export const createApplicationPdfMap =
+  async (
+    data,
+    farm,
+    plotMap,
+    options = {}
+  ) => {
+    const {
+      viewMode = "normal",
+    } = options;
+
+    const applications =
+      Array.isArray(data)
+        ? data
+        : [];
+
+    const dataFromJson =
+      Array.isArray(plotMap?.data)
+        ? plotMap.data
+        : Array.isArray(plotMap?.dados)
+          ? plotMap.dados
+          : Array.isArray(plotMap)
+            ? plotMap
+            : [];
+
+    console.log(
+      "[PDF MAP SOURCE]",
+      {
+        plotMapIsArray:
+          Array.isArray(plotMap),
+
+        plotMapDataIsArray:
+          Array.isArray(
+            plotMap?.data
+          ),
+
+        plotMapDadosIsArray:
+          Array.isArray(
+            plotMap?.dados
+          ),
+
+        total:
+          dataFromJson.length,
+
+        firstPlot:
+          dataFromJson?.[0]
+            ? {
+              talhao:
+                dataFromJson[0]
+                  ?.talhao__id_talhao,
+
+              farmId:
+                dataFromJson[0]?.[
+                "talhao__fazenda__id_farmbox"
+                ],
+
+              farmName:
+                dataFromJson[0]?.[
+                "talhao__fazenda__nome"
+                ],
+
+              safra:
+                dataFromJson[0]?.[
+                "safra__safra"
+                ],
+
+              ciclo:
+                dataFromJson[0]?.[
+                "ciclo__ciclo"
+                ],
+            }
+            : null,
+      }
     );
 
-    const apCotainer = (data || []).map((app) => {
-        const baseAp = getFirstAp(app);
+    const totalAplicar =
+      applications.reduce(
+        (
+          accumulator,
+          current
+        ) =>
+          accumulator +
+          sumNumber(
+            current?.saldoAreaAplicar
+          ),
+        0
+      );
 
-        const talhoesParaPintar = (app?.parcelas || []).map((parcela) => parcela.parcela);
-        const cultura = app?.parcelas?.[0]?.cultura ?? "unknown";
+    const farmName = String(
+      farm || ""
+    )
+      .replace(
+        /^Fazenda\s+/i,
+        ""
+      )
+      .trim();
 
-        const mapForThisApp = pickMapForApp(dataFromJson, baseAp);
-        const base64Image = getMapSvgBase64(talhoesParaPintar, mapForThisApp, cultura);
+    const applicationsHtml =
+      applications
+        .map((app) => {
+          const baseApplication =
+            getFirstAp(app);
 
-        const culturaAtual = app?.parcelas?.[0]?.cultura ?? undefined;
-        const { base64: iconBase64, alt } =
-            iconDict.find((i) => i.cultura === culturaAtual) ??
-            iconDict[iconDict.length - 1];
+          const parcels =
+            Array.isArray(
+              app?.parcelas
+            )
+              ? app.parcelas
+              : Array.isArray(
+                baseApplication
+                  ?.parcelas
+              )
+                ? baseApplication
+                  .parcelas
+                : [];
 
-        const iconTag = `<img src="${iconBase64}" alt="${alt}"
-        style="width:16px;height:16px;margin-right:4px;vertical-align:middle" />`;
+          const parcelCount =
+            parcels.length;
 
-        const appsCards = (app?.parcelas || [])
-            .map((parcela) => {
-                const { base64: iconBase64Inside, alt: altInside } =
-                    iconDict.find((i) => i.cultura === parcela.cultura) ??
-                    iconDict[iconDict.length - 1];
+          /*
+           * Estas são somente as parcelas que
+           * ficarão coloridas/destacadas no mapa.
+           */
+          const highlightedPlots =
+            parcels
+              .map(
+                (parcel) =>
+                  parcel?.parcela
+              )
+              .filter(Boolean);
 
-                const iconTagInside = `<img src="${iconBase64Inside}" alt="${altInside}"
-                style="width:8px;height:8px;margin-left:3px;padding-bottom:2px;vertical-align:middle" />`;
+          const culture =
+            parcels?.[0]?.cultura ??
+            baseApplication?.cultura ??
+            "unknown";
 
-                const areaAplicada = `<span><b>Aplicado:</b> ${formatNumber(parcela.areaAplicada)} há</span>`;
+          /*
+           * Aqui entram todos os talhões da mesma:
+           *
+           * fazenda + safra + ciclo da AP.
+           */
+          const applicationFarmId =
+            Number(
+              baseApplication?.farmId
+            );
 
-                return `
-                <div class="${Platform.OS === "ios" ? "parcela-detail-container" : "parcela-detail-container-android"} bordered ${parcela.areaSolicitada == parcela.areaAplicada ? "finish-parcela" : ""}">
-                    <div class="detail-variedade-area ${Platform.OS === "android" ? "detail-variedade-area-android" : ""}">
-                        <b class="parcela-code">${parcela.parcela}${iconTagInside}</b>
-                        <span class="parcela-area">${formatNumber(parcela.areaSolicitada)} há</span>
-                    </div>
-                    <div class="detail-variedade-dap ${Platform.OS !== "ios" ? "font-mini" : ""}">
-                        <p class="variedade-text">${parcela.variedade || "?"}</p>
-                        <p class="dap-text">${getDap(parcela.date)} dias</p>
-                    </div>
-                    <div class="detail-variedade-status ${Platform.OS === "android" ? "detail-variedade-status-android" : ""}">
-                        ${parcela.areaAplicada > 0 ? areaAplicada : ""}
-                    </div>
-                </div>
-            `;
-            })
-            .join("");
+          const applicationSafra =
+            String(
+              baseApplication?.safra ?? ""
+            ).trim();
 
-        function withOpacity(rgb, alpha = 0.3) {
-            const nums = String(rgb || "").match(/\d+(\.\d+)?/g);
-            if (!nums || nums.length < 3) return rgb;
-            const [r, g, b] = nums;
-            return `rgba(${r},${g},${b},${alpha})`;
-        }
+          const applicationCiclo =
+            Number(
+              baseApplication?.ciclo
+            );
 
-        const mergedProducts = getMergedProducts(app);
+          /*
+           * Filtro estrito do mapa desta AP:
+           *
+           * fazenda + safra + ciclo.
+           *
+           * Somente os registros que atendem às três
+           * condições são enviados para o SVG.
+           */
+          const mapForThisApplication =
+            dataFromJson.filter((plot) => {
+              const plotFarmId =
+                Number(
+                  plot?.[
+                  "talhao__fazenda__id_farmbox"
+                  ]
+                );
 
-        const prodsCards = mergedProducts
-            .map((prod, i) => {
-                return `
-                <div class="grid-produtos detail-prod-container ${i === 0 ? "first-prod-here" : ""} ${i % 2 !== 0 ? "even-row-prod" : ""}" style="background-color: ${withOpacity(prod.colorChip)}">
-                    <span style="margin-left:0px;padding-left:2px;justify-self:start">
-                        ${formatDoseNumber(prod.doseSolicitada).toString().trim()}
-                        <small style="margin-left:3px;color:#777777">${prod?.unit}</small>
-                    </span>
-                    <span>${String(prod.type || "").replace("/Vegetal", "")}</span>
-                    <span>${prod.product}</span>
-                    <span style="justify-self:end;padding-right:1px;">
-                        ${formatNumber(prod.quantidadeSolicitada)}
-                    </span>
-                </div>
-            `;
-            })
-            .join("");
+              const plotSafra =
+                String(
+                  plot?.["safra__safra"] ??
+                  ""
+                ).trim();
 
-        const totalRealizado = sumNumber(app?.areaSolicitada) - sumNumber(app?.saldoAreaAplicar);
-        const imgTag = `<img src="data:image/svg+xml;base64,${base64Image}" style="width:90%;max-height:100vh"/>`;
+              const plotCiclo =
+                Number(
+                  plot?.["ciclo__ciclo"]
+                );
 
-        const consolidatedCodesBlock = app?.isConsolidated
-            ? `
-            <div style="padding:4px 6px;border-top:0.5px solid black;background:rgba(0,0,0,0.04);">
-                <b>APs consolidadas:</b> ${(app?.aps || [])
-                .map((ap) => `${ap.code} - ${ap.operation}`)
+              return (
+                plotFarmId ===
+                applicationFarmId &&
+                plotSafra ===
+                applicationSafra &&
+                plotCiclo ===
+                applicationCiclo
+              );
+            });
+
+          console.log(
+            "[PDF MAP FILTER FINAL]",
+            {
+              application: {
+                code:
+                  baseApplication?.code,
+
+                farmId:
+                  applicationFarmId,
+
+                safra:
+                  applicationSafra,
+
+                ciclo:
+                  applicationCiclo,
+              },
+
+              totalReceived:
+                dataFromJson.length,
+
+              totalFiltered:
+                mapForThisApplication.length,
+
+              filteredContexts:
+                mapForThisApplication.map(
+                  (plot) => ({
+                    talhao:
+                      plot?.talhao__id_talhao,
+
+                    farmId:
+                      plot?.[
+                      "talhao__fazenda__id_farmbox"
+                      ],
+
+                    safra:
+                      plot?.["safra__safra"],
+
+                    ciclo:
+                      plot?.["ciclo__ciclo"],
+                  })
+                ),
+
+              highlightedPlots,
+            }
+          );
+
+          const base64Image =
+            getMapSvgBase64(
+              highlightedPlots,
+              mapForThisApplication,
+              culture
+            );
+
+          const appTitle =
+            getAppTitle(app);
+
+          const appOperation =
+            getAppOperation(app);
+
+          const totalRealizado =
+            sumNumber(
+              app?.areaSolicitada
+            ) -
+            sumNumber(
+              app?.saldoAreaAplicar
+            );
+
+          const parcelsHtml =
+            buildParcelRows(
+              parcels
+            );
+
+          const mergedProducts =
+            getMergedProducts(app);
+
+          const productsHtml =
+            buildProductRows(
+              mergedProducts
+            );
+
+          const consolidatedCodesBlock =
+            app?.isConsolidated
+              ? `
+                <div class="consolidated-block">
+                  <strong>
+                    APs consolidadas:
+                  </strong>
+
+                  <span>
+                    ${(app?.aps || [])
+                .map(
+                  (
+                    application
+                  ) =>
+                    `${escapeHtml(
+                      application?.code ||
+                      "-"
+                    )} — ${escapeHtml(
+                      application?.operation ||
+                      "-"
+                    )}`
+                )
                 .join(" • ")}
-            </div>
-        `
-            : "";
-
-        return `
-        <div class="resume-header-container">
-            <div>
-                <span><b>${farm.replace("Fazenda ", "Projeto ")}</b></span>
-            </div>
-            <div>
-                <span><b>${getAppTitle(app)}</b></span>
-            </div>
-        </div>
-
-        <div class="ap-container bordered">
-            <div class="resumo-container bordered">
-                <div class="resumo-container-app-number">
-                    <span>${iconTag}<b>${getAppTitle(app)}</b></span>
-                    <span><b>${getAppOperation(app)}</b></span>
+                  </span>
                 </div>
-                <div class="resumo-container-app-date">
-                    <span><b>Início:</b> ${formatDate(getAppDateStart(app))}</span>
-                    <span><b>Limite:</b> ${formatDate(getAppDateEnd(app))}</span>
-                </div>
-                <div class="resumo-container-app-area">
-                    <span><b>Área:</b> ${formatNumber(app?.areaSolicitada)} há</span>
-                    <span><b>Realizado:</b> ${formatNumber(totalRealizado)} há</span>
-                    <span><b>Saldo:</b> ${formatNumber(app?.saldoAreaAplicar)} há</span>
-                </div>
-            </div>
+              `
+              : "";
 
-            ${consolidatedCodesBlock}
+          return `
+            <section class="application-page">
+              <header class="page-header">
+                <div class="farm-heading">
+                  <h1>
+                    ${escapeHtml(
+            farmName
+          )}
+                  </h1>
 
-            <div class="bordered details-container">
-                <div class="left-side-container">
-                    <div class="${Platform.OS === "ios" ? "parcelas-container" : "parcelas-container-android"}">
-                        ${appsCards}
+                  <span>
+                    Área total:
+                    ${formatNumber(
+            totalAplicar
+          )} ha
+                  </span>
+                </div>
+
+                <div class="application-heading">
+                  <strong>
+                    ${escapeHtml(
+            appTitle
+          )}
+                  </strong>
+
+                  <span>
+                    ${escapeHtml(
+            appOperation
+          )}
+                  </span>
+                </div>
+              </header>
+
+              <div class="application-summary">
+                <div class="summary-main">
+                  <div class="summary-title-row">
+                    ${getCultureIcon(
+            culture,
+            15
+          )}
+
+                    <strong>
+                      ${escapeHtml(
+            appTitle
+          )}
+                    </strong>
+                  </div>
+
+                  <span>
+                    ${escapeHtml(
+            appOperation
+          )}
+                  </span>
+                </div>
+
+                <div class="summary-item">
+                  <span>Início</span>
+
+                  <strong>
+                    ${formatDate(
+            getAppDateStart(
+              app
+            )
+          )}
+                  </strong>
+                </div>
+
+                <div class="summary-item">
+                  <span>Limite</span>
+
+                  <strong>
+                    ${formatDate(
+            getAppDateEnd(
+              app
+            )
+          )}
+                  </strong>
+                </div>
+
+                <div class="summary-item">
+                  <span>Área</span>
+
+                  <strong>
+                    ${formatNumber(
+            app?.areaSolicitada
+          )} ha
+                  </strong>
+                </div>
+
+                <div class="summary-item">
+                  <span>Realizado</span>
+
+                  <strong>
+                    ${formatNumber(
+            totalRealizado
+          )} ha
+                  </strong>
+                </div>
+
+                <div class="summary-item">
+                  <span>Saldo</span>
+
+                  <strong>
+                    ${formatNumber(
+            app?.saldoAreaAplicar
+          )} ha
+                  </strong>
+                </div>
+              </div>
+
+              ${consolidatedCodesBlock}
+
+              <div class="page-content">
+                <section
+                  class="
+                    content-panel
+                    parcels-panel
+                  "
+                >
+                  <div class="section-heading">
+                    <div>
+                      <strong>
+                        Talhões
+                      </strong>
+
+                      <span>
+                        Área, variedade,
+                        DAP e aplicado
+                      </span>
                     </div>
-                    <div class="prods-container-containing-map-new-order">
-                        <div class="header-produto4 grid-produtos" style="border-bottom: 1px solid black;">
-                            <b style="justify-self: start">Dose</b>
-                            <b>Tipo</b>
-                            <b>Produto</b>
-                            <b style="justify-self: end;">Solicitado</b>
-                        </div>
-                        ${prodsCards}
+
+                    <span class="section-count">
+                      ${parcelCount}
+                    </span>
+                  </div>
+
+                  <div class="parcel-table">
+                    <div class="parcel-table-header">
+                      <div>Talhão</div>
+                      <div>Área</div>
+                      <div>Variedade</div>
+                      <div>DAP</div>
+                      <div>Aplic.</div>
                     </div>
+
+                    <div class="parcel-table-body">
+                      ${parcelsHtml}
+                    </div>
+                  </div>
+                </section>
+
+                <section
+                  class="
+                    content-panel
+                    products-panel
+                  "
+                >
+                  <div class="section-heading">
+                    <div>
+                      <strong>
+                        Produtos
+                      </strong>
+
+                      <span>
+                        Dose e quantidade
+                        solicitada
+                      </span>
+                    </div>
+
+                    <span class="section-count">
+                      ${mergedProducts.length}
+                    </span>
+                  </div>
+
+                  <div
+                    class="
+                      product-header
+                      product-grid
+                    "
+                  >
+                    <div>Dose</div>
+                    <div>Tipo</div>
+                    <div>Produto</div>
+                    <div>Qtd.</div>
+                  </div>
+
+                  <div class="product-list">
+                    ${productsHtml}
+                  </div>
+                </section>
+
+                <section
+                  class="
+                    content-panel
+                    map-panel
+                  "
+                >
+                  <div
+                    class="
+                      section-heading
+                      map-heading
+                    "
+                  >
+                    <div>
+                      <strong>
+                        Mapa dos talhões
+                      </strong>
+
+                      <span>
+                        Proporção preservada
+                      </span>
+                    </div>
+
+                    <div class="map-legend">
+                      <span
+                        class="legend-swatch"
+                      ></span>
+
+                      <span>
+                        Selecionados
+                      </span>
+                    </div>
+                  </div>
+
+                  <div class="map-frame">
+                    <img
+                      src="data:image/svg+xml;base64,${base64Image}"
+                      class="plot-map-image"
+                      alt="Mapa dos talhões"
+                    />
+                  </div>
+                </section>
+              </div>
+
+              <section class="observations-section">
+                <div class="observations-title">
+                  <strong>
+                    Observações
+                  </strong>
                 </div>
 
-                <div class="bordered-left produtos-conatiner">
-                    <div class="prods-container-containing-map">
-                        <div style="width:95%;height:100%;margin-top:10px;">
-                            ${imgTag}
-                        </div>
-                        <div class="obs-container">
-                            <span>Observações</span>
-                        </div>
-                    </div>
+                <div class="observations-lines">
+                  <div></div>
+                  <div></div>
                 </div>
-            </div>
-        </div>
-    `;
-    }).join("");
+              </section>
+            </section>
+          `;
+        })
+        .join("");
 
     const htmlContent = `
-    <html lang="en">
+      <!DOCTYPE html>
+
+      <html lang="pt-BR">
         <head>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>Document</title>
-            <style>
-                @page {
-                    size: A4;
-                    margin-top: 10px;
-                    margin-bottom: 10px;
-                }
-                body {
-                    font-size: 7px;
-                    padding: 20px 10px !important;
-                    -webkit-print-color-adjust: exact;
-                    print-color-adjust: exact;
-                    margin-top: 20px;
-                    margin-bottom: 20px;
-                }
-                .main-container {
-                    width: 100%;
-                    display: block;
-                    flex-direction: column;
-                    justify-content: center;
-                    align-items: center;
-                    gap: 20px
-                }
-
-                .main-container header {
-                    font-size: 30px;
-                    font-weight: bold;
-                }
-
-                body {
-                    padding: 10px 20px;
-                    /* border: 1px solid black; */
-                }
-
-                .bordered {
-                    border: 0.5px solid black;
-                }
-
-                .resume-header-container {
-                    display: flex;
-                    flex-direction: row;
-                    gap: 20px;
-                    align-items: flex-end;
-                    justify-content: flex-end;
-                    width: 100%;
-                }
- 
-                .resumo-container {
-                    width: 100%;
-                    display: grid;
-                    grid-template-columns: ${Platform.OS === 'ios' ? '40% 30% 30%' : '40% 27% 33%'};
-                    gap: 10px; /* opcional: espaço entre colunas */
-                    padding: 2px 0px;
-                    background-color: rgba(107, 107, 107, 0.2);
-                    border: 0.5px solid black;
-                }
-
-
-                .resumo-container-app-area {
-                    align-items: center;
-                    gap: 20px;
-                    display: flex;
-                    padding-right: ${Platform.OS === 'ios' ? '4px' : '20px'};
-                }
-                
-                .resumo-container-app-date {
-                    align-items: center;
-                    gap: 10px;
-                    display: flex;
-                    /* margin-left: auto; */
-                    padding-left: 0px;
-                }
-
-                .resumo-container-app-number {
-                    display: flex;
-                    align-items: center;    
-                    margin-left: 5px;
-                    gap: 30px;
-                }
-
-                .resumo-container-app-number {
-                    text-align: left;
-                }
-
-                .resumo-container-app-date {
-                    text-align: center; /* opcional */
-                }
-
-                .resumo-container-app-area {
-                    text-align: right;
-                }
-                
-                .ap-container {
-                    display: flex;
-                    justify-content: space-between;
-                    flex-direction: column;
-                    width: 100%;
-                    margin: 0px;
-                    page-break-after: always;   /* 👈 quebra DEPOIS – deixa o 1º na 1ª página */
-                    break-after: page;          /* fallback moderno */
-                    box-decoration-break: clone;
-                }
-
-                /* Não cria página em branco depois do último AP */
-                .ap-container:last-of-type {
-                    page-break-after: auto;
-                    break-after: auto;
-                }
-
-                .left-side-container{
-                    display: flex;
-                    flex-direction: column;
-                    justify-content: space-between; 
-                    gap: 10px;
-                    width: 100%;
-                }
-                .parcelas-container {
-                    display: grid;
-                    width: 95%;
-                    max-width: 95%;
-                    min-width: 95%;
-                    grid-template-columns: repeat(5, 1fr);
-                    gap: 2px;
-                    row-gap: 0px;
-                    padding: 2px ;
-                    padding-right: 20px;
-                }
-                
-                .parcelas-container-android {
-                    display: grid;
-                    width: 85%;
-                    max-width: 95%;
-                    min-width: 95%;
-                    grid-template-columns: repeat(4, 1fr);
-                    gap: 2px;
-                    row-gap: 0px;
-                    padding: 2px ;
-                    padding-right: 20px;
-                }
-
-                .obs-container{
-                    height: 90px;
-                    border: 1px dotted black;
-                    border-radius: 2px;
-                    width: 94%;
-                    margin: 10px 15px 0px 5px;
-                }
-
-                .obs-container {
-                    padding: 0px 5px 
-                }
-
-                .produtos-conatiner {
-                    width: 60%;
-                    display: flex;
-                    flex-direction: column;
-                    justify-content: center;
-                    padding: 0px 10px;
-                    align-items: center;
-                }
-
-                .details-container {
-                    display: flex;
-                    width: 100%;
-                    height: 100%;
-                }
-
-                /* Lado esquerdo (texto) — 40 % */
-                .left-side-container {
-                    flex: 0 0 40%;   /* não cresce, não encolhe */
-                    max-width: 40%;
-                }
-
-                /* Lado direito (imagem ou produtos) — 60 % */
-                .produtos-conatiner {          /* confira o nome da classe! */
-                    flex: 0 0 60%;   /* idem */
-                    max-width: 60%;
-                    padding: 0 10px;
-                }
-
-                .parcela-detail-container {
-                    display: flex;
-                    flex-direction: column;
-                    justify-content: space-around;
-
-                    /* ➡️ LARGURA — reduza de 40 % para 30 % (ou o valor que preferir) */
-                    width: 80%;
-                    flex: 0 0 80%;   /* evita que cresça/encolha no flexbox */
-
-                    /* ➡️ PADDING — menos “folga” interna */
-                    padding: 2px 4px;
-
-                    /* ➡️ ALTURA — menor */
-                    max-height: 20px;
-                    min-height: 20px;
-
-                    /* ➡️ MARGEM — cartão mais juntinho dos outros */
-                    margin: 3px;
-
-                    border: 0.5px dotted black; /* se quiser manter a borda */
-                    border-radius: 4px;
-                    font-size: 0.65em;          /* fonte menor (opcional) */
-                }
-
-                /* Se precisar encolher ainda mais o texto dentro das sub-linhas: */
-                .detail-variedade-area,
-                .detail-variedade-dap,
-                .detail-variedade-status {
-                   font-size: 0.7em;           /* ajuste fino; menor que 1 = diminui */
-                }
-                
-
-                .parcela-detail-container-android {
-                    display: flex;
-                    flex-direction: column;
-                    justify-content: space-around;
-
-                    /* ➡️ LARGURA — reduza de 40 % para 30 % (ou o valor que preferir) */
-                    width: 80%;
-                    flex: 0 0 80%;   /* evita que cresça/encolha no flexbox */
-
-                    /* ➡️ PADDING — menos “folga” interna */
-                    padding: 2px 4px;
-
-                    /* ➡️ ALTURA — menor */
-                    max-height: 40px;
-                    min-height: 40px;
-
-                    /* ➡️ MARGEM — cartão mais juntinho dos outros */
-                    margin: 3px;
-
-                    border: 0.5px dotted black; /* se quiser manter a borda */
-                    border-radius: 4px;
-                    font-size: 0.50em;          /* fonte menor (opcional) */
-                }
-
-                .finish-parcela{
-                    background-color: #DEDFE4;
-                }
-
-                .detail-variedade-area {
-                    display: flex;
-                    justify-content: space-between;
-                    gap: 10px;
-                    flex-direction: row;
-                    width: 100%;
-                    border-bottom: 0.5px solid black;
-                }
-
-                .detail-variedade-dap {
-                    font-size: 0.7em;
-                    display: flex;
-                    justify-content: space-between;
-                    flex-direction: row;
-                    gap: 10px;
-                    width: 100%;
-                }
-
-                .detail-variedade-status{
-                    font-size: 0.7em;
-                    display: flex;
-                    justify-content: flex-end;
-                    flex-direction: row;
-                    gap: 10px;
-                    width: 100%;
-                }
-
-                .parcela-detail-container.bordered {
-                    border-radius: 4px;
-                    border: 0.5px dotted black;
-                }
-
-                .bordered-left {
-                    border-left: 1px solid black;
-                }
-
-                .header-produtos {
-                    border-bottom: 0.5px dotted black;
-                    margin-top: 20px;
-                    margin-bottom: -5px !important;
-                    padding-bottom: -20px !important;
-                    font-weight: bold;
-                }
-
-                .header-produtos span {
-                    margin-bottom: 0px;
-                    font-size: 1.2em;
-                }
-
-                .grid-produtos {
-                    display: grid;
-                    grid-template-columns: 20%  30% 30% 20%;
-                    width: 96%;
-                    text-align: center;
-                }
-
-                .detail-prod-container {
-                    margin-bottom: 1px;
-                    justify-content: space-between;
-                }
-
-                .even-row-prod{
-                    background-color: rgba(107,107,107,0.1)
-                }
-
-                .header-container {
-                    margin-bottom: 0px
-                    margin-left: 30px;
-                    display: flex;
-                    justify-content: flex-center;
-                    align-items: center;
-                    flex-direction: column;
-                    width: 100%;
-                }
-
-                .header-title {
-                    font-size: 30px;
-                    font-weight: bold;
-                    text-align: center;
-                }
-                .header-area {
-                    font-size: 1.2em;
-                    margin-bottom: -20px;
-                }
-
-                .first-prod-here {
-                    margin-top: 1px
-                }
-
-                .prods-container-containing-map {
-                    display: flex;
-                    flex-direction: column;
-                    justify-content: center;
-                    align-items: center;
-                    height: 100%;
-                    flex-grow: 1;
-                    padding: 5px;
-                }
-                
-                .prods-container-containing-map-new-order {
-                    display: flex;
-                    flex-direction: column;
-                    justify-content: center;
-                    align-items: center;
-                    padding: 5px;
-                }
-
-                .produtos-conatiner {
-                    display: flex;
-                    flex-direction: column;
-                    height: 100%;
-                    justify-content: space-between;
-                }
-                .map-image-container {
-                    flex-grow: 1;
-                    display: flex;
-                    align-items: stretch;
-                    justify-content: center;
-                    margin-top: 10px;
-                }
-
-                .map-image-container img {
-                    width: 95%;
-                    height: 100%;
-                    object-fit: contain;
-                    border: 1px solid #000;
-                }
-
-                .header-produto4 {
-                    border-bottom: 1px solid #0000
-                }
-                .detail-variedade-area-android,
-                .detail-variedade-dap-android,
-                .detail-variedade-status-android {
-                    font-size: 4px !important;          
-                }    
-                .detail-variedade-dap.font-mini p {
-                    font-size: 1px !important;
-                }
-                    /* Impede overflow geral dentro do card */
-                .parcela-detail-container,
-                .parcela-detail-container-android {
-                box-sizing: border-box;
-                overflow: hidden;
-                }
-
-                .variedade-text,
-                .parcela-code {
-                max-width: 100%;
-                min-width: 0;
-                overflow: hidden;
-                text-overflow: ellipsis;
-                white-space: nowrap;
-                }
-
-                /* Linha 1: código + área em colunas fixas */
-                .detail-variedade-area {
-                display: grid;                 /* melhor que flex aqui */
-                grid-template-columns: minmax(0, 1fr) max-content;
-                align-items: center;
-                gap: 4px;                      /* menor que 10px */
-                width: 100%;
-                min-width: 0;                  /* essencial p/ não estourar */
-                border-bottom: 0.5px solid black;
-                }
-
-                .detail-variedade-area .parcela-code {
-                min-width: 0;
-                overflow: hidden;
-                text-overflow: ellipsis;
-                white-space: nowrap;
-                }
-
-                .detail-variedade-area .parcela-area {
-                white-space: nowrap;
-                font-variant-numeric: tabular-nums; /* números alinhados */
-                }
-
-                /* Linha 2: variedade + DAP */
-                .detail-variedade-dap {
-                display: grid;
-                grid-template-columns: minmax(0, 1fr) max-content;
-                gap: 4px;
-                align-items: center;
-                width: 100%;
-                min-width: 0;
-                }
-
-                .detail-variedade-dap .variedade-text {
-                margin: 0;
-                min-width: 0;
-                overflow: hidden;
-                text-overflow: ellipsis;  /* corta variedade grande */
-                white-space: nowrap;
-                }
-
-                .parcela-area,
-                .dap-text {
-                font-size: 0.95em;                /* ligeiramente menor */
-                letter-spacing: -0.2px;           /* comprime números */
-                font-variant-numeric: tabular-nums;
-                white-space: nowrap;
-                }
-
-                .detail-variedade-dap .dap-text {
-                margin: 0;
-                white-space: nowrap;
-                font-variant-numeric: tabular-nums;
-                }
-
-                /* Linha 3: status "Aplicado" não estoura */
-                .detail-variedade-status {
-                width: 100%;
-                min-width: 0;
-                overflow: hidden;
-                display: flex;
-                justify-content: flex-end;
-                }
-
-                .detail-variedade-status span {
-                white-space: nowrap;
-                overflow: hidden;
-                text-overflow: ellipsis;
-                }
-
-            </style>
-        </head>
-
-        <body>
-            <div class="main-container">
-                    <div class="header-container">
-                        <div class="header-title">
-                            ${farm.replace('Fazenda ', '')}
-                        </div>
-                        <div>
-                            <b>Área Total:</b> ${formatNumber(totalAplicar)} há
-                        </div>
-                    </div>
-                ${apCotainer}
-            </div>
-        </body>
-
-        </html>
-    `
-
-    try {
-        // Create a timestamp and formatted filename
-        const formattedDate = new Date().toLocaleDateString('en-GB').replace(/\//g, '-'); // Optional: DD-MM-YYYY format
-        const filename = `${farm.replace('Fazenda ', '')} openApss - ${formattedDate}_app.pdf`;
-        const newUri = `${FileSystem.documentDirectory}${filename}`;
-
-        // Create a PDF from HTML content
-        const { uri } = await Print.printToFileAsync({
-            html: htmlContent,
-            base64: false,
-        });
-
-        // Check if the PDF was created
-        const fileInfo = await FileSystem.getInfoAsync(uri);
-        if (!fileInfo.exists) {
-            throw new Error("PDF file was not created successfully");
-        }
-
-        // Move the PDF to the desired location with the correct filename
-        await FileSystem.moveAsync({
-            from: uri,
-            to: newUri,
-        });
-
-        // Optionally share the PDF
-        await shareAsync(newUri, { dialogTitle: "Enviar PDF" });
-
-        console.log("PDF created at:", newUri);
-    } catch (error) {
-        console.error("Error creating PDF:", error);
-    };
+          <meta charset="UTF-8" />
+
+          <meta
+            name="viewport"
+            content="
+              width=device-width,
+              initial-scale=1.0
+            "
+          />
+
+          <title>
+            Aplicações —
+            ${escapeHtml(farmName)}
+          </title>
+
+          <style>
+            @page {
+              size: A4 landscape;
+              margin: 7mm;
+            }
+
+            * {
+              box-sizing: border-box;
+            }
+
+            html,
+            body {
+              width: 100%;
+              height: 100%;
+
+              margin: 0;
+              padding: 0;
+            }
+
+            body {
+              font-family:
+                Arial,
+                Helvetica,
+                sans-serif;
+
+              font-size: 9px;
+              line-height: 1.2;
+
+              color: #172033;
+              background: #ffffff;
+
+              -webkit-print-color-adjust:
+                exact;
+
+              print-color-adjust:
+                exact;
+            }
+
+            .application-page {
+              width: 100%;
+              height: 195mm;
+              max-height: 195mm;
+
+              display: flex;
+              flex-direction: column;
+
+              overflow: hidden;
+
+              border:
+                1px solid #cbd5e1;
+
+              background: #ffffff;
+
+              page-break-after:
+                always;
+
+              break-after: page;
+            }
+
+            .application-page:last-of-type {
+              page-break-after: auto;
+              break-after: auto;
+            }
+
+            .page-header {
+              flex: 0 0 38px;
+
+              display: flex;
+              justify-content:
+                space-between;
+              align-items: center;
+
+              gap: 18px;
+
+              padding: 4px 8px;
+
+              border-bottom:
+                1px solid #cbd5e1;
+            }
+
+            .farm-heading h1 {
+              margin: 0;
+
+              color: #111827;
+
+              font-size: 17px;
+              line-height: 1;
+            }
+
+            .farm-heading span {
+              color: #64748b;
+              font-size: 7px;
+            }
+
+            .application-heading {
+              display: flex;
+              flex-direction: column;
+              align-items: flex-end;
+
+              gap: 1px;
+
+              text-align: right;
+            }
+
+            .application-heading strong {
+              color: #111827;
+              font-size: 13px;
+            }
+
+            .application-heading span {
+              max-width: 430px;
+
+              color: #475569;
+              font-size: 7px;
+            }
+
+            .application-summary {
+              flex: 0 0 36px;
+
+              display: grid;
+
+              grid-template-columns:
+                minmax(180px, 1.7fr)
+                repeat(
+                  5,
+                  minmax(88px, 1fr)
+                );
+
+              border-bottom:
+                1px solid #cbd5e1;
+
+              background: #f8fafc;
+            }
+
+            .summary-main,
+            .summary-item {
+              min-width: 0;
+
+              display: flex;
+              justify-content: center;
+
+              padding: 3px 6px;
+
+              border-right:
+                1px solid #e2e8f0;
+            }
+
+            .summary-main {
+              flex-direction: column;
+
+              gap: 0;
+            }
+
+            .summary-title-row {
+              display: flex;
+              align-items: center;
+
+              gap: 4px;
+            }
+
+            .summary-title-row strong {
+              color: #111827;
+              font-size: 10px;
+            }
+
+            .summary-main > span {
+              overflow: hidden;
+
+              color: #64748b;
+              font-size: 6.5px;
+
+              text-overflow:
+                ellipsis;
+
+              white-space: nowrap;
+            }
+
+            .summary-item {
+              flex-direction: column;
+              align-items: center;
+
+              gap: 0;
+
+              text-align: center;
+            }
+
+            .summary-item:last-child {
+              border-right: 0;
+            }
+
+            .summary-item span {
+              color: #64748b;
+
+              font-size: 6px;
+              font-weight: 700;
+
+              letter-spacing: 0.25px;
+
+              text-transform:
+                uppercase;
+            }
+
+            .summary-item strong {
+              color: #111827;
+              font-size: 8px;
+
+              font-variant-numeric:
+                tabular-nums;
+
+              white-space: nowrap;
+            }
+
+            .consolidated-block {
+              flex: 0 0 auto;
+
+              display: flex;
+              align-items:
+                flex-start;
+
+              gap: 4px;
+
+              padding: 3px 6px;
+
+              border-bottom:
+                1px solid #e2e8f0;
+
+              background: #fffdf5;
+
+              color: #475569;
+              font-size: 6.5px;
+            }
+
+            .consolidated-block strong {
+              color: #111827;
+              white-space: nowrap;
+            }
+
+            .page-content {
+              min-height: 0;
+              flex: 1;
+
+              display: grid;
+
+              grid-template-columns:
+                21% 29% 50%;
+            }
+
+            .content-panel {
+              min-width: 0;
+              min-height: 0;
+
+              display: flex;
+              flex-direction: column;
+            }
+
+            .parcels-panel,
+            .products-panel {
+              border-right:
+                1px solid #cbd5e1;
+            }
+
+            .section-heading {
+              flex: 0 0 28px;
+
+              display: flex;
+              justify-content:
+                space-between;
+              align-items: center;
+
+              gap: 4px;
+
+              padding: 3px 5px;
+
+              border-bottom:
+                1px solid #e2e8f0;
+
+              background: #f8fafc;
+            }
+
+            .section-heading
+              > div:first-child {
+              min-width: 0;
+
+              display: flex;
+              flex-direction: column;
+            }
+
+            .section-heading strong {
+              color: #111827;
+              font-size: 8px;
+            }
+
+            .section-heading span {
+              color: #64748b;
+              font-size: 5.6px;
+            }
+
+            .section-count {
+              min-width: 18px;
+              height: 18px;
+
+              display: inline-flex;
+              justify-content: center;
+              align-items: center;
+
+              padding: 0 4px;
+
+              border:
+                1px solid #cbd5e1;
+
+              border-radius: 9px;
+
+              background: #ffffff;
+
+              color:
+                #475569 !important;
+
+              font-size:
+                6.5px !important;
+
+              font-weight: 700;
+            }
+
+            .parcel-table {
+              min-width: 0;
+              min-height: 0;
+              flex: 1;
+
+              display: flex;
+              flex-direction: column;
+
+              overflow: hidden;
+            }
+
+            .parcel-table-header,
+            .parcel-table-row {
+              width: 100%;
+
+              display: grid;
+
+              grid-template-columns:
+                16%
+                20%
+                minmax(0, 1.45fr)
+                12%
+                18%;
+
+              align-items: center;
+            }
+
+            .parcel-table-header {
+              flex: 0 0 18px;
+
+              padding: 2px 3px;
+
+              border-bottom:
+                1px solid #cbd5e1;
+
+              background: #f1f5f9;
+
+              color: #475569;
+
+              font-size: 4.8px;
+              font-weight: 700;
+
+              letter-spacing: 0;
+
+              text-transform:
+                uppercase;
+            }
+
+            .parcel-table-header
+              > div:not(:first-child),
+            .parcel-table-row
+              > div:not(:first-child) {
+              padding-left: 1px;
+            }
+
+            .parcel-table-header
+              > div:last-child {
+              text-align: right;
+            }
+
+            .parcel-table-body {
+              min-height: 0;
+              flex: 1;
+
+              overflow: hidden;
+            }
+
+            .parcel-table-row {
+              min-height: 15px;
+              height: 15px;
+
+              padding: 1px 3px;
+
+              border-bottom:
+                1px solid #e2e8f0;
+
+              color: #334155;
+
+              font-size: 5.3px;
+              line-height: 1;
+            }
+
+            .parcel-table-row-even {
+              background: #f8fafc;
+            }
+
+            .parcel-table-row-finished {
+              background: #ecfdf5;
+            }
+
+            .parcel-table-code {
+              min-width: 0;
+
+              overflow: hidden;
+
+              color: #111827;
+
+              font-weight: 700;
+
+              text-overflow:
+                ellipsis;
+
+              white-space: nowrap;
+            }
+
+            .parcel-table-area,
+            .parcel-table-dap,
+            .parcel-table-applied {
+              font-variant-numeric:
+                tabular-nums;
+
+              white-space: nowrap;
+            }
+
+            .parcel-table-variety {
+              min-width: 0;
+
+              overflow: hidden;
+
+              color: #475569;
+
+              text-overflow:
+                ellipsis;
+
+              white-space: nowrap;
+            }
+
+            .parcel-table-applied {
+              color: #166534;
+              text-align: right;
+            }
+
+            .product-grid {
+              width: 100%;
+
+              display: grid;
+
+              grid-template-columns:
+                20%
+                22%
+                minmax(0, 1fr)
+                17%;
+
+              align-items: center;
+            }
+
+            .product-header {
+              flex: 0 0 20px;
+
+              padding: 3px 5px;
+
+              border-bottom:
+                1px solid #cbd5e1;
+
+              background: #f1f5f9;
+
+              color: #475569;
+
+              font-size: 5.8px;
+              font-weight: 700;
+
+              letter-spacing: 0.1px;
+
+              text-transform:
+                uppercase;
+            }
+
+            .product-header
+              > div:last-child {
+              text-align: right;
+            }
+
+            .product-list {
+              min-height: 0;
+              flex: 1;
+
+              overflow: hidden;
+            }
+
+            .product-row {
+              min-height: 22px;
+
+              padding: 3px 5px;
+
+              border-bottom:
+                1px solid #e2e8f0;
+
+              font-size: 6.8px;
+            }
+
+            .product-dose {
+              display: flex;
+              align-items: baseline;
+
+              gap: 2px;
+
+              font-variant-numeric:
+                tabular-nums;
+
+              white-space: nowrap;
+            }
+
+            .product-dose span {
+              color: #64748b;
+              font-size: 5.6px;
+            }
+
+            .product-type,
+            .product-name {
+              min-width: 0;
+
+              overflow: hidden;
+
+              padding-right: 4px;
+
+              text-overflow:
+                ellipsis;
+
+              white-space: nowrap;
+            }
+
+            .product-name {
+              color: #111827;
+              font-weight: 700;
+            }
+
+            .product-quantity {
+              justify-self: end;
+
+              color: #111827;
+              font-weight: 700;
+
+              font-variant-numeric:
+                tabular-nums;
+
+              white-space: nowrap;
+            }
+
+            .map-panel {
+              background: #ffffff;
+            }
+
+            .map-heading {
+              flex: 0 0 28px;
+            }
+
+            .map-legend {
+              display: flex !important;
+              flex-direction:
+                row !important;
+              align-items: center;
+
+              gap: 3px;
+
+              white-space: nowrap;
+            }
+
+            .legend-swatch {
+              width: 11px;
+              height: 7px;
+
+              display: inline-block;
+
+              border:
+                1.5px solid #1e293b;
+
+              border-radius: 2px;
+
+              background: #8a6a4a;
+            }
+
+            .map-frame {
+              min-width: 0;
+              min-height: 0;
+              flex: 1;
+
+              display: flex;
+              justify-content: center;
+              align-items: center;
+
+              padding: 4px 6px;
+
+              overflow: hidden;
+            }
+
+            .plot-map-image {
+  display: block;
+
+  width: auto;
+  height: auto;
+
+  max-width: 100%;
+  max-height: 100%;
+
+  object-fit: contain;
+  object-position: center;
 }
 
+            .observations-section {
+              flex: 0 0 34px;
 
+              display: grid;
 
+              grid-template-columns:
+                64px 1fr;
+
+              align-items: stretch;
+
+              padding: 3px 6px;
+
+              border-top:
+                1px solid #cbd5e1;
+
+              background: #ffffff;
+            }
+
+            .observations-title {
+              display: flex;
+              align-items: flex-start;
+
+              padding-top: 1px;
+
+              color: #111827;
+              font-size: 7px;
+            }
+
+            .observations-lines {
+              display: flex;
+              flex-direction: column;
+              justify-content:
+                space-around;
+
+              padding: 1px 3px;
+
+              border:
+                1px dashed #94a3b8;
+
+              border-radius: 3px;
+            }
+
+            .observations-lines div {
+              height: 1px;
+
+              border-bottom:
+                1px solid #e2e8f0;
+            }
+
+            @media print {
+              .application-page {
+                border-radius: 0;
+              }
+            }
+          </style>
+        </head>
+
+        <body
+          data-view-mode="${escapeHtml(
+      viewMode
+    )}"
+        >
+          ${applicationsHtml}
+        </body>
+      </html>
+    `;
+
+    try {
+      const formattedDate =
+        new Date()
+          .toLocaleDateString(
+            "en-GB"
+          )
+          .replace(/\//g, "-");
+
+      const filename = `
+        ${farmName}
+        openApss -
+        ${formattedDate}_app.pdf
+      `
+        .replace(/\s+/g, " ")
+        .trim();
+
+      const newUri =
+        `${FileSystem.documentDirectory}${filename}`;
+
+      const { uri } =
+        await Print.printToFileAsync({
+          html: htmlContent,
+          base64: false,
+        });
+
+      const fileInfo =
+        await FileSystem.getInfoAsync(
+          uri
+        );
+
+      if (!fileInfo.exists) {
+        throw new Error(
+          "O arquivo PDF não foi criado corretamente."
+        );
+      }
+
+      const existingDestination =
+        await FileSystem.getInfoAsync(
+          newUri
+        );
+
+      if (
+        existingDestination.exists
+      ) {
+        await FileSystem.deleteAsync(
+          newUri,
+          {
+            idempotent: true,
+          }
+        );
+      }
+
+      await FileSystem.moveAsync({
+        from: uri,
+        to: newUri,
+      });
+
+      await shareAsync(newUri, {
+        dialogTitle: "Enviar PDF",
+
+        mimeType:
+          "application/pdf",
+
+        UTI:
+          Platform.OS === "ios"
+            ? "com.adobe.pdf"
+            : undefined,
+      });
+
+      console.log(
+        "PDF criado em:",
+        newUri
+      );
+
+      return newUri;
+    } catch (error) {
+      console.error(
+        "Erro ao criar PDF:",
+        error
+      );
+
+      throw error;
+    }
+  };

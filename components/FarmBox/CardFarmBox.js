@@ -606,57 +606,271 @@ const CardFarmBox = ({ route, navigation }) => {
     const getCultura = (dataCult) => filteredIcon(dataCult.cultura);
 
     const handleExprotData = async () => {
-        if (isOpeningExport) return;
+        if (isOpeningExport) {
+            return;
+        }
 
         try {
             setIsOpeningExport(true);
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
 
-            const allApps = data.filter((farmName) => farmName.farmName === farm);
-
-            const apParcelasIndex = (allApps ?? []).map((ap) => ({
-                idAp: ap?.idAp,
-                parcelasIds: (ap?.parcelas ?? [])
-                    .map((p) => p?.parcelaAppPlantationId)
-                    .filter((id) => id != null),
-            }));
-
-            const onlyIds = Array.from(
-                new Set(apParcelasIndex.flatMap((ap) => ap.parcelasIds))
+            await Haptics.impactAsync(
+                Haptics.ImpactFeedbackStyle.Heavy
             );
 
+            const allApps = (
+                Array.isArray(data)
+                    ? data
+                    : []
+            ).filter(
+                (application) =>
+                    application?.farmName === farm
+            );
+
+            if (!allApps.length) {
+                Alert.alert(
+                    "Atenção",
+                    "Não foram encontradas aplicações para esta fazenda."
+                );
+
+                setIsOpeningExport(false);
+                return;
+            }
+
+            const farmId =
+                allApps.find(
+                    (application) =>
+                        application?.farmId !== null &&
+                        application?.farmId !== undefined
+                )?.farmId;
+
+            if (
+                farmId === null ||
+                farmId === undefined
+            ) {
+                Alert.alert(
+                    "Atenção",
+                    "Não foi possível identificar o ID FarmBox da fazenda."
+                );
+
+                setIsOpeningExport(false);
+                return;
+            }
+
+            /*
+             * Mantém a relação entre as APs e suas parcelas.
+             *
+             * Esse índice não limita os polígonos retornados.
+             * Ele permanece disponível para relacionamentos,
+             * filtros ou destaques posteriores.
+             */
+            const apParcelasIndex =
+                allApps.map(
+                    (application) => ({
+                        idAp:
+                            application?.idAp,
+
+                        code:
+                            application?.code,
+
+                        farmId:
+                            application?.farmId,
+
+                        farmName:
+                            application?.farmName,
+
+                        safra:
+                            application?.safra,
+
+                        ciclo:
+                            application?.ciclo,
+
+                        parcelasIds:
+                            (
+                                Array.isArray(
+                                    application?.parcelas
+                                )
+                                    ? application.parcelas
+                                    : []
+                            )
+                                .map(
+                                    (parcel) =>
+                                        parcel
+                                            ?.parcelaAppPlantationId
+                                )
+                                .filter(
+                                    (id) =>
+                                        id !== null &&
+                                        id !== undefined &&
+                                        id !== ""
+                                ),
+                    })
+                );
+
+            /*
+             * Monta as combinações únicas de safra e ciclo
+             * existentes nas APs abertas dessa fazenda.
+             *
+             * Exemplo:
+             *
+             * [
+             *   {
+             *     safra: "2026/2027",
+             *     ciclo: 1
+             *   }
+             * ]
+             */
+            const contextsMap =
+                new Map();
+
+            for (
+                const application of allApps
+            ) {
+                const safra = String(
+                    application?.safra ?? ""
+                ).trim();
+
+                const cicloRaw =
+                    application?.ciclo;
+
+                const ciclo = String(
+                    cicloRaw ?? ""
+                ).trim();
+
+                if (!safra || !ciclo) {
+                    continue;
+                }
+
+                const key =
+                    `${safra}||${ciclo}`;
+
+                if (!contextsMap.has(key)) {
+                    contextsMap.set(
+                        key,
+                        {
+                            safra,
+
+                            /*
+                             * Mantém número quando possível.
+                             * O backend também normaliza.
+                             */
+                            ciclo:
+                                Number.isFinite(
+                                    Number(ciclo)
+                                )
+                                    ? Number(ciclo)
+                                    : ciclo,
+                        }
+                    );
+                }
+            }
+
+            const pairs =
+                Array.from(
+                    contextsMap.values()
+                );
+
+            if (!pairs.length) {
+                Alert.alert(
+                    "Atenção",
+                    "Não foi possível identificar a safra e o ciclo das aplicações."
+                );
+
+                setIsOpeningExport(false);
+                return;
+            }
+
             const params = {
-                farm: allApps[0]?.farmId,
+                farm:
+                    farmId,
+
+                farmName:
+                    allApps[0]?.farmName ??
+                    farm,
+
+                /*
+                 * Solicita todos os plantios da fazenda
+                 * para cada combinação de safra e ciclo.
+                 */
+                mode:
+                    "farmSafraCiclo",
+
+                pairs,
+
+                /*
+                 * Apenas metadado de relacionamento.
+                 * Não será utilizado para limitar a consulta.
+                 */
                 apParcelasIndex,
-                onlyIds,
             };
 
-            // Navega primeiro para dar resposta visual imediata
-            navigation.navigate("FarmBoxFilterApps", {
-                data,
-                farm,
-                viewMode,
-            });
+            console.log(
+                "[EXPORT PDF PARAMS]",
+                JSON.stringify(
+                    params,
+                    null,
+                    2
+                )
+            );
 
-            // Deixa a animação da navegação acontecer antes do processamento
-            InteractionManager.runAfterInteractions(() => {
-                dispatch(exportPdf(params));
-                setIsOpeningExport(false);
-            });
+            /*
+             * Abre a tela primeiro, permitindo que ela
+             * exiba o estado de carregamento enquanto
+             * o thunk consulta o mapa.
+             */
+            navigation.navigate(
+                "FarmBoxFilterApps",
+                {
+                    data,
+                    farm,
+                    viewMode,
+                }
+            );
+
+            InteractionManager
+                .runAfterInteractions(
+                    async () => {
+                        try {
+                            await dispatch(
+                                exportPdf(params)
+                            ).unwrap();
+                        } catch (error) {
+                            console.log(
+                                "Erro ao carregar mapa para o PDF:",
+                                error
+                            );
+
+                            Alert.alert(
+                                "Erro",
+                                "Não foi possível carregar os mapas para a impressão."
+                            );
+                        } finally {
+                            setIsOpeningExport(
+                                false
+                            );
+                        }
+                    }
+                );
         } catch (error) {
-            console.log("Erro ao abrir exportação:", error);
+            console.log(
+                "Erro ao abrir exportação:",
+                error
+            );
+
             setIsOpeningExport(false);
-            Alert.alert("Erro", "Não foi possível abrir a exportação.");
+
+            Alert.alert(
+                "Erro",
+                "Não foi possível abrir a exportação."
+            );
         }
     };
-
 
     useLayoutEffect(() => {
         navigation.setOptions({
             title: farm ? farm.replace("Fazenda ", "") : "Aplicações",
             headerShadowVisible: false,
             headerRight: ({ tintColor }) => (
-                <View style={{ flexDirection: "row", alignItems: "center"}}>
+                <View style={{ flexDirection: "row", alignItems: "center" }}>
                     {isOpeningExport ? (
                         <View
                             style={{

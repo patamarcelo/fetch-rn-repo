@@ -18,6 +18,8 @@ import NavigationHomeScreen from "../screens/navigation/NavigationHomeScreen";
 import { useSelector } from "react-redux";
 import { selectColheitaDataToggle } from "../store/redux/selector";
 
+import { ANDROID_TAB_CONTENT_HEIGHT } from "../constants/layout";
+
 const NativeTab = createNativeBottomTabNavigator();
 const JsTab = createBottomTabNavigator();
 
@@ -65,11 +67,17 @@ const AndroidTabs = ({ plantioTabMeta }) => {
 	const iconSize = 21;
 	const insets = useSafeAreaInsets();
 
-	const TAB_HEIGHT = 60;
+	const TAB_CONTENT_HEIGHT = ANDROID_TAB_CONTENT_HEIGHT;
 	const bottomInset = Math.max(insets.bottom, 0);
 
 	return (
 		<JsTab.Navigator
+			safeAreaInsets={{
+				top: 0,
+				right: 0,
+				bottom: 0,
+				left: 0,
+			}}
 			screenOptions={{
 				headerShown: false,
 				tabBarActiveTintColor: "#FFFFFF",
@@ -79,21 +87,27 @@ const AndroidTabs = ({ plantioTabMeta }) => {
 					borderTopWidth: 0,
 					elevation: 0,
 
-					// antes: height: 60
-					height: TAB_HEIGHT + bottomInset,
+					height: TAB_CONTENT_HEIGHT + bottomInset,
 
 					paddingTop: 5,
+					paddingBottom: bottomInset,
+				},
 
-					// antes: paddingBottom: 6
-					paddingBottom: bottomInset > 0 ? bottomInset + 6 : 8,
-				},
 				tabBarItemStyle: {
-					paddingVertical: 2,
+					height: TAB_CONTENT_HEIGHT,
+					paddingTop: 2,
+					paddingBottom: 6,
 				},
+
+				tabBarIconStyle: {
+					marginTop: 1,
+				},
+
 				tabBarLabelStyle: {
 					fontSize: 9,
 					fontWeight: "600",
 					marginTop: -2,
+					marginBottom: 2,
 				},
 			}}
 		>
@@ -103,7 +117,11 @@ const AndroidTabs = ({ plantioTabMeta }) => {
 				options={{
 					title: "Programas",
 					tabBarIcon: ({ color }) => (
-						<Ionicons name="book" color={color} size={iconSize} />
+						<Ionicons
+							name="book"
+							color={color}
+							size={iconSize}
+						/>
 					),
 				}}
 			/>
@@ -114,7 +132,11 @@ const AndroidTabs = ({ plantioTabMeta }) => {
 				options={{
 					title: "Navegação",
 					tabBarIcon: ({ color }) => (
-						<Ionicons name="navigate-outline" color={color} size={iconSize} />
+						<Ionicons
+							name="navigate-outline"
+							color={color}
+							size={iconSize}
+						/>
 					),
 				}}
 			/>
@@ -125,7 +147,11 @@ const AndroidTabs = ({ plantioTabMeta }) => {
 				options={{
 					title: "FarmBox",
 					tabBarIcon: ({ color }) => (
-						<Ionicons name="hourglass-outline" color={color} size={iconSize} />
+						<Ionicons
+							name="hourglass-outline"
+							color={color}
+							size={iconSize}
+						/>
 					),
 				}}
 			/>
@@ -136,7 +162,11 @@ const AndroidTabs = ({ plantioTabMeta }) => {
 				options={{
 					title: "Programações",
 					tabBarIcon: ({ color }) => (
-						<Ionicons name="timer" color={color} size={iconSize} />
+						<Ionicons
+							name="timer"
+							color={color}
+							size={iconSize}
+						/>
 					),
 				}}
 			/>

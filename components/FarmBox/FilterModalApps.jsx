@@ -5,45 +5,71 @@ import {
     StatusBar,
     ScrollView,
     Pressable,
-    Platform,
     ActivityIndicator,
     Alert,
 } from "react-native";
+
 import { useState, useEffect, useMemo } from "react";
+
 import Button from "../ui/Button";
+
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { Colors } from "../../constants/styles";
-// import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons";
+
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
+import { Ionicons } from "@expo/vector-icons";
+import Icon from "react-native-vector-icons/MaterialCommunityIcons";
+
 import * as Haptics from "expo-haptics";
+
 import { createApplicationPdf } from "../Global/PrintCronogramaPage";
 import { createApplicationPdfMap } from "../Global/PrintCronogramaPageMap";
-import Icon from "react-native-vector-icons/MaterialCommunityIcons";
-import { Ionicons } from "@expo/vector-icons";
-import { selectExportStatus, resetExportState } from "../../store/redux/authSlice";
+
+import {
+    selectExportStatus,
+    resetExportState,
+} from "../../store/redux/authSlice";
+
 import { useSelector, useDispatch } from "react-redux";
+
 import { selectPlotMapData } from "../../store/redux/selector";
 
 import { buildExportCards } from "../../utils/farmboxConsolidation";
 
 const FilterModalApps = (props) => {
     const dispatch = useDispatch();
+
     const { route, navigation } = props;
-    const { data, farm, viewMode = "normal" } = route?.params || {};
+
+    const {
+        data,
+        farm,
+        viewMode = "normal",
+    } = route?.params || {};
 
     const exportStatus = useSelector(selectExportStatus);
+
     const isExportingMap = exportStatus === "pending";
+
+    /*
+     * Mantido exatamente o selector original,
+     * pois é este que funciona com a geração dos mapas.
+     */
     const plotMap = useSelector(selectPlotMapData);
 
     const [selectedCardKeys, setSelectedCardKeys] = useState([]);
+
     const [loading, setLoading] = useState({
         pdf: false,
         pdfMap: false,
     });
 
     const localLoading = loading.pdfMap;
-    const isBusy = isExportingMap || localLoading;
+
+    const isBusy =
+        isExportingMap ||
+        localLoading;
 
     const farmApps = useMemo(() => {
         return (Array.isArray(data) ? data : []).filter(
@@ -52,209 +78,378 @@ const FilterModalApps = (props) => {
     }, [data, farm]);
 
     const exportCards = useMemo(() => {
-        return buildExportCards(farmApps, viewMode);
+        return buildExportCards(
+            farmApps,
+            viewMode
+        );
     }, [farmApps, viewMode]);
 
-    const hasSelection = selectedCardKeys.length > 0;
+    const hasSelection =
+        selectedCardKeys.length > 0;
 
     const baseBtnStyle = {
         height: 50,
-        backgroundColor: hasSelection ? Colors.succes[400] : Colors.gold[600],
+        backgroundColor: hasSelection
+            ? Colors.succes[400]
+            : Colors.gold[600],
         alignItems: "center",
         justifyContent: "center",
     };
 
+    /*
+     * Mantido: seleciona todos os cards inicialmente.
+     */
     useEffect(() => {
-        setSelectedCardKeys(exportCards.map((item) => item.cardKey));
+        setSelectedCardKeys(
+            exportCards.map(
+                (item) => item.cardKey
+            )
+        );
     }, [exportCards]);
 
-    useEffect(() => {
-        if (Platform.OS === "android") {
-            navigation.getParent()?.setOptions({
-                tabBarStyle: { display: "none" },
-                headerShown: false,
-            });
-            StatusBar.setHidden(true);
-
-            return () => {
-                navigation.getParent()?.setOptions({
-                    tabBarStyle: {
-                        display: "flex",
-                        backgroundColor: Colors.primary[901],
-                        elevation: 0,
-                        height: Platform.OS === "ios" ? 80 : 60,
-                        paddingHorizontal: 5,
-                        paddingTop: 0,
-                        position: "absolute",
-                        borderTopWidth: 0,
-                    },
-                    headerShown: true,
-                });
-                StatusBar.setHidden(false);
-            };
-        }
-    }, [navigation]);
+    /*
+     * REMOVIDO:
+     *
+     * O useEffect que chamava:
+     *
+     * navigation.getParent()?.setOptions(...)
+     * StatusBar.setHidden(...)
+     *
+     * Ele alterava a configuração global da TabBar,
+     * do header e da StatusBar ao montar/desmontar.
+     */
 
     const handleCloseModal = () => {
         navigation.goBack();
     };
 
     const handleClearApps = () => {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+        Haptics.impactAsync(
+            Haptics.ImpactFeedbackStyle.Heavy
+        );
 
         if (selectedCardKeys.length > 0) {
             setSelectedCardKeys([]);
         } else {
-            setSelectedCardKeys(exportCards.map((item) => item.cardKey));
+            setSelectedCardKeys(
+                exportCards.map(
+                    (item) => item.cardKey
+                )
+            );
         }
     };
 
     const handleSelect = (card) => {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+        Haptics.impactAsync(
+            Haptics.ImpactFeedbackStyle.Heavy
+        );
 
         setSelectedCardKeys((prev) => {
             if (prev.includes(card.cardKey)) {
-                return prev.filter((id) => id !== card.cardKey);
+                return prev.filter(
+                    (id) => id !== card.cardKey
+                );
             }
-            return [...prev, card.cardKey];
+
+            return [
+                ...prev,
+                card.cardKey,
+            ];
         });
     };
 
     const selectedExportData = useMemo(() => {
-        return exportCards.filter((item) => selectedCardKeys.includes(item.cardKey));
+        return exportCards.filter(
+            (item) =>
+                selectedCardKeys.includes(
+                    item.cardKey
+                )
+        );
     }, [exportCards, selectedCardKeys]);
 
+    /*
+     * Mantida exatamente a lógica original.
+     */
     const handleSubmit = async () => {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-        setLoading((l) => ({ ...l, pdf: true }));
+        Haptics.impactAsync(
+            Haptics.ImpactFeedbackStyle.Heavy
+        );
+
+        setLoading((current) => ({
+            ...current,
+            pdf: true,
+        }));
 
         try {
-            await createApplicationPdf(selectedExportData, farm, { viewMode });
+            await createApplicationPdf(
+                selectedExportData,
+                farm,
+                {
+                    viewMode,
+                }
+            );
         } catch (err) {
-            Alert.alert("Erro ao gerar PDF", err?.message ?? "Erro.");
+            Alert.alert(
+                "Erro ao gerar PDF",
+                err?.message ?? "Erro."
+            );
         } finally {
-            setLoading((l) => ({ ...l, pdf: false }));
+            setLoading((current) => ({
+                ...current,
+                pdf: false,
+            }));
+
             navigation.goBack();
         }
     };
 
+    /*
+     * Mantida exatamente a lógica original dos mapas.
+     *
+     * Continua utilizando:
+     * - selectPlotMapData;
+     * - plotMap;
+     * - selectExportStatus;
+     * - resetExportState.
+     */
     const handleSubmitWithMap = async () => {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-        setLoading((l) => ({ ...l, pdfMap: true }));
+        Haptics.impactAsync(
+            Haptics.ImpactFeedbackStyle.Heavy
+        );
+
+        setLoading((current) => ({
+            ...current,
+            pdfMap: true,
+        }));
 
         try {
-            await createApplicationPdfMap(selectedExportData, farm, plotMap, {
-                viewMode,
-            });
+            await createApplicationPdfMap(
+                selectedExportData,
+                farm,
+                plotMap,
+                {
+                    viewMode,
+                }
+            );
         } catch (err) {
-            console.log("Erro ao criar os mapas", err);
-            Alert.alert("Erro ao renderizar o PDF", err?.message ?? "Erro.");
+            console.log(
+                "Erro ao criar os mapas",
+                err
+            );
+
+            Alert.alert(
+                "Erro ao renderizar o PDF",
+                err?.message ?? "Erro."
+            );
         } finally {
-            setLoading((l) => ({ ...l, pdfMap: false }));
+            setLoading((current) => ({
+                ...current,
+                pdfMap: false,
+            }));
+
             navigation.goBack();
+
             dispatch(resetExportState());
         }
     };
 
     const renderTitle = (card) => {
         if (card?.isConsolidated) {
-            return card?.displayCode || "Consolidado";
+            return (
+                card?.displayCode ||
+                "Consolidado"
+            );
         }
-        return String(card?.code || "").replace("AP", "AP ");
+
+        return String(
+            card?.code || ""
+        ).replace(
+            "AP",
+            "AP "
+        );
     };
 
     const renderSubtitle = (card) => {
         if (card?.isConsolidated) {
             return (card?.aps || [])
-                .map((ap) => `${ap.code} - ${ap.operation}`)
+                .map(
+                    (ap) =>
+                        `${ap.code} - ${ap.operation}`
+                )
                 .join(" • ");
         }
+
         return card?.operation || "-";
     };
 
     return (
-        <>
-            <StatusBar backgroundColor="transparent" translucent />
-            <SafeAreaView
-                style={{
-                    flex: 1,
-                    backgroundColor: Colors.secondary[100],
-                    paddingHorizontal: 3,
-                }}
+        <SafeAreaView
+            style={styles.screen}
+            edges={[
+                "top",
+                "bottom",
+            ]}
+        >
+            <StatusBar
+                backgroundColor={
+                    Colors.secondary[100]
+                }
+                barStyle="dark-content"
+                translucent={false}
+                hidden={false}
+            />
+
+            <Pressable
+                style={({ pressed }) => [
+                    styles.headerContainer,
+                    pressed && styles.pressed,
+                ]}
+                onPress={handleClearApps}
             >
-                <Pressable
-                    style={({ pressed }) => [pressed && styles.pressed, styles.headerContainer]}
-                    onPress={handleClearApps}
+                <View
+                    style={
+                        styles.headerTitleContainer
+                    }
                 >
-                    <View style={{ justifyContent: "center", alignItems: "center" }}>
+                    <Text
+                        style={styles.headerTitle}
+                        numberOfLines={1}
+                    >
+                        {String(farm || "").replace(
+                            "Fazenda ",
+                            ""
+                        )}{" "}
+
                         <Text
-                            style={{
-                                fontWeight: "bold",
-                                color: Colors.secondary[800],
-                                fontSize: 24,
-                            }}
+                            style={styles.headerCount}
                         >
-                            {farm.replace("Fazenda ", "")}{" "}
-                            <Text style={{ fontSize: 10, color: Colors.secondary[500] }}>
-                                {selectedCardKeys?.length}/{exportCards?.length}
-                            </Text>
+                            {selectedCardKeys?.length}/
+                            {exportCards?.length}
                         </Text>
-                        <Text style={{ fontSize: 11, color: Colors.secondary[600] }}>
-                            {viewMode === "consolidated" ? "Modo consolidado" : "Modo APs"}
-                        </Text>
-                    </View>
+                    </Text>
 
-                    <Icon
-                        name={
-                            selectedCardKeys.length > 0
-                                ? "close-circle-outline"
-                                : "checkbox-multiple-marked-outline"
+                    <Text
+                        style={
+                            styles.headerSubtitle
                         }
-                        size={26}
-                        color={
-                            selectedCardKeys.length > 0
-                                ? Colors.error[500]
-                                : Colors.succes[500]
-                        }
-                        style={{ marginRight: 5 }}
-                    />
-                </Pressable>
+                    >
+                        {viewMode === "consolidated"
+                            ? "Modo consolidado"
+                            : "Modo APs"}
+                    </Text>
+                </View>
 
-                <ScrollView>
-                    {exportCards.map((card, i) => {
-                        const selected = selectedCardKeys.includes(card.cardKey);
+                <Icon
+                    name={
+                        selectedCardKeys.length > 0
+                            ? "close-circle-outline"
+                            : "checkbox-multiple-marked-outline"
+                    }
+                    size={26}
+                    color={
+                        selectedCardKeys.length > 0
+                            ? Colors.error[500]
+                            : Colors.succes[500]
+                    }
+                    style={styles.headerIcon}
+                />
+            </Pressable>
+
+            <ScrollView
+                style={styles.scroll}
+                contentContainerStyle={
+                    styles.scrollContent
+                }
+                showsVerticalScrollIndicator
+                keyboardShouldPersistTaps="handled"
+            >
+                {exportCards.map(
+                    (card, index) => {
+                        const selected =
+                            selectedCardKeys.includes(
+                                card.cardKey
+                            );
 
                         return (
                             <Pressable
-                                key={card.cardKey || i}
-                                style={({ pressed }) => [pressed && styles.pressed]}
-                                onPress={() => handleSelect(card)}
+                                key={
+                                    card.cardKey ||
+                                    index
+                                }
+                                style={({
+                                    pressed,
+                                }) => [
+                                        pressed &&
+                                        styles.pressed,
+                                    ]}
+                                onPress={() =>
+                                    handleSelect(card)
+                                }
                             >
                                 <View
                                     style={[
                                         styles.selectAppContainer,
                                         {
-                                            backgroundColor: selected
-                                                ? Colors.succes[100]
-                                                : Colors.secondary[100],
+                                            backgroundColor:
+                                                selected
+                                                    ? Colors
+                                                        .succes[100]
+                                                    : Colors
+                                                        .secondary[100],
                                         },
                                     ]}
                                 >
-                                    <View style={{ flex: 1, paddingRight: 10 }}>
-                                        <Text style={styles.apTitle}>{renderTitle(card)}</Text>
-                                        <Text style={styles.opTitle}>{renderSubtitle(card)}</Text>
+                                    <View
+                                        style={
+                                            styles.cardContent
+                                        }
+                                    >
+                                        <Text
+                                            style={
+                                                styles.apTitle
+                                            }
+                                        >
+                                            {renderTitle(
+                                                card
+                                            )}
+                                        </Text>
+
+                                        <Text
+                                            style={
+                                                styles.opTitle
+                                            }
+                                        >
+                                            {renderSubtitle(
+                                                card
+                                            )}
+                                        </Text>
                                     </View>
 
-                                    <View style={{ alignItems: "flex-end" }}>
+                                    <View
+                                        style={
+                                            styles.cardRight
+                                        }
+                                    >
                                         {card?.isConsolidated && (
-                                            <Text style={styles.smallInfo}>
-                                                {card?.codes?.length || 0} APs
+                                            <Text
+                                                style={
+                                                    styles.smallInfo
+                                                }
+                                            >
+                                                {card
+                                                    ?.codes
+                                                    ?.length ||
+                                                    0}{" "}
+                                                APs
                                             </Text>
                                         )}
+
                                         {selected && (
                                             <MaterialCommunityIcons
                                                 name="check-all"
-                                                size={24}
+                                                size={
+                                                    24
+                                                }
                                                 color="green"
                                             />
                                         )}
@@ -262,47 +457,76 @@ const FilterModalApps = (props) => {
                                 </View>
                             </Pressable>
                         );
-                    })}
-                </ScrollView>
-            </SafeAreaView>
+                    }
+                )}
+            </ScrollView>
 
-            <View
-                style={{
-                    paddingBottom: 40,
-                    paddingTop: Platform.OS === "ios" ? 20 : 0,
-                    paddingHorizontal: 10,
-                    backgroundColor: Colors.secondary[100],
-                    flexDirection: "row",
-                    justifyContent: hasSelection ? "space-between" : "center",
-                    alignItems: "center",
-                }}
-            >
+            {/*
+             * O footer agora está dentro da SafeAreaView.
+             *
+             * Isso faz os botões respeitarem:
+             * - barra de gestos;
+             * - três botões digitais;
+             * - home indicator do iPhone.
+             */}
+            <View style={styles.footer}>
                 {hasSelection ? (
                     <>
                         <Button
-                            btnStyles={{ ...baseBtnStyle, width: "47%" }}
-                            disabled={loading.pdf || loading.pdfMap}
+                            btnStyles={{
+                                ...baseBtnStyle,
+                                width: "47%",
+                            }}
+                            disabled={
+                                loading.pdf ||
+                                loading.pdfMap
+                            }
                             onPress={handleSubmit}
                         >
-                            {loading.pdf ? <ActivityIndicator color="white" /> : "Gerar PDF"}
+                            {loading.pdf ? (
+                                <ActivityIndicator
+                                    color="white"
+                                />
+                            ) : (
+                                "Gerar PDF"
+                            )}
                         </Button>
 
                         <Button
-                            btnStyles={{ ...baseBtnStyle, width: "47%" }}
-                            disabled={loading.pdfMap || !plotMap || plotMap?.length === 0}
-                            onPress={handleSubmitWithMap}
+                            btnStyles={{
+                                ...baseBtnStyle,
+                                width: "47%",
+                            }}
+                            disabled={
+                                loading.pdfMap ||
+                                !plotMap ||
+                                plotMap?.length === 0
+                            }
+                            onPress={
+                                handleSubmitWithMap
+                            }
                         >
                             {isBusy ? (
-                                <ActivityIndicator color="white" />
+                                <ActivityIndicator
+                                    color="white"
+                                />
                             ) : (
-                                <View style={{ flexDirection: "row", alignItems: "center" }}>
+                                <View
+                                    style={
+                                        styles.mapButtonContent
+                                    }
+                                >
                                     <Ionicons
                                         name="map-outline"
                                         size={20}
                                         color="white"
-                                        style={{ marginRight: 6 }}
                                     />
-                                    <Text style={{ color: "white", fontWeight: "bold" }}>
+
+                                    <Text
+                                        style={
+                                            styles.mapButtonText
+                                        }
+                                    >
                                         Gerar PDF
                                     </Text>
                                 </View>
@@ -311,67 +535,160 @@ const FilterModalApps = (props) => {
                     </>
                 ) : (
                     <Button
-                        btnStyles={{ ...baseBtnStyle, width: "100%" }}
+                        btnStyles={{
+                            ...baseBtnStyle,
+                            width: "100%",
+                        }}
                         onPress={handleCloseModal}
                     >
                         Cancelar
                     </Button>
                 )}
             </View>
-        </>
+        </SafeAreaView>
     );
 };
 
 export default FilterModalApps;
 
 const styles = StyleSheet.create({
+    screen: {
+        flex: 1,
+        backgroundColor: Colors.secondary[100],
+    },
+
     pressed: {
         opacity: 0.5,
     },
-    opTitle: {
-        fontSize: 13,
-        fontWeight: "bold",
+
+    headerContainer: {
+        width: "100%",
+        minHeight: 66,
+        gap: 20,
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "space-between",
+        paddingHorizontal: 10,
+        paddingTop: 8,
+        paddingBottom: 8,
+        backgroundColor: Colors.secondary[100],
+        borderBottomColor: "rgba(0,0,0,0.25)",
+        borderBottomWidth: StyleSheet.hairlineWidth,
+    },
+
+    headerTitleContainer: {
+        flex: 1,
+        minWidth: 0,
+        alignItems: "center",
+        justifyContent: "center",
+        paddingLeft: 30,
+    },
+
+    headerTitle: {
+        maxWidth: "100%",
         color: Colors.secondary[800],
-    },
-    apTitle: {
-        fontSize: 16,
+        fontSize: 24,
         fontWeight: "bold",
-        color: Colors.primary[700],
-        marginBottom: 4,
+        textAlign: "center",
     },
-    smallInfo: {
-        fontSize: 11,
-        fontWeight: "700",
+
+    headerCount: {
+        color: Colors.secondary[500],
+        fontSize: 10,
+    },
+
+    headerSubtitle: {
+        marginTop: 1,
         color: Colors.secondary[600],
-        marginBottom: 4,
+        fontSize: 11,
     },
+
+    headerIcon: {
+        marginRight: 5,
+    },
+
+    scroll: {
+        flex: 1,
+    },
+
+    scrollContent: {
+        paddingHorizontal: 3,
+        paddingTop: 4,
+        paddingBottom: 12,
+    },
+
     selectAppContainer: {
         flex: 1,
         flexDirection: "row",
-        justifyContent: "space-between",
-        paddingRight: 20,
         alignItems: "center",
-        paddingLeft: 10,
+        justifyContent: "space-between",
         gap: 20,
         marginBottom: 10,
+        paddingLeft: 10,
+        paddingRight: 20,
         paddingVertical: 15,
         borderWidth: 0.1,
         shadowColor: "#000",
-        shadowOffset: { width: 0, height: 5 },
+        shadowOffset: {
+            width: 0,
+            height: 5,
+        },
         shadowOpacity: 0.1,
         shadowRadius: 5,
         elevation: 2,
     },
-    headerContainer: {
-        width: "100%",
-        gap: 20,
-        justifyContent: "space-between",
-        paddingTop: 20,
-        paddingBottom: 5,
+
+    cardContent: {
+        flex: 1,
+        paddingRight: 10,
+    },
+
+    cardRight: {
+        alignItems: "flex-end",
+    },
+
+    apTitle: {
+        marginBottom: 4,
+        color: Colors.primary[700],
+        fontSize: 16,
+        fontWeight: "bold",
+    },
+
+    opTitle: {
+        color: Colors.secondary[800],
+        fontSize: 13,
+        fontWeight: "bold",
+    },
+
+    smallInfo: {
+        marginBottom: 4,
+        color: Colors.secondary[600],
+        fontSize: 11,
+        fontWeight: "700",
+    },
+
+    footer: {
+        flexShrink: 0,
         flexDirection: "row",
-        paddingHorizontal: 10,
-        borderBottomColor: "black",
-        borderBottomWidth: 0.3,
         alignItems: "center",
+        justifyContent: "space-between",
+        paddingHorizontal: 10,
+        paddingTop: 10,
+        paddingBottom: 8,
+        backgroundColor: Colors.secondary[100],
+        borderTopWidth: StyleSheet.hairlineWidth,
+        borderTopColor: "rgba(15,23,42,0.12)",
+    },
+
+    mapButtonContent: {
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "center",
+    },
+
+    mapButtonText: {
+        marginLeft: 6,
+        color: "white",
+        fontWeight: "bold",
     },
 });

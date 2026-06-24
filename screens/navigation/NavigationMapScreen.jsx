@@ -40,6 +40,9 @@ import {
 import { fetchParcelApplications } from "../../services/navigationApplicationsApi";
 import ParcelApplicationsSheet from "./ParcelApplicationsSheet";
 
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+
+
 import * as FileSystem from "expo-file-system/legacy";
 import * as Sharing from "expo-sharing";
 import * as XLSX from "xlsx";
@@ -824,6 +827,13 @@ const NavigationMapScreen = ({ navigation, route }) => {
 	const dispatch = useDispatch();
 	const mapRef = useRef(null);
 
+	const insets = useSafeAreaInsets();
+
+	const androidBottomInset =
+		Platform.OS === "android"
+			? Math.max(insets.bottom, 0)
+			: 0;
+
 	const {
 		farmName,
 		projectName,
@@ -912,9 +922,18 @@ const NavigationMapScreen = ({ navigation, route }) => {
 	const [sheetExpanded, setSheetExpanded] = useState(false);
 
 
-	const FAB_BOTTOM_WITH_SHEET_COLLAPSED = Platform.OS === "ios" ? 166 : 154;
-	const FAB_BOTTOM_WITH_SHEET_EXPANDED = EXPANDED_SHEET_HEIGHT + 22;
-	const FAB_BOTTOM_WITHOUT_SHEET = Platform.OS === "ios" ? 34 : 26;
+	const FAB_BOTTOM_WITHOUT_SHEET =
+		Platform.OS === "ios" ? 34 : 18;
+
+	const FAB_BOTTOM_WITH_SHEET_COLLAPSED =
+		Platform.OS === "ios"
+			? 166
+			: COLLAPSED_SHEET_HEIGHT + 18;
+
+	const FAB_BOTTOM_WITH_SHEET_EXPANDED =
+		Platform.OS === "ios"
+			? EXPANDED_SHEET_HEIGHT + 22
+			: EXPANDED_SHEET_HEIGHT + 18;
 
 	const animatedFabBottom = useRef(
 		new Animated.Value(FAB_BOTTOM_WITHOUT_SHEET)
@@ -1375,7 +1394,7 @@ const NavigationMapScreen = ({ navigation, route }) => {
 		!showOperationalSheet && !applicationsParcel
 			? Platform.OS === "ios"
 				? 108
-				: 96
+				: 86
 			: floatingBottom;
 
 
@@ -1988,894 +2007,911 @@ const NavigationMapScreen = ({ navigation, route }) => {
 
 	return (
 		<View style={styles.container}>
-			<MapView
-				ref={mapRef}
-				style={styles.map}
-				provider={Platform.OS === "android" ? PROVIDER_GOOGLE : PROVIDER_GOOGLE}
-				initialRegion={initialRegion}
-				mapType="satellite"
-				showsUserLocation={followUser}
-				showsMyLocationButton={false}
-				showsCompass
-				toolbarEnabled={false}
-				followsUserLocation={followUser}
-				onMapReady={() => {
-					setMapReady(true);
-					refreshMarkers();
-				}}
-				onRegionChangeComplete={(region) => {
-					setCurrentRegion(region);
-					if (followUser) setFollowUser(false);
-				}}
+			<View
+				style={[
+					styles.mapContent,
+					Platform.OS === "android" && {
+						bottom: androidBottomInset,
+					},
+				]}
 			>
-				{polygonsData.map(({ item, parcelId, coordinates }) => {
-					const isSelected = selectedParcels.includes(parcelId);
-					const isDimmed = selectedParcels.length > 0 && !isSelected && !infoMode;
-					const visual = getPolygonVisual({ item, isSelected, isDimmed });
-
-					return (
-						<Polygon
-							key={`polygon-${item.id || "id"}-${item.id_farmbox || "fb"}-${item.projeto_id || item.projeto || "proj"}-${item.parcela || "parcela"}-${item.safra || "safra"}-${item.ciclo || "ciclo"}`}
-							coordinates={coordinates}
-							tappable
-							onPress={() => handlePolygonPress(item)}
-							fillColor={visual.fillColor}
-							strokeColor={visual.strokeColor}
-							strokeWidth={visual.strokeWidth}
-						/>
-					);
-				})}
-
-				{polygonsData.slice(0, 250).map(({ item, parcelId, center }) => {
-					if (!center) return null;
-
-					const isSelected = selectedParcels.includes(parcelId);
-					const cultureText = getCultureText(item);
-					const shouldShowDetails = showDetailedLabels || isSelected || infoMode;
-					const dapValue = getParcelDap(item);
-
-					return (
-						<Marker
-							key={`label-${item.id || "id"}-${item.id_farmbox || "fb"}-${item.projeto_id || item.projeto || "proj"}-${item.parcela || "parcela"}-${item.safra || "safra"}-${item.ciclo || "ciclo"}-${showDetailedLabels ? "details" : "basic"}`}
-							hideCallout
-							tracksViewChanges={trackMarkers}
-							coordinate={center}
-							anchor={{ x: 0.5, y: 0.5 }}
-						>
-							<MapParcelLabel
-								parcela={item.parcela}
-								area={item.area}
-								cultureText={cultureText}
-								status={item.status}
-								statusLabel={item.status_label}
-								dap={dapValue}
-								isSelected={isSelected}
-								showDetails={shouldShowDetails}
-							/>
-						</Marker>
-					);
-				})}
-			</MapView>
-
-			{!hasMapData && (
-				<View style={styles.emptyMapOverlay}>
-					<Ionicons name="map-outline" size={34} color={Colors.primary[700]} />
-					<Text style={styles.emptyMapTitle}>Sem polígonos para exibir</Text>
-					<Text style={styles.emptyMapText}>
-						Verifique a fazenda, safra, ciclo ou filtros aplicados.
-					</Text>
-				</View>
-			)}
-
-			<View style={styles.topBar}>
-				<TouchableOpacity
-					activeOpacity={0.82}
-					style={styles.backButton}
-					onPress={() => navigation.goBack()}
-				>
-					<Ionicons name="chevron-back" size={24} color="#FFFFFF" />
-				</TouchableOpacity>
-
-				<View style={styles.titleBox}>
-					<Text style={styles.title} numberOfLines={1}>
-						{resolvedFarmName}
-					</Text>
-
-					<Text style={styles.subtitle} numberOfLines={1}>
-						{visibleProjects.length} {visibleProjects.length === 1 ? "projeto" : "projetos"} ·{" "}
-						{visibleMapData.length} parcelas · {formatHa(visibleTotalArea)}
-					</Text>
-				</View>
-
-				<TouchableOpacity
-					activeOpacity={0.82}
-					style={[
-						styles.filterButton,
-						filtersVisible && styles.filterButtonActive,
-					]}
-					onPress={() => setFiltersVisible((current) => !current)}
-				>
-					<Ionicons
-						name="options-outline"
-						size={22}
-						color={filtersVisible ? "#07130C" : "#FFFFFF"}
-					/>
-				</TouchableOpacity>
-			</View>
-
-			<Animated.View style={[styles.fabColumnLeft, { bottom: animatedFabBottom }]}>
-				<TouchableOpacity
-					activeOpacity={0.86}
-					style={[styles.fabButton, followUser && styles.fabButtonActive]}
-					onPress={handleCenterUser}
-				>
-					<Ionicons
-						name="locate"
-						size={22}
-						color={followUser ? "#07130C" : "#334155"}
-					/>
-				</TouchableOpacity>
-
-				<TouchableOpacity
-					activeOpacity={0.86}
-					style={[
-						styles.fabButton,
-						showOperationalSheet && styles.fabButtonActive,
-					]}
-					onPress={() => {
-						setShowOperationalSheet((current) => {
-							const next = !current;
-
-							collapseSheet();
-
-							return next;
-						});
+				<MapView
+					ref={mapRef}
+					style={styles.map}
+					provider={Platform.OS === "android" ? PROVIDER_GOOGLE : PROVIDER_GOOGLE}
+					initialRegion={initialRegion}
+					mapType="satellite"
+					showsUserLocation={followUser}
+					showsMyLocationButton={false}
+					showsCompass
+					toolbarEnabled={false}
+					followsUserLocation={followUser}
+					onMapReady={() => {
+						setMapReady(true);
+						refreshMarkers();
+					}}
+					onRegionChangeComplete={(region) => {
+						setCurrentRegion(region);
+						if (followUser) setFollowUser(false);
 					}}
 				>
-					<Ionicons
-						name={showOperationalSheet ? "albums" : "albums-outline"}
-						size={22}
-						color={showOperationalSheet ? "#07130C" : "#334155"}
-					/>
-				</TouchableOpacity>
-			</Animated.View>
+					{polygonsData.map(({ item, parcelId, coordinates }) => {
+						const isSelected = selectedParcels.includes(parcelId);
+						const isDimmed = selectedParcels.length > 0 && !isSelected && !infoMode;
+						const visual = getPolygonVisual({ item, isSelected, isDimmed });
 
-			<Animated.View style={[styles.fabColumnRight, { bottom: animatedFabBottom }]}>
-				<TouchableOpacity
-					activeOpacity={0.86}
-					style={[styles.fabButton, infoMode && styles.fabButtonActive]}
-					onPress={handleToggleInfoMode}
-				>
-					<Ionicons
-						name="information"
-						size={24}
-						color={infoMode ? "#07130C" : "#334155"}
-					/>
-				</TouchableOpacity>
+						return (
+							<Polygon
+								key={`polygon-${item.id || "id"}-${item.id_farmbox || "fb"}-${item.projeto_id || item.projeto || "proj"}-${item.parcela || "parcela"}-${item.safra || "safra"}-${item.ciclo || "ciclo"}`}
+								coordinates={coordinates}
+								tappable
+								onPress={() => handlePolygonPress(item)}
+								fillColor={visual.fillColor}
+								strokeColor={visual.strokeColor}
+								strokeWidth={visual.strokeWidth}
+							/>
+						);
+					})}
 
-				<TouchableOpacity
-					activeOpacity={0.86}
-					style={[styles.fabButton, applicationsMode && styles.fabButtonActive]}
-					onPress={handleToggleApplicationsMode}
-				>
-					<Ionicons
-						name="shield-checkmark"
-						size={22}
-						color={applicationsMode ? "#07130C" : "#334155"}
-					/>
-				</TouchableOpacity>
-			</Animated.View>
+					{polygonsData.slice(0, 250).map(({ item, parcelId, center }) => {
+						if (!center) return null;
 
-			{isLoading && (
-				<View style={styles.loadingFloating}>
-					<ActivityIndicator size="small" color={Colors.primary[700]} />
-					<Text style={styles.loadingFloatingText}>Atualizando...</Text>
-				</View>
-			)}
+						const isSelected = selectedParcels.includes(parcelId);
+						const cultureText = getCultureText(item);
+						const shouldShowDetails = showDetailedLabels || isSelected || infoMode;
+						const dapValue = getParcelDap(item);
 
-			{navigationMapError && (
-				<View style={styles.errorFloating}>
-					<Text style={styles.errorText}>{navigationMapError}</Text>
-				</View>
-			)}
+						return (
+							<Marker
+								key={`label-${item.id || "id"}-${item.id_farmbox || "fb"}-${item.projeto_id || item.projeto || "proj"}-${item.parcela || "parcela"}-${item.safra || "safra"}-${item.ciclo || "ciclo"}-${showDetailedLabels ? "details" : "basic"}`}
+								hideCallout
+								tracksViewChanges={trackMarkers}
+								coordinate={center}
+								anchor={{ x: 0.5, y: 0.5 }}
+							>
+								<MapParcelLabel
+									parcela={item.parcela}
+									area={item.area}
+									cultureText={cultureText}
+									status={item.status}
+									statusLabel={item.status_label}
+									dap={dapValue}
+									isSelected={isSelected}
+									showDetails={shouldShowDetails}
+								/>
+							</Marker>
+						);
+					})}
+				</MapView>
 
-			{filtersVisible && (
-				<>
+				{!hasMapData && (
+					<View style={styles.emptyMapOverlay}>
+						<Ionicons name="map-outline" size={34} color={Colors.primary[700]} />
+						<Text style={styles.emptyMapTitle}>Sem polígonos para exibir</Text>
+						<Text style={styles.emptyMapText}>
+							Verifique a fazenda, safra, ciclo ou filtros aplicados.
+						</Text>
+					</View>
+				)}
+
+				<View style={styles.topBar}>
 					<TouchableOpacity
-						activeOpacity={1}
-						style={styles.filtersBackdrop}
-						onPress={() => setFiltersVisible(false)}
-					/>
+						activeOpacity={0.82}
+						style={styles.backButton}
+						onPress={() => navigation.goBack()}
+					>
+						<Ionicons name="chevron-back" size={24} color="#FFFFFF" />
+					</TouchableOpacity>
 
-					<View style={styles.filtersPanel}>
-						<View style={styles.filterPanelHeader}>
-							<Text style={styles.filterPanelTitle}>Filtros do mapa</Text>
-
-							{hasAnyFilter && (
-								<TouchableOpacity activeOpacity={0.82} onPress={handleClearFilters}>
-									<Text style={styles.clearFiltersText}>Limpar</Text>
-								</TouchableOpacity>
-							)}
-						</View>
-
-						<View style={styles.filterSection}>
-							<Text style={styles.filterLabel}>Safra</Text>
-
-							<ScrollView
-								horizontal
-								showsHorizontalScrollIndicator={false}
-								contentContainerStyle={styles.chipsRow}
-							>
-								{safraOptions.map((option) => {
-									const isSelected = selectedSafra === option;
-
-									return (
-										<TouchableOpacity
-											key={`safra-${option}`}
-											activeOpacity={0.82}
-											onPress={() => setSelectedSafra(option)}
-											style={[
-												styles.filterChip,
-												isSelected && styles.filterChipSelected,
-											]}
-										>
-											<Text
-												style={[
-													styles.filterChipText,
-													isSelected && styles.filterChipTextSelected,
-												]}
-											>
-												{option}
-											</Text>
-										</TouchableOpacity>
-									);
-								})}
-
-								{safraOptions.length === 0 && (
-									<View style={styles.filterChipDisabled}>
-										<Text style={styles.filterChipDisabledText}>Sem safra disponível</Text>
-									</View>
-								)}
-							</ScrollView>
-						</View>
-
-						<View style={styles.filterSection}>
-							<Text style={styles.filterLabel}>Ciclo</Text>
-
-							<ScrollView
-								horizontal
-								showsHorizontalScrollIndicator={false}
-								contentContainerStyle={styles.chipsRow}
-							>
-								{cicloOptions.map((option) => {
-									const normalizedOption = normalizeCiclo(option);
-									const isSelected = normalizeCiclo(selectedCiclo) === normalizedOption;
-
-									return (
-										<TouchableOpacity
-											key={`ciclo-${normalizedOption}`}
-											activeOpacity={0.82}
-											onPress={() => setSelectedCiclo(normalizedOption)}
-											style={[
-												styles.filterChip,
-												isSelected && styles.filterChipSelected,
-											]}
-										>
-											<Text
-												style={[
-													styles.filterChipText,
-													isSelected && styles.filterChipTextSelected,
-												]}
-											>
-												Ciclo {normalizedOption}
-											</Text>
-										</TouchableOpacity>
-									);
-								})}
-
-								{cicloOptions.length === 0 && (
-									<View style={styles.filterChipDisabled}>
-										<Text style={styles.filterChipDisabledText}>Sem ciclo disponível</Text>
-									</View>
-								)}
-							</ScrollView>
-						</View>
-
-						<View style={styles.filterSection}>
-							<Text style={styles.filterLabel}>Status</Text>
-
-							<ScrollView
-								horizontal
-								showsHorizontalScrollIndicator={false}
-								contentContainerStyle={styles.chipsRow}
-							>
-								{statusOptions.map((option) => {
-									const isSelected = selectedStatus.includes(option.key);
-
-									return (
-										<TouchableOpacity
-											key={option.key}
-											activeOpacity={0.82}
-											onPress={() => handleToggleStatus(option.key)}
-											style={[
-												styles.filterChip,
-												isSelected && styles.filterChipSelected,
-											]}
-										>
-											<Text
-												style={[
-													styles.filterChipText,
-													isSelected && styles.filterChipTextSelected,
-												]}
-											>
-												{option.label}
-											</Text>
-										</TouchableOpacity>
-									);
-								})}
-							</ScrollView>
-						</View>
-
-						{cultureOptions.length > 0 && (
-							<View style={styles.filterSection}>
-								<Text style={styles.filterLabel}>Cultura</Text>
-
-								<ScrollView
-									horizontal
-									showsHorizontalScrollIndicator={false}
-									contentContainerStyle={styles.chipsRow}
-								>
-									{cultureOptions.map((culture) => {
-										const isSelected = selectedCultures.includes(culture);
-
-										return (
-											<TouchableOpacity
-												key={`culture-${culture}`}
-												activeOpacity={0.82}
-												onPress={() => handleToggleCulture(culture)}
-												style={[
-													styles.filterChip,
-													isSelected && styles.filterChipSelected,
-												]}
-											>
-												<Text
-													style={[
-														styles.filterChipText,
-														isSelected && styles.filterChipTextSelected,
-													]}
-												>
-													{culture}
-												</Text>
-											</TouchableOpacity>
-										);
-									})}
-								</ScrollView>
-							</View>
-						)}
-
-						{varietyOptions.length > 0 && (
-							<View style={styles.filterSectionLast}>
-								<Text style={styles.filterLabel}>Variedade</Text>
-
-								<ScrollView
-									horizontal
-									showsHorizontalScrollIndicator={false}
-									contentContainerStyle={styles.chipsRow}
-								>
-									{varietyOptions.map((variety) => {
-										const isSelected = selectedVarieties.includes(variety);
-
-										return (
-											<TouchableOpacity
-												key={`variety-${variety}`}
-												activeOpacity={0.82}
-												onPress={() => handleToggleVariety(variety)}
-												style={[
-													styles.filterChip,
-													isSelected && styles.filterChipSelected,
-												]}
-											>
-												<Text
-													style={[
-														styles.filterChipText,
-														isSelected && styles.filterChipTextSelected,
-													]}
-												>
-													{variety}
-												</Text>
-											</TouchableOpacity>
-										);
-									})}
-								</ScrollView>
-							</View>
-						)}
-					</View>
-				</>
-			)}
-
-			{infoMode && infoParcel ? (
-				<View style={[styles.infoCardFloatingWrap, { bottom: infoCardBottom }]}>
-					<ParcelInfoCard
-						item={infoParcel}
-						onClose={() => setInfoParcel(null)}
-						isSelected={selectedParcels.includes(infoParcel?.id_farmbox || infoParcel?.id)}
-						onSelect={() => handleToggleParcel(infoParcel)}
-					/>
-				</View>
-			) : hasSelectedArea && !showOperationalSheet ? (
-				<View style={[styles.selectionCounter, { bottom: selectionCounterBottom }]}>
-					<View style={styles.selectionCounterPill}>
-						<Text style={styles.selectionCounterPillText}>
-							{selectedParcels.length}
-						</Text>
-					</View>
-
-					<View style={styles.selectionCounterContent}>
-						<Text style={styles.selectionCounterLabel}>
-							Área selecionada
+					<View style={styles.titleBox}>
+						<Text style={styles.title} numberOfLines={1}>
+							{resolvedFarmName}
 						</Text>
 
-						<Text style={styles.selectionCounterValue}>
-							{formatHa(selectedAreaTotal)}
+						<Text style={styles.subtitle} numberOfLines={1}>
+							{visibleProjects.length} {visibleProjects.length === 1 ? "projeto" : "projetos"} ·{" "}
+							{visibleMapData.length} parcelas · {formatHa(visibleTotalArea)}
 						</Text>
 					</View>
 
 					<TouchableOpacity
 						activeOpacity={0.82}
-						onPress={() => dispatch(geralActions.clearNavigationMapSelectedParcels())}
-						style={styles.selectionCounterClearButton}
+						style={[
+							styles.filterButton,
+							filtersVisible && styles.filterButtonActive,
+						]}
+						onPress={() => setFiltersVisible((current) => !current)}
 					>
-						<Ionicons name="close" size={16} color="#FFFFFF" />
+						<Ionicons
+							name="options-outline"
+							size={22}
+							color={filtersVisible ? "#07130C" : "#FFFFFF"}
+						/>
 					</TouchableOpacity>
 				</View>
-			) : null}
 
-			{!showOperationalSheet && !applicationsParcel && (
-				<View style={styles.mapFooterStack}>
-					<View style={styles.mapFilterFooter}>
-						<Text style={styles.mapFilterFooterText} numberOfLines={1}>
-							{selectedSafra || "—"} · {selectedCiclo || "—"}
-						</Text>
-					</View>
-
-					<View style={styles.appliedFiltersFooter}>
+				<Animated.View style={[styles.fabColumnLeft, { bottom: animatedFabBottom }]}>
+					<TouchableOpacity
+						activeOpacity={0.86}
+						style={[styles.fabButton, followUser && styles.fabButtonActive]}
+						onPress={handleCenterUser}
+					>
 						<Ionicons
-							name="filter"
-							size={10}
-							color="rgba(255,255,255,0.72)"
+							name="locate"
+							size={22}
+							color={followUser ? "#07130C" : "#334155"}
+						/>
+					</TouchableOpacity>
+
+					<TouchableOpacity
+						activeOpacity={0.86}
+						style={[
+							styles.fabButton,
+							showOperationalSheet && styles.fabButtonActive,
+						]}
+						onPress={() => {
+							setShowOperationalSheet((current) => {
+								const next = !current;
+
+								collapseSheet();
+
+								return next;
+							});
+						}}
+					>
+						<Ionicons
+							name={showOperationalSheet ? "albums" : "albums-outline"}
+							size={22}
+							color={showOperationalSheet ? "#07130C" : "#334155"}
+						/>
+					</TouchableOpacity>
+				</Animated.View>
+
+				<Animated.View style={[styles.fabColumnRight, { bottom: animatedFabBottom }]}>
+					<TouchableOpacity
+						activeOpacity={0.86}
+						style={[styles.fabButton, infoMode && styles.fabButtonActive]}
+						onPress={handleToggleInfoMode}
+					>
+						<Ionicons
+							name="information"
+							size={24}
+							color={infoMode ? "#07130C" : "#334155"}
+						/>
+					</TouchableOpacity>
+
+					<TouchableOpacity
+						activeOpacity={0.86}
+						style={[styles.fabButton, applicationsMode && styles.fabButtonActive]}
+						onPress={handleToggleApplicationsMode}
+					>
+						<Ionicons
+							name="shield-checkmark"
+							size={22}
+							color={applicationsMode ? "#07130C" : "#334155"}
+						/>
+					</TouchableOpacity>
+				</Animated.View>
+
+				{isLoading && (
+					<View style={styles.loadingFloating}>
+						<ActivityIndicator size="small" color={Colors.primary[700]} />
+						<Text style={styles.loadingFloatingText}>Atualizando...</Text>
+					</View>
+				)}
+
+				{navigationMapError && (
+					<View style={styles.errorFloating}>
+						<Text style={styles.errorText}>{navigationMapError}</Text>
+					</View>
+				)}
+
+				{filtersVisible && (
+					<>
+						<TouchableOpacity
+							activeOpacity={1}
+							style={styles.filtersBackdrop}
+							onPress={() => setFiltersVisible(false)}
 						/>
 
-						<Text style={styles.appliedFiltersFooterText} numberOfLines={1}>
-							{appliedFiltersText}
-						</Text>
-					</View>
-				</View>
-			)}
+						<View style={styles.filtersPanel}>
+							<View style={styles.filterPanelHeader}>
+								<Text style={styles.filterPanelTitle}>Filtros do mapa</Text>
 
-			{showOperationalSheet && !applicationsParcel && (
-				<Animated.View
-					style={[
-						styles.bottomSheet,
-						{
-							height: sheetHeight,
-						},
-					]}
-				>
-					<View
-						style={styles.sheetHandleArea}
-						{...sheetPanResponder.panHandlers}
-					>
-						<TouchableOpacity
-							activeOpacity={0.88}
-							onPress={sheetExpanded ? collapseSheet : expandSheet}
-							style={styles.operationalHeaderPressable}
-						>
-							<View style={styles.sheetHandle}>
-								<Ionicons
-									name={sheetExpanded ? "chevron-down" : "chevron-up"}
-									size={18}
-									color="rgba(15,23,42,0.42)"
-								/>
-
-								{/* <View style={styles.sheetHandleBar} /> */}
-							</View>
-
-							<View style={styles.operationalHeader}>
-								<View style={styles.operationalTitleBlock}>
-									<View style={styles.operationalTitleRow}>
-										<View style={styles.operationalIconBox}>
-											<Ionicons
-												name="albums-outline"
-												size={18}
-												color={Colors.primary[800]}
-											/>
-										</View>
-
-										<View style={styles.operationalTitleTextBox}>
-											<Text style={styles.sheetTitle}>Mapa operacional</Text>
-
-											<Text style={styles.sheetSubtitle}>
-												Safra {selectedSafra || "—"} · Ciclo {selectedCiclo || "—"}
-											</Text>
-											{operationalSelectedCount > 0 ? (
-												<Text style={styles.operationalExportHint} numberOfLines={1}>
-													Toque no ícone para exportar relatório
-												</Text>
-											) : null}
-										</View>
-									</View>
-								</View>
-
-								<View style={styles.sheetHeaderRight}>
-									<TouchableOpacity
-										activeOpacity={operationalSelectedCount > 0 ? 0.82 : 1}
-										onPress={
-											operationalSelectedCount > 0
-												? handleExportSelectedParcelsReport
-												: undefined
-										}
-										style={[
-											styles.sheetBadge,
-											operationalSelectedCount > 0 && styles.sheetBadgeExport,
-										]}
-									>
-										{operationalSelectedCount > 0 ? (
-											<View style={styles.sheetBadgeExportContent}>
-												<Ionicons
-													name="document-text-outline"
-													size={16}
-													color="#FFFFFF"
-												/>
-
-												<Text style={styles.sheetBadgeExportText}>
-													{operationalSelectedCount}
-												</Text>
-											</View>
-										) : (
-											<Text style={styles.sheetBadgeText}>
-												{operationalProjectData.length}
-											</Text>
-										)}
+								{hasAnyFilter && (
+									<TouchableOpacity activeOpacity={0.82} onPress={handleClearFilters}>
+										<Text style={styles.clearFiltersText}>Limpar</Text>
 									</TouchableOpacity>
-
-									<Ionicons
-										name={sheetExpanded ? "chevron-down" : "chevron-up"}
-										size={21}
-										color="rgba(15,23,42,0.62)"
-									/>
-								</View>
+								)}
 							</View>
 
-							<View style={styles.operationalSummaryRow}>
-								<View style={styles.operationalSummaryItem}>
-									<Text style={styles.operationalSummaryValue}>
-										{operationalProjectData.length}
-									</Text>
-									<Text style={styles.operationalSummaryLabel}>Parcelas</Text>
-								</View>
+							<View style={styles.filterSection}>
+								<Text style={styles.filterLabel}>Safra</Text>
 
-								<View
-									style={[
-										styles.operationalSummaryItem,
-										operationalSelectedCount > 0 && styles.operationalSummaryItemSelected,
-									]}
+								<ScrollView
+									horizontal
+									showsHorizontalScrollIndicator={false}
+									contentContainerStyle={styles.chipsRow}
 								>
-									<Text
-										style={[
-											styles.operationalSummaryValue,
-											operationalSelectedCount > 0 && styles.operationalSummaryValueSelected,
-										]}
-									>
-										{formatHa(
-											operationalSelectedCount > 0
-												? operationalSelectedArea
-												: operationalArea
-										)}
-									</Text>
+									{safraOptions.map((option) => {
+										const isSelected = selectedSafra === option;
 
-									<Text
-										style={[
-											styles.operationalSummaryLabel,
-											operationalSelectedCount > 0 && styles.operationalSummaryLabelSelected,
-										]}
-									>
-										{operationalSelectedCount > 0 ? "Área selec." : "Área"}
-									</Text>
-								</View>
+										return (
+											<TouchableOpacity
+												key={`safra-${option}`}
+												activeOpacity={0.82}
+												onPress={() => setSelectedSafra(option)}
+												style={[
+													styles.filterChip,
+													isSelected && styles.filterChipSelected,
+												]}
+											>
+												<Text
+													style={[
+														styles.filterChipText,
+														isSelected && styles.filterChipTextSelected,
+													]}
+												>
+													{option}
+												</Text>
+											</TouchableOpacity>
+										);
+									})}
 
-								<View
-									style={[
-										styles.operationalSummaryItem,
-										operationalSelectedCount > 0 && styles.operationalSummaryItemSelected,
-									]}
-								>
-									<Text
-										style={[
-											styles.operationalSummaryValue,
-											operationalSelectedCount > 0 && styles.operationalSummaryValueSelected,
-										]}
-									>
-										{operationalSelectedCount}
-									</Text>
-									<Text
-										style={[
-											styles.operationalSummaryLabel,
-											operationalSelectedCount > 0 && styles.operationalSummaryLabelSelected,
-										]}
-									>
-										Selecionadas
-									</Text>
-								</View>
+									{safraOptions.length === 0 && (
+										<View style={styles.filterChipDisabled}>
+											<Text style={styles.filterChipDisabledText}>Sem safra disponível</Text>
+										</View>
+									)}
+								</ScrollView>
 							</View>
+
+							<View style={styles.filterSection}>
+								<Text style={styles.filterLabel}>Ciclo</Text>
+
+								<ScrollView
+									horizontal
+									showsHorizontalScrollIndicator={false}
+									contentContainerStyle={styles.chipsRow}
+								>
+									{cicloOptions.map((option) => {
+										const normalizedOption = normalizeCiclo(option);
+										const isSelected = normalizeCiclo(selectedCiclo) === normalizedOption;
+
+										return (
+											<TouchableOpacity
+												key={`ciclo-${normalizedOption}`}
+												activeOpacity={0.82}
+												onPress={() => setSelectedCiclo(normalizedOption)}
+												style={[
+													styles.filterChip,
+													isSelected && styles.filterChipSelected,
+												]}
+											>
+												<Text
+													style={[
+														styles.filterChipText,
+														isSelected && styles.filterChipTextSelected,
+													]}
+												>
+													Ciclo {normalizedOption}
+												</Text>
+											</TouchableOpacity>
+										);
+									})}
+
+									{cicloOptions.length === 0 && (
+										<View style={styles.filterChipDisabled}>
+											<Text style={styles.filterChipDisabledText}>Sem ciclo disponível</Text>
+										</View>
+									)}
+								</ScrollView>
+							</View>
+
+							<View style={styles.filterSection}>
+								<Text style={styles.filterLabel}>Status</Text>
+
+								<ScrollView
+									horizontal
+									showsHorizontalScrollIndicator={false}
+									contentContainerStyle={styles.chipsRow}
+								>
+									{statusOptions.map((option) => {
+										const isSelected = selectedStatus.includes(option.key);
+
+										return (
+											<TouchableOpacity
+												key={option.key}
+												activeOpacity={0.82}
+												onPress={() => handleToggleStatus(option.key)}
+												style={[
+													styles.filterChip,
+													isSelected && styles.filterChipSelected,
+												]}
+											>
+												<Text
+													style={[
+														styles.filterChipText,
+														isSelected && styles.filterChipTextSelected,
+													]}
+												>
+													{option.label}
+												</Text>
+											</TouchableOpacity>
+										);
+									})}
+								</ScrollView>
+							</View>
+
+							{cultureOptions.length > 0 && (
+								<View style={styles.filterSection}>
+									<Text style={styles.filterLabel}>Cultura</Text>
+
+									<ScrollView
+										horizontal
+										showsHorizontalScrollIndicator={false}
+										contentContainerStyle={styles.chipsRow}
+									>
+										{cultureOptions.map((culture) => {
+											const isSelected = selectedCultures.includes(culture);
+
+											return (
+												<TouchableOpacity
+													key={`culture-${culture}`}
+													activeOpacity={0.82}
+													onPress={() => handleToggleCulture(culture)}
+													style={[
+														styles.filterChip,
+														isSelected && styles.filterChipSelected,
+													]}
+												>
+													<Text
+														style={[
+															styles.filterChipText,
+															isSelected && styles.filterChipTextSelected,
+														]}
+													>
+														{culture}
+													</Text>
+												</TouchableOpacity>
+											);
+										})}
+									</ScrollView>
+								</View>
+							)}
+
+							{varietyOptions.length > 0 && (
+								<View style={styles.filterSectionLast}>
+									<Text style={styles.filterLabel}>Variedade</Text>
+
+									<ScrollView
+										horizontal
+										showsHorizontalScrollIndicator={false}
+										contentContainerStyle={styles.chipsRow}
+									>
+										{varietyOptions.map((variety) => {
+											const isSelected = selectedVarieties.includes(variety);
+
+											return (
+												<TouchableOpacity
+													key={`variety-${variety}`}
+													activeOpacity={0.82}
+													onPress={() => handleToggleVariety(variety)}
+													style={[
+														styles.filterChip,
+														isSelected && styles.filterChipSelected,
+													]}
+												>
+													<Text
+														style={[
+															styles.filterChipText,
+															isSelected && styles.filterChipTextSelected,
+														]}
+													>
+														{variety}
+													</Text>
+												</TouchableOpacity>
+											);
+										})}
+									</ScrollView>
+								</View>
+							)}
+						</View>
+					</>
+				)}
+
+				{infoMode && infoParcel ? (
+					<View style={[styles.infoCardFloatingWrap, { bottom: infoCardBottom }]}>
+						<ParcelInfoCard
+							item={infoParcel}
+							onClose={() => setInfoParcel(null)}
+							isSelected={selectedParcels.includes(infoParcel?.id_farmbox || infoParcel?.id)}
+							onSelect={() => handleToggleParcel(infoParcel)}
+						/>
+					</View>
+				) : hasSelectedArea && !showOperationalSheet ? (
+					<View style={[styles.selectionCounter, { bottom: selectionCounterBottom }]}>
+						<View style={styles.selectionCounterPill}>
+							<Text style={styles.selectionCounterPillText}>
+								{selectedParcels.length}
+							</Text>
+						</View>
+
+						<View style={styles.selectionCounterContent}>
+							<Text style={styles.selectionCounterLabel}>
+								Área selecionada
+							</Text>
+
+							<Text style={styles.selectionCounterValue}>
+								{formatHa(selectedAreaTotal)}
+							</Text>
+						</View>
+
+						<TouchableOpacity
+							activeOpacity={0.82}
+							onPress={() => dispatch(geralActions.clearNavigationMapSelectedParcels())}
+							style={styles.selectionCounterClearButton}
+						>
+							<Ionicons name="close" size={16} color="#FFFFFF" />
 						</TouchableOpacity>
 					</View>
+				) : null}
 
-					{sheetExpanded && (
-						<ScrollView
-							showsVerticalScrollIndicator={true}
-							indicatorStyle="black"
-							stickyHeaderIndices={operationalStickyHeaderIndices}
-							contentContainerStyle={styles.sheetScrollContent}
+				{!showOperationalSheet && !applicationsParcel && (
+					<View
+						style={[
+							styles.mapFooterStack,
+							{
+								bottom: Platform.OS === "ios" ? 18 : 12,
+							},
+						]}
+					>
+						<View style={styles.mapFilterFooter}>
+							<Text style={styles.mapFilterFooterText} numberOfLines={1}>
+								{selectedSafra || "—"} · {selectedCiclo || "—"}
+							</Text>
+						</View>
+
+						<View style={styles.appliedFiltersFooter}>
+							<Ionicons
+								name="filter"
+								size={10}
+								color="rgba(255,255,255,0.72)"
+							/>
+
+							<Text style={styles.appliedFiltersFooterText} numberOfLines={1}>
+								{appliedFiltersText}
+							</Text>
+						</View>
+					</View>
+				)}
+
+				{showOperationalSheet && !applicationsParcel && (
+					<Animated.View
+						style={[
+							styles.bottomSheet,
+							{
+								height: sheetHeight,
+								bottom: 0,
+							},
+						]}
+					>
+						<View
+							style={styles.sheetHandleArea}
+							{...sheetPanResponder.panHandlers}
 						>
-							<View style={styles.operationalSectionHeader}>
-								<Text style={styles.operationalSectionTitle}>Projetos</Text>
-
-								<Text style={styles.operationalSectionHint}>
-									Toque para focar
-								</Text>
-							</View>
-
-							<ScrollView
-								horizontal
-								showsHorizontalScrollIndicator={false}
-								contentContainerStyle={styles.projectsRow}
+							<TouchableOpacity
+								activeOpacity={0.88}
+								onPress={sheetExpanded ? collapseSheet : expandSheet}
+								style={styles.operationalHeaderPressable}
 							>
-								<TouchableOpacity
-									activeOpacity={0.84}
-									onPress={() => setOperationalFocusedProjects([])}
-									style={[
-										styles.projectCard,
-										operationalFocusedProjects.length === 0 && styles.projectCardSelected,
-									]}
-								>
-									<View style={styles.projectCardHeader}>
-										<View
-											style={[
-												styles.projectStatusDot,
-												{ backgroundColor: Colors.primary[700] },
-											]}
-										/>
+								<View style={styles.sheetHandle}>
+									<Ionicons
+										name={sheetExpanded ? "chevron-down" : "chevron-up"}
+										size={18}
+										color="rgba(15,23,42,0.42)"
+									/>
 
-										<Text style={styles.projectName} numberOfLines={1}>
-											Todos
-										</Text>
-									</View>
+									{/* <View style={styles.sheetHandleBar} /> */}
+								</View>
 
-									<Text style={styles.projectArea}>{formatHa(totalArea)}</Text>
-
-									<Text style={styles.projectMeta}>{mapData.length} parcelas</Text>
-								</TouchableOpacity>
-
-								{projects.map((project) => {
-									const hasMapCenter =
-										!!project?.map_centro_id?.lat ||
-										!!project?.map_centro_id?.latitude;
-
-									const isSelected = operationalFocusedProjects.includes(project.projeto_nome);
-
-									return (
-										<TouchableOpacity
-											key={`project-${project.projeto_id || project.projeto_nome}-${project.projeto_nome}`}
-											activeOpacity={0.84}
-											onPress={() => handleToggleOperationalProject(project.projeto_nome)}
-											style={[
-												styles.projectCard,
-												isSelected && styles.projectCardSelected,
-											]}
-										>
-											<View style={styles.projectCardHeader}>
-												<View
-													style={[
-														styles.projectStatusDot,
-														{
-															backgroundColor: hasMapCenter ? "#16A34A" : "#CBD5E1",
-														},
-													]}
+								<View style={styles.operationalHeader}>
+									<View style={styles.operationalTitleBlock}>
+										<View style={styles.operationalTitleRow}>
+											<View style={styles.operationalIconBox}>
+												<Ionicons
+													name="albums-outline"
+													size={18}
+													color={Colors.primary[800]}
 												/>
-
-												<Text style={styles.projectName} numberOfLines={1}>
-													{normalizeProjectName(project.projeto_nome)}
-												</Text>
 											</View>
 
-											<Text style={styles.projectArea}>
-												{formatHa(project.area_produtiva)}
-											</Text>
+											<View style={styles.operationalTitleTextBox}>
+												<Text style={styles.sheetTitle}>Mapa operacional</Text>
 
-											<Text style={styles.projectMeta}>
-												{project.total_parcelas} parcelas
-											</Text>
-										</TouchableOpacity>
-									);
-								})}
-							</ScrollView>
-
-							<View style={styles.operationalSectionHeader}>
-								<Text style={styles.operationalSectionTitle}>Parcelas</Text>
-
-								<Text style={styles.operationalSectionHint}>
-									{operationalSelectedCount > 0
-										? `${operationalSelectedCount} selecionada(s) · ${formatHa(operationalSelectedArea)}`
-										: "Toque para selecionar"}
-								</Text>
-							</View>
-
-							{operationalParcelsByProject.flatMap((group, groupIndex) => {
-								const groupKey = `${group.project || "sem-projeto"}-${groupIndex}`;
-
-								const groupSelectedCount = group.items.filter((item) => {
-									const id = item?.id_farmbox || item?.id;
-									return selectedParcels.includes(id);
-								}).length;
-
-								const groupSelectedArea = group.items.reduce((total, item) => {
-									const id = item?.id_farmbox || item?.id;
-
-									if (!selectedParcels.includes(id)) return total;
-
-									return total + Number(item?.area || 0);
-								}, 0);
-
-								const header = (
-									<View
-										key={`operational-project-header-${groupKey}`}
-										style={styles.parcelProjectStickyHeader}
-									>
-										<View style={styles.parcelProjectNameRow}>
-											<Text
-												style={styles.parcelProjectTitle}
-												numberOfLines={1}
-												ellipsizeMode="tail"
-											>
-												{normalizeProjectName(group.project)}
-											</Text>
+												<Text style={styles.sheetSubtitle}>
+													Safra {selectedSafra || "—"} · Ciclo {selectedCiclo || "—"}
+												</Text>
+												{operationalSelectedCount > 0 ? (
+													<Text style={styles.operationalExportHint} numberOfLines={1}>
+														Toque no ícone para exportar relatório
+													</Text>
+												) : null}
+											</View>
 										</View>
+									</View>
+
+									<View style={styles.sheetHeaderRight}>
+										<TouchableOpacity
+											activeOpacity={operationalSelectedCount > 0 ? 0.82 : 1}
+											onPress={
+												operationalSelectedCount > 0
+													? handleExportSelectedParcelsReport
+													: undefined
+											}
+											style={[
+												styles.sheetBadge,
+												operationalSelectedCount > 0 && styles.sheetBadgeExport,
+											]}
+										>
+											{operationalSelectedCount > 0 ? (
+												<View style={styles.sheetBadgeExportContent}>
+													<Ionicons
+														name="document-text-outline"
+														size={16}
+														color="#FFFFFF"
+													/>
+
+													<Text style={styles.sheetBadgeExportText}>
+														{operationalSelectedCount}
+													</Text>
+												</View>
+											) : (
+												<Text style={styles.sheetBadgeText}>
+													{operationalProjectData.length}
+												</Text>
+											)}
+										</TouchableOpacity>
+
+										<Ionicons
+											name={sheetExpanded ? "chevron-down" : "chevron-up"}
+											size={21}
+											color="rgba(15,23,42,0.62)"
+										/>
+									</View>
+								</View>
+
+								<View style={styles.operationalSummaryRow}>
+									<View style={styles.operationalSummaryItem}>
+										<Text style={styles.operationalSummaryValue}>
+											{operationalProjectData.length}
+										</Text>
+										<Text style={styles.operationalSummaryLabel}>Parcelas</Text>
+									</View>
+
+									<View
+										style={[
+											styles.operationalSummaryItem,
+											operationalSelectedCount > 0 && styles.operationalSummaryItemSelected,
+										]}
+									>
+										<Text
+											style={[
+												styles.operationalSummaryValue,
+												operationalSelectedCount > 0 && styles.operationalSummaryValueSelected,
+											]}
+										>
+											{formatHa(
+												operationalSelectedCount > 0
+													? operationalSelectedArea
+													: operationalArea
+											)}
+										</Text>
 
 										<Text
 											style={[
-												styles.parcelProjectRightMeta,
-												groupSelectedCount > 0 && styles.parcelProjectRightMetaSelected,
+												styles.operationalSummaryLabel,
+												operationalSelectedCount > 0 && styles.operationalSummaryLabelSelected,
 											]}
-											numberOfLines={1}
-											ellipsizeMode="tail"
 										>
-											{groupSelectedCount > 0
-												? `${groupSelectedCount} selec. · ${formatHa(groupSelectedArea)}`
-												: `${group.items.length} parcelas · ${formatHa(group.area)}`}
+											{operationalSelectedCount > 0 ? "Área selec." : "Área"}
 										</Text>
 									</View>
-								);
 
-								const grid = (
 									<View
-										key={`operational-project-grid-${groupKey}`}
-										style={styles.parcelProjectGridBlock}
+										style={[
+											styles.operationalSummaryItem,
+											operationalSelectedCount > 0 && styles.operationalSummaryItemSelected,
+										]}
 									>
-										<View style={styles.parcelsGrid}>
-											{group.items.slice(0, 120).map((item, itemIndex) => {
-												const parcelId = item?.id_farmbox || item?.id;
-												const isSelected = selectedParcels.includes(parcelId);
-												const varietyText = item?.variedade || item?.variedade_nome || null;
+										<Text
+											style={[
+												styles.operationalSummaryValue,
+												operationalSelectedCount > 0 && styles.operationalSummaryValueSelected,
+											]}
+										>
+											{operationalSelectedCount}
+										</Text>
+										<Text
+											style={[
+												styles.operationalSummaryLabel,
+												operationalSelectedCount > 0 && styles.operationalSummaryLabelSelected,
+											]}
+										>
+											Selecionadas
+										</Text>
+									</View>
+								</View>
+							</TouchableOpacity>
+						</View>
 
-												return (
-													<TouchableOpacity
-														key={`parcel-card-${groupKey}-${item.id || "id"}-${item.id_farmbox || "fb"}-${item.parcela || "parcela"}-${itemIndex}`}
-														activeOpacity={0.86}
-														onPress={() => handlePolygonPress(item)}
-														style={styles.parcelGridCard}
-													>
-														<View
-															style={[
-																styles.parcelGridCardInner,
-																isSelected && styles.parcelGridCardSelected,
-															]}
+						{sheetExpanded && (
+							<ScrollView
+								showsVerticalScrollIndicator={true}
+								indicatorStyle="black"
+								stickyHeaderIndices={operationalStickyHeaderIndices}
+								contentContainerStyle={styles.sheetScrollContent}
+							>
+								<View style={styles.operationalSectionHeader}>
+									<Text style={styles.operationalSectionTitle}>Projetos</Text>
+
+									<Text style={styles.operationalSectionHint}>
+										Toque para focar
+									</Text>
+								</View>
+
+								<ScrollView
+									horizontal
+									showsHorizontalScrollIndicator={false}
+									contentContainerStyle={styles.projectsRow}
+								>
+									<TouchableOpacity
+										activeOpacity={0.84}
+										onPress={() => setOperationalFocusedProjects([])}
+										style={[
+											styles.projectCard,
+											operationalFocusedProjects.length === 0 && styles.projectCardSelected,
+										]}
+									>
+										<View style={styles.projectCardHeader}>
+											<View
+												style={[
+													styles.projectStatusDot,
+													{ backgroundColor: Colors.primary[700] },
+												]}
+											/>
+
+											<Text style={styles.projectName} numberOfLines={1}>
+												Todos
+											</Text>
+										</View>
+
+										<Text style={styles.projectArea}>{formatHa(totalArea)}</Text>
+
+										<Text style={styles.projectMeta}>{mapData.length} parcelas</Text>
+									</TouchableOpacity>
+
+									{projects.map((project) => {
+										const hasMapCenter =
+											!!project?.map_centro_id?.lat ||
+											!!project?.map_centro_id?.latitude;
+
+										const isSelected = operationalFocusedProjects.includes(project.projeto_nome);
+
+										return (
+											<TouchableOpacity
+												key={`project-${project.projeto_id || project.projeto_nome}-${project.projeto_nome}`}
+												activeOpacity={0.84}
+												onPress={() => handleToggleOperationalProject(project.projeto_nome)}
+												style={[
+													styles.projectCard,
+													isSelected && styles.projectCardSelected,
+												]}
+											>
+												<View style={styles.projectCardHeader}>
+													<View
+														style={[
+															styles.projectStatusDot,
+															{
+																backgroundColor: hasMapCenter ? "#16A34A" : "#CBD5E1",
+															},
+														]}
+													/>
+
+													<Text style={styles.projectName} numberOfLines={1}>
+														{normalizeProjectName(project.projeto_nome)}
+													</Text>
+												</View>
+
+												<Text style={styles.projectArea}>
+													{formatHa(project.area_produtiva)}
+												</Text>
+
+												<Text style={styles.projectMeta}>
+													{project.total_parcelas} parcelas
+												</Text>
+											</TouchableOpacity>
+										);
+									})}
+								</ScrollView>
+
+								<View style={styles.operationalSectionHeader}>
+									<Text style={styles.operationalSectionTitle}>Parcelas</Text>
+
+									<Text style={styles.operationalSectionHint}>
+										{operationalSelectedCount > 0
+											? `${operationalSelectedCount} selecionada(s) · ${formatHa(operationalSelectedArea)}`
+											: "Toque para selecionar"}
+									</Text>
+								</View>
+
+								{operationalParcelsByProject.flatMap((group, groupIndex) => {
+									const groupKey = `${group.project || "sem-projeto"}-${groupIndex}`;
+
+									const groupSelectedCount = group.items.filter((item) => {
+										const id = item?.id_farmbox || item?.id;
+										return selectedParcels.includes(id);
+									}).length;
+
+									const groupSelectedArea = group.items.reduce((total, item) => {
+										const id = item?.id_farmbox || item?.id;
+
+										if (!selectedParcels.includes(id)) return total;
+
+										return total + Number(item?.area || 0);
+									}, 0);
+
+									const header = (
+										<View
+											key={`operational-project-header-${groupKey}`}
+											style={styles.parcelProjectStickyHeader}
+										>
+											<View style={styles.parcelProjectNameRow}>
+												<Text
+													style={styles.parcelProjectTitle}
+													numberOfLines={1}
+													ellipsizeMode="tail"
+												>
+													{normalizeProjectName(group.project)}
+												</Text>
+											</View>
+
+											<Text
+												style={[
+													styles.parcelProjectRightMeta,
+													groupSelectedCount > 0 && styles.parcelProjectRightMetaSelected,
+												]}
+												numberOfLines={1}
+												ellipsizeMode="tail"
+											>
+												{groupSelectedCount > 0
+													? `${groupSelectedCount} selec. · ${formatHa(groupSelectedArea)}`
+													: `${group.items.length} parcelas · ${formatHa(group.area)}`}
+											</Text>
+										</View>
+									);
+
+									const grid = (
+										<View
+											key={`operational-project-grid-${groupKey}`}
+											style={styles.parcelProjectGridBlock}
+										>
+											<View style={styles.parcelsGrid}>
+												{group.items.slice(0, 120).map((item, itemIndex) => {
+													const parcelId = item?.id_farmbox || item?.id;
+													const isSelected = selectedParcels.includes(parcelId);
+													const varietyText = item?.variedade || item?.variedade_nome || null;
+
+													return (
+														<TouchableOpacity
+															key={`parcel-card-${groupKey}-${item.id || "id"}-${item.id_farmbox || "fb"}-${item.parcela || "parcela"}-${itemIndex}`}
+															activeOpacity={0.86}
+															onPress={() => handlePolygonPress(item)}
+															style={styles.parcelGridCard}
 														>
-															<View style={styles.parcelGridTopRow}>
-																<View
-																	style={[
-																		styles.parcelGridCultureIconBox,
-																		isSelected && styles.parcelGridCultureIconBoxSelected,
-																	]}
-																>
-																	<Image
-																		source={getCultureIconSource(item?.cultura)}
-																		style={styles.parcelGridCultureIcon}
-																		resizeMode="contain"
-																	/>
+															<View
+																style={[
+																	styles.parcelGridCardInner,
+																	isSelected && styles.parcelGridCardSelected,
+																]}
+															>
+																<View style={styles.parcelGridTopRow}>
+																	<View
+																		style={[
+																			styles.parcelGridCultureIconBox,
+																			isSelected && styles.parcelGridCultureIconBoxSelected,
+																		]}
+																	>
+																		<Image
+																			source={getCultureIconSource(item?.cultura)}
+																			style={styles.parcelGridCultureIcon}
+																			resizeMode="contain"
+																		/>
+																	</View>
+
+																	<Text
+																		style={[
+																			styles.parcelGridName,
+																			isSelected && styles.parcelGridNameSelected,
+																		]}
+																		numberOfLines={1}
+																	>
+																		{item.parcela || "—"}
+																	</Text>
+
+																	{isSelected ? (
+																		<Ionicons
+																			name="checkmark-circle"
+																			size={15}
+																			color="#FFFFFF"
+																		/>
+																	) : null}
 																</View>
 
 																<Text
 																	style={[
-																		styles.parcelGridName,
-																		isSelected && styles.parcelGridNameSelected,
+																		styles.parcelGridArea,
+																		isSelected && styles.parcelGridAreaSelected,
 																	]}
 																	numberOfLines={1}
 																>
-																	{item.parcela || "—"}
+																	{formatHa(item.area)}
 																</Text>
 
-																{isSelected ? (
-																	<Ionicons
-																		name="checkmark-circle"
-																		size={15}
-																		color="#FFFFFF"
-																	/>
-																) : null}
+																<Text
+																	style={[
+																		styles.parcelGridCulture,
+																		isSelected && styles.parcelGridCultureSelected,
+																	]}
+																	numberOfLines={1}
+																>
+																	{varietyText || item.status_label || "Sem variedade"}
+																</Text>
 															</View>
+														</TouchableOpacity>
+													);
+												})}
+											</View>
 
-															<Text
-																style={[
-																	styles.parcelGridArea,
-																	isSelected && styles.parcelGridAreaSelected,
-																]}
-																numberOfLines={1}
-															>
-																{formatHa(item.area)}
-															</Text>
-
-															<Text
-																style={[
-																	styles.parcelGridCulture,
-																	isSelected && styles.parcelGridCultureSelected,
-																]}
-																numberOfLines={1}
-															>
-																{varietyText || item.status_label || "Sem variedade"}
-															</Text>
-														</View>
-													</TouchableOpacity>
-												);
-											})}
+											{group.items.length > 120 ? (
+												<Text style={styles.parcelLimitText}>
+													Mostrando 120 de {group.items.length} parcelas neste projeto.
+												</Text>
+											) : null}
 										</View>
+									);
 
-										{group.items.length > 120 ? (
-											<Text style={styles.parcelLimitText}>
-												Mostrando 120 de {group.items.length} parcelas neste projeto.
-											</Text>
-										) : null}
-									</View>
-								);
+									return [header, grid];
+								})}
 
-								return [header, grid];
-							})}
+								{operationalProjectData.length > 120 ? (
+									<Text style={styles.parcelLimitText}>
+										Mostrando 120 de {operationalProjectData.length} parcelas.
+									</Text>
+								) : null}
+							</ScrollView>
+						)}
+					</Animated.View>
+				)}
 
-							{operationalProjectData.length > 120 ? (
-								<Text style={styles.parcelLimitText}>
-									Mostrando 120 de {operationalProjectData.length} parcelas.
-								</Text>
-							) : null}
-						</ScrollView>
-					)}
-				</Animated.View>
-			)}
-
-			<ParcelApplicationsSheet
-				visible={applicationsMode && !!applicationsParcel}
-				parcel={applicationsParcel}
-				data={applicationsData}
-				loading={applicationsLoading}
-				error={applicationsError}
-				expanded={applicationsSheetExpanded}
-				onToggleExpanded={() =>
-					setApplicationsSheetExpanded((current) => !current)
-				}
-				onClose={() => {
-					setApplicationsParcel(null);
-					setApplicationsData(null);
-					setApplicationsError(null);
-					setApplicationsSheetExpanded(false);
-				}}
-			/>
+				<ParcelApplicationsSheet
+					visible={applicationsMode && !!applicationsParcel}
+					parcel={applicationsParcel}
+					data={applicationsData}
+					loading={applicationsLoading}
+					error={applicationsError}
+					expanded={applicationsSheetExpanded}
+					onToggleExpanded={() =>
+						setApplicationsSheetExpanded((current) => !current)
+					}
+					onClose={() => {
+						setApplicationsParcel(null);
+						setApplicationsData(null);
+						setApplicationsError(null);
+						setApplicationsSheetExpanded(false);
+					}}
+				/>
+			</View>
 		</View>
 	);
 };
@@ -3372,11 +3408,11 @@ const styles = StyleSheet.create({
 		overflow: "hidden",
 	},
 	labelStatusPlanting: {
-	backgroundColor: "rgba(253,224,71,0.88)",
-	color: "#1E3A2F",
-	borderWidth: 1,
-	borderColor: "rgba(254,249,195,0.85)",
-},
+		backgroundColor: "rgba(253,224,71,0.88)",
+		color: "#1E3A2F",
+		borderWidth: 1,
+		borderColor: "rgba(254,249,195,0.85)",
+	},
 
 	fabColumn: {
 		position: "absolute",
@@ -3479,13 +3515,11 @@ const styles = StyleSheet.create({
 		position: "absolute",
 		left: 0,
 		right: 0,
-		bottom: 0,
 		backgroundColor: "#F1F5F9",
 		borderTopLeftRadius: 30,
 		borderTopRightRadius: 30,
-		// paddingHorizontal: 14,
 		paddingTop: 9,
-		paddingBottom: Platform.OS === "ios" ? 0 : 16,
+		paddingBottom: 0,
 		borderWidth: 1,
 		borderColor: "rgba(15,23,42,0.10)",
 		shadowColor: "#000",
@@ -3524,7 +3558,7 @@ const styles = StyleSheet.create({
 
 	sheetScrollContent: {
 		paddingHorizontal: 14,
-		paddingBottom: Platform.OS === "ios" ? 16 : 12,
+		paddingBottom: 8,
 	},
 
 	filterChipDisabled: {
@@ -3566,7 +3600,6 @@ const styles = StyleSheet.create({
 	},
 	mapFooterStack: {
 		position: "absolute",
-		bottom: Platform.OS === "ios" ? 18 : 12,
 		alignSelf: "center",
 		zIndex: 21,
 		alignItems: "center",
@@ -4276,6 +4309,19 @@ const styles = StyleSheet.create({
 		borderRadius: 999,
 		backgroundColor: "rgba(15,23,42,0.16)",
 		marginTop: -2,
+	},
+	container: {
+		flex: 1,
+		backgroundColor: "#050816",
+	},
+
+	mapContent: {
+		position: "absolute",
+		top: 0,
+		left: 0,
+		right: 0,
+		bottom: 0,
+		backgroundColor: "#050816",
 	},
 
 });
