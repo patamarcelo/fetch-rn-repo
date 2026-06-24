@@ -7,6 +7,7 @@ import {
     Pressable,
     ActivityIndicator,
     Alert,
+    Platform
 } from "react-native";
 
 import { useState, useEffect, useMemo } from "react";
@@ -37,9 +38,13 @@ import { selectPlotMapData } from "../../store/redux/selector";
 
 import { buildExportCards } from "../../utils/farmboxConsolidation";
 
+import {
+    useSafeAreaInsets,
+} from "react-native-safe-area-context";
+
 const FilterModalApps = (props) => {
     const dispatch = useDispatch();
-
+    const insets = useSafeAreaInsets();
     const { route, navigation } = props;
 
     const {
@@ -282,18 +287,10 @@ const FilterModalApps = (props) => {
         return card?.operation || "-";
     };
 
-    return (
-        <SafeAreaView
-            style={styles.screen}
-            edges={[
-                "top",
-                "bottom",
-            ]}
-        >
+    const screenContent = (
+        <>
             <StatusBar
-                backgroundColor={
-                    Colors.secondary[100]
-                }
+                backgroundColor={Colors.secondary[100]}
                 barStyle="dark-content"
                 translucent={false}
                 hidden={false}
@@ -306,11 +303,7 @@ const FilterModalApps = (props) => {
                 ]}
                 onPress={handleClearApps}
             >
-                <View
-                    style={
-                        styles.headerTitleContainer
-                    }
-                >
+                <View style={styles.headerTitleContainer}>
                     <Text
                         style={styles.headerTitle}
                         numberOfLines={1}
@@ -320,19 +313,13 @@ const FilterModalApps = (props) => {
                             ""
                         )}{" "}
 
-                        <Text
-                            style={styles.headerCount}
-                        >
+                        <Text style={styles.headerCount}>
                             {selectedCardKeys?.length}/
                             {exportCards?.length}
                         </Text>
                     </Text>
 
-                    <Text
-                        style={
-                            styles.headerSubtitle
-                        }
-                    >
+                    <Text style={styles.headerSubtitle}>
                         {viewMode === "consolidated"
                             ? "Modo consolidado"
                             : "Modo APs"}
@@ -357,118 +344,71 @@ const FilterModalApps = (props) => {
 
             <ScrollView
                 style={styles.scroll}
-                contentContainerStyle={
-                    styles.scrollContent
-                }
+                contentContainerStyle={styles.scrollContent}
                 showsVerticalScrollIndicator
                 keyboardShouldPersistTaps="handled"
+                contentInsetAdjustmentBehavior="never"
+                automaticallyAdjustContentInsets={false}
+                automaticallyAdjustKeyboardInsets={false}
             >
-                {exportCards.map(
-                    (card, index) => {
-                        const selected =
-                            selectedCardKeys.includes(
-                                card.cardKey
-                            );
-
-                        return (
-                            <Pressable
-                                key={
-                                    card.cardKey ||
-                                    index
-                                }
-                                style={({
-                                    pressed,
-                                }) => [
-                                        pressed &&
-                                        styles.pressed,
-                                    ]}
-                                onPress={() =>
-                                    handleSelect(card)
-                                }
-                            >
-                                <View
-                                    style={[
-                                        styles.selectAppContainer,
-                                        {
-                                            backgroundColor:
-                                                selected
-                                                    ? Colors
-                                                        .succes[100]
-                                                    : Colors
-                                                        .secondary[100],
-                                        },
-                                    ]}
-                                >
-                                    <View
-                                        style={
-                                            styles.cardContent
-                                        }
-                                    >
-                                        <Text
-                                            style={
-                                                styles.apTitle
-                                            }
-                                        >
-                                            {renderTitle(
-                                                card
-                                            )}
-                                        </Text>
-
-                                        <Text
-                                            style={
-                                                styles.opTitle
-                                            }
-                                        >
-                                            {renderSubtitle(
-                                                card
-                                            )}
-                                        </Text>
-                                    </View>
-
-                                    <View
-                                        style={
-                                            styles.cardRight
-                                        }
-                                    >
-                                        {card?.isConsolidated && (
-                                            <Text
-                                                style={
-                                                    styles.smallInfo
-                                                }
-                                            >
-                                                {card
-                                                    ?.codes
-                                                    ?.length ||
-                                                    0}{" "}
-                                                APs
-                                            </Text>
-                                        )}
-
-                                        {selected && (
-                                            <MaterialCommunityIcons
-                                                name="check-all"
-                                                size={
-                                                    24
-                                                }
-                                                color="green"
-                                            />
-                                        )}
-                                    </View>
-                                </View>
-                            </Pressable>
+                {exportCards.map((card, index) => {
+                    const selected =
+                        selectedCardKeys.includes(
+                            card.cardKey
                         );
-                    }
-                )}
+
+                    return (
+                        <Pressable
+                            key={card.cardKey || index}
+                            style={({ pressed }) => [
+                                pressed && styles.pressed,
+                            ]}
+                            onPress={() =>
+                                handleSelect(card)
+                            }
+                        >
+                            <View
+                                style={[
+                                    styles.selectAppContainer,
+                                    {
+                                        backgroundColor:
+                                            selected
+                                                ? Colors.succes[100]
+                                                : Colors.secondary[100],
+                                    },
+                                ]}
+                            >
+                                <View style={styles.cardContent}>
+                                    <Text style={styles.apTitle}>
+                                        {renderTitle(card)}
+                                    </Text>
+
+                                    <Text style={styles.opTitle}>
+                                        {renderSubtitle(card)}
+                                    </Text>
+                                </View>
+
+                                <View style={styles.cardRight}>
+                                    {card?.isConsolidated && (
+                                        <Text style={styles.smallInfo}>
+                                            {card?.codes?.length || 0} APs
+                                        </Text>
+                                    )}
+
+                                    {selected && (
+                                        <MaterialCommunityIcons
+                                            name="check-all"
+                                            size={24}
+                                            color="green"
+                                        />
+                                    )}
+                                </View>
+                            </View>
+                        </Pressable>
+                    );
+                })}
             </ScrollView>
 
-            {/*
-             * O footer agora está dentro da SafeAreaView.
-             *
-             * Isso faz os botões respeitarem:
-             * - barra de gestos;
-             * - três botões digitais;
-             * - home indicator do iPhone.
-             */}
             <View style={styles.footer}>
                 {hasSelection ? (
                     <>
@@ -484,9 +424,7 @@ const FilterModalApps = (props) => {
                             onPress={handleSubmit}
                         >
                             {loading.pdf ? (
-                                <ActivityIndicator
-                                    color="white"
-                                />
+                                <ActivityIndicator color="white" />
                             ) : (
                                 "Gerar PDF"
                             )}
@@ -502,31 +440,19 @@ const FilterModalApps = (props) => {
                                 !plotMap ||
                                 plotMap?.length === 0
                             }
-                            onPress={
-                                handleSubmitWithMap
-                            }
+                            onPress={handleSubmitWithMap}
                         >
                             {isBusy ? (
-                                <ActivityIndicator
-                                    color="white"
-                                />
+                                <ActivityIndicator color="white" />
                             ) : (
-                                <View
-                                    style={
-                                        styles.mapButtonContent
-                                    }
-                                >
+                                <View style={styles.mapButtonContent}>
                                     <Ionicons
                                         name="map-outline"
                                         size={20}
                                         color="white"
                                     />
 
-                                    <Text
-                                        style={
-                                            styles.mapButtonText
-                                        }
-                                    >
+                                    <Text style={styles.mapButtonText}>
                                         Gerar PDF
                                     </Text>
                                 </View>
@@ -545,6 +471,36 @@ const FilterModalApps = (props) => {
                     </Button>
                 )}
             </View>
+        </>
+    );
+
+    return Platform.OS === "ios" ? (
+        <View
+            collapsable={false}
+            style={[
+                styles.screen,
+                {
+                    paddingTop: insets.top,
+                    paddingBottom: Math.max(
+                        insets.bottom,
+                        8
+                    ),
+                },
+            ]}
+        >
+            {screenContent}
+        </View>
+    ) : (
+        <SafeAreaView
+            style={styles.screen}
+            edges={[
+                "top",
+                "bottom",
+                "left",
+                "right",
+            ]}
+        >
+            {screenContent}
         </SafeAreaView>
     );
 };

@@ -65,7 +65,7 @@ const FarmBoxScreen = ({ navigation }) => {
     const [isLoadingDbFarm, setIsLoadingDbFarm] = useState(false);
     const [isLoadingMapData, setIsLoadingMapData] = useState(false);
 
-    const formatNumber = useCallback((value, decimals = 2) => {
+    const formatNumber = useCallback((value, decimals = 0) => {
         const number = Number(value || 0);
 
         return number.toLocaleString("pt-BR", {
@@ -518,19 +518,35 @@ const FarmBoxScreen = ({ navigation }) => {
                     </View>
 
                     <View style={styles.heroStatsRow}>
-                        {summaryStats.map((item) => (
-                            <View key={item.key} style={styles.heroStatItem}>
-                                <Text style={styles.heroStatValue}>{item.value}</Text>
-                                <Text style={styles.heroStatLabel}>{item.label}</Text>
-                            </View>
-                        ))}
+                        {summaryStats.map((item, index) => {
+                            const isLast =
+                                index === summaryStats.length - 1;
+
+                            return (
+                                <View
+                                    key={item.key}
+                                    style={[
+                                        styles.heroStatItem,
+                                        !isLast &&
+                                        styles.heroStatItemDivider,
+                                    ]}
+                                >
+                                    <Text style={styles.heroStatValue}>
+                                        {item.value}
+                                    </Text>
+
+                                    <Text style={styles.heroStatLabel}>
+                                        {item.label}
+                                    </Text>
+                                </View>
+                            );
+                        })}
                     </View>
                 </View>
 
                 <View style={styles.sectionHeader}>
                     <View>
-                        <Text style={styles.sectionEyebrow}>FAZENDAS</Text>
-                        <Text style={styles.sectionTitle}>Fazendas em aberto</Text>
+                        <Text style={styles.sectionTitle}>Fazendas com Aplicações</Text>
                     </View>
 
                     <View style={styles.resultBadge}>
@@ -746,15 +762,24 @@ const styles = StyleSheet.create({
 
     heroStatsRow: {
         marginTop: 12,
-        paddingTop: 10,
+        paddingTop: 12,
         flexDirection: "row",
-        borderTopWidth: StyleSheet.hairlineWidth,
-        borderTopColor: "rgba(255,255,255,0.18)",
+
+        borderTopWidth: 1,
+        borderTopColor: "rgba(255,255,255,0.36)",
     },
 
     heroStatItem: {
         flex: 1,
+        minHeight: 40,
         alignItems: "center",
+        justifyContent: "center",
+        paddingHorizontal: 5,
+    },
+
+    heroStatItemDivider: {
+        borderRightWidth: 1,
+        borderRightColor: "rgba(255,255,255,0.30)",
     },
 
     heroStatValue: {
@@ -814,8 +839,8 @@ const styles = StyleSheet.create({
         paddingHorizontal: 13,
         paddingVertical: 12,
         borderRadius: 18,
-        borderWidth: StyleSheet.hairlineWidth,
-        borderColor: "rgba(15,23,42,0.08)",
+        borderWidth: 3,
+        borderColor: Colors.primary100,
         backgroundColor: "#FFFFFF",
         shadowColor: "#0F172A",
         shadowOpacity: Platform.OS === "ios" ? 0.06 : 0,
@@ -976,7 +1001,7 @@ const styles = StyleSheet.create({
     fab: {
         position: "absolute",
         right: 18,
-        bottom: Platform.OS === 'android'? 20 : 96,
+        bottom: Platform.OS === 'android' ? 20 : 96,
         width: 50,
         height: 50,
         borderRadius: 25,
