@@ -27,11 +27,45 @@ const formatNumber = (number) =>
     maximumFractionDigits: 2,
   });
 
-const formatDoseNumber = (number) =>
-  Number(number || 0).toLocaleString("pt-BR", {
-    minimumFractionDigits: 3,
-    maximumFractionDigits: 3,
+const formatDoseNumber = (value) => {
+  const number = Number(value || 0);
+
+  if (!Number.isFinite(number)) {
+    return "0";
+  }
+
+  /*
+   * Dose igual ou maior que 10:
+   * sem casas decimais.
+   *
+   * Dose abaixo de 10:
+   * mantém três casas.
+   */
+  return number.toLocaleString("pt-BR", {
+    minimumFractionDigits: number >= 10 ? 0 : 3,
+    maximumFractionDigits: number >= 10 ? 0 : 3,
   });
+};
+
+const formatQuantityNumber = (value) => {
+  const number = Number(value || 0);
+
+  if (!Number.isFinite(number)) {
+    return "0";
+  }
+
+  /*
+   * Quantidade igual ou maior que 10:
+   * sem casas decimais.
+   *
+   * Quantidade abaixo de 10:
+   * mantém duas casas.
+   */
+  return number.toLocaleString("pt-BR", {
+    minimumFractionDigits: number >= 10 ? 0 : 2,
+    maximumFractionDigits: number >= 10 ? 0 : 2,
+  });
+};
 
 const formatDate = (value) => {
   if (!value) return "-";
@@ -409,9 +443,9 @@ const buildProductRows = (
           </div>
 
           <div class="product-quantity">
-            ${formatNumber(
-        product?.quantidadeSolicitada
-      )}
+            ${formatQuantityNumber(
+              product?.quantidadeSolicitada
+            )}
           </div>
         </div>
       `;
@@ -964,6 +998,10 @@ export const createApplicationPdfMap =
                 <div class="observations-lines">
                   <div></div>
                   <div></div>
+                  <div></div>
+                  <div></div>
+                  <div></div>
+                  <div></div>
                 </div>
               </section>
             </section>
@@ -994,7 +1032,10 @@ export const createApplicationPdfMap =
           <style>
             @page {
               size: A4 landscape;
-              margin: 7mm;
+              margin-top: 15px;
+              margin-right: 7mm;
+              margin-bottom: 7mm;
+              margin-left: 7mm;
             }
 
             * {
@@ -1008,6 +1049,8 @@ export const createApplicationPdfMap =
 
               margin: 0;
               padding: 0;
+
+              display: flow-root;
             }
 
             body {
@@ -1029,26 +1072,34 @@ export const createApplicationPdfMap =
                 exact;
             }
 
-            .application-page {
-              width: 100%;
-              height: 195mm;
-              max-height: 195mm;
+           .application-page {
+  width: 100%;
 
-              display: flex;
-              flex-direction: column;
+  /*
+   * Espaço visível acima do container.
+   * É mais confiável que o margin-top do @page no expo-print.
+   */
+  margin-top: 10px;
 
-              overflow: hidden;
+  /*
+   * Desconta a margem superior para não estourar
+   * a altura da página e cortar a parte inferior.
+   */
+  height: calc(195mm - 10px);
+  max-height: calc(195mm - 10px);
 
-              border:
-                1px solid #cbd5e1;
+  display: flex;
+  flex-direction: column;
 
-              background: #ffffff;
+  overflow: hidden;
 
-              page-break-after:
-                always;
+  border: 1px solid #cbd5e1;
 
-              break-after: page;
-            }
+  background: #ffffff;
+
+  page-break-after: always;
+  break-after: page;
+}
 
             .application-page:last-of-type {
               page-break-after: auto;
@@ -1382,10 +1433,10 @@ export const createApplicationPdfMap =
             }
 
             .parcel-table-row {
-              min-height: 15px;
-              height: 15px;
+              min-height: 16px;
+              height: auto;
 
-              padding: 1px 3px;
+              padding: 2px 3px;
 
               border-bottom:
                 1px solid #e2e8f0;
@@ -1393,7 +1444,13 @@ export const createApplicationPdfMap =
               color: #334155;
 
               font-size: 5.3px;
-              line-height: 1;
+              line-height: 1.2;
+            }
+
+            .parcel-table-row > div {
+              display: flex;
+              align-items: center;
+              min-height: 12px;
             }
 
             .parcel-table-row-even {
@@ -1429,17 +1486,21 @@ export const createApplicationPdfMap =
             }
 
             .parcel-table-variety {
-              min-width: 0;
+            min-width: 0;
 
-              overflow: hidden;
+            overflow: hidden;
 
-              color: #475569;
+            color: #475569;
 
-              text-overflow:
-                ellipsis;
+            font-size: 4.5px;
+            line-height: 1.2;
 
-              white-space: nowrap;
-            }
+            text-overflow: ellipsis;
+            white-space: nowrap;
+
+            padding-top: 1px;
+            padding-bottom: 1px;
+          }
 
             .parcel-table-applied {
               color: #166534;
@@ -1452,34 +1513,35 @@ export const createApplicationPdfMap =
               display: grid;
 
               grid-template-columns:
-                20%
-                22%
+                17%
+                18%
                 minmax(0, 1fr)
-                17%;
+                14%;
 
               align-items: center;
+
+              column-gap: 2px;
             }
 
             .product-header {
-              flex: 0 0 20px;
+  flex: 0 0 18px;
 
-              padding: 3px 5px;
+  padding: 2px 4px;
 
-              border-bottom:
-                1px solid #cbd5e1;
+  border-bottom:
+    1px solid #cbd5e1;
 
-              background: #f1f5f9;
+  background: #f1f5f9;
 
-              color: #475569;
+  color: #475569;
 
-              font-size: 5.8px;
-              font-weight: 700;
+  font-size: 5px;
+  font-weight: 700;
 
-              letter-spacing: 0.1px;
+  letter-spacing: 0;
 
-              text-transform:
-                uppercase;
-            }
+  text-transform: uppercase;
+}
 
             .product-header
               > div:last-child {
@@ -1494,21 +1556,26 @@ export const createApplicationPdfMap =
             }
 
             .product-row {
-              min-height: 22px;
+              min-height: 20px;
 
-              padding: 3px 5px;
+              padding: 2px 4px;
 
               border-bottom:
                 1px solid #e2e8f0;
 
-              font-size: 6.8px;
+              font-size: 6px;
+              line-height: 1.05;
             }
 
             .product-dose {
+              min-width: 0;
+
               display: flex;
               align-items: baseline;
 
-              gap: 2px;
+              gap: 1px;
+
+              font-size: 5.8px;
 
               font-variant-numeric:
                 tabular-nums;
@@ -1518,38 +1585,56 @@ export const createApplicationPdfMap =
 
             .product-dose span {
               color: #64748b;
-              font-size: 5.6px;
+              font-size: 4.8px;
             }
 
             .product-type,
             .product-name {
               min-width: 0;
 
+              padding-right: 2px;
+
               overflow: hidden;
 
-              padding-right: 4px;
+              white-space: normal;
 
-              text-overflow:
-                ellipsis;
+              overflow-wrap: anywhere;
 
-              white-space: nowrap;
+              word-break: normal;
+
+              display: -webkit-box;
+
+              -webkit-box-orient: vertical;
+              -webkit-line-clamp: 2;
             }
 
-            .product-name {
-              color: #111827;
-              font-weight: 700;
-            }
 
             .product-quantity {
+              min-width: 0;
+
               justify-self: end;
 
               color: #111827;
+
+              font-size: 5.8px;
               font-weight: 700;
 
               font-variant-numeric:
                 tabular-nums;
 
               white-space: nowrap;
+            }
+              .product-type {
+              color: #475569;
+              font-size: 5.2px;
+              line-height: 1.05;
+            }
+
+            .product-name {
+              color: #111827;
+              font-size: 5.8px;
+              line-height: 1.05;
+              font-weight: 700;
             }
 
             .map-panel {
@@ -1600,20 +1685,20 @@ export const createApplicationPdfMap =
             }
 
             .plot-map-image {
-  display: block;
+              display: block;
 
-  width: auto;
-  height: auto;
+              width: auto;
+              height: auto;
 
-  max-width: 100%;
-  max-height: 100%;
+              max-width: 100%;
+              max-height: 100%;
 
-  object-fit: contain;
-  object-position: center;
-}
+              object-fit: contain;
+              object-position: center;
+            }
 
             .observations-section {
-              flex: 0 0 34px;
+              flex: 0 0 102px;
 
               display: grid;
 
@@ -1622,7 +1707,7 @@ export const createApplicationPdfMap =
 
               align-items: stretch;
 
-              padding: 3px 6px;
+              padding: 5px 8px;
 
               border-top:
                 1px solid #cbd5e1;
@@ -1634,7 +1719,7 @@ export const createApplicationPdfMap =
               display: flex;
               align-items: flex-start;
 
-              padding-top: 1px;
+              padding-top: 2px;
 
               color: #111827;
               font-size: 7px;
@@ -1643,22 +1728,19 @@ export const createApplicationPdfMap =
             .observations-lines {
               display: flex;
               flex-direction: column;
-              justify-content:
-                space-around;
+              justify-content: space-between;
 
-              padding: 1px 3px;
+              padding: 3px 4px;
 
-              border:
-                1px dashed #94a3b8;
-
-              border-radius: 3px;
+              border: 0;
+              border-radius: 0;
             }
 
             .observations-lines div {
-              height: 1px;
+              height: 14px;
 
               border-bottom:
-                1px solid #e2e8f0;
+                1px solid #dbe3ec;
             }
 
             @media print {

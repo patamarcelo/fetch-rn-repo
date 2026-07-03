@@ -7,7 +7,8 @@ import {
     Pressable,
     ActivityIndicator,
     Alert,
-    Platform
+    Platform,
+    Image
 } from "react-native";
 
 import { useState, useEffect, useMemo } from "react";
@@ -69,6 +70,63 @@ const FilterModalApps = (props) => {
         pdf: false,
         pdfMap: false,
     });
+
+    const iconDict = [
+        {
+            cultura: "Feijão",
+            icon: require("../../utils/assets/icons/beans2.png"),
+        },
+        {
+            cultura: "Arroz",
+            icon: require("../../utils/assets/icons/rice.png"),
+        },
+        {
+            cultura: "Soja",
+            icon: require("../../utils/assets/icons/soy.png"),
+        },
+        {
+            cultura: undefined,
+            icon: require("../../utils/assets/icons/question.png"),
+        },
+    ];
+
+    const normalizeCultura = (value) => {
+        return String(value || "")
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .trim()
+            .toLowerCase();
+    };
+
+    const getCardCultura = (card) => {
+        /*
+         * Cards normais normalmente possuem cultura diretamente.
+         * Nos consolidados, tenta localizar dentro das APs originais.
+         */
+        return (
+            card?.cultura ||
+            card?.culture ||
+            card?.aps?.find((ap) => ap?.cultura)?.cultura ||
+            card?.aps?.find((ap) => ap?.culture)?.culture ||
+            null
+        );
+    };
+
+    const getCulturaIcon = (card) => {
+        const cultura = normalizeCultura(
+            getCardCultura(card)
+        );
+
+        const foundIcon = iconDict.find(
+            (item) =>
+                normalizeCultura(item.cultura) === cultura
+        );
+
+        return (
+            foundIcon?.icon ||
+            iconDict[iconDict.length - 1].icon
+        );
+    };
 
     const localLoading = loading.pdfMap;
 
@@ -379,13 +437,38 @@ const FilterModalApps = (props) => {
                                 ]}
                             >
                                 <View style={styles.cardContent}>
-                                    <Text style={styles.apTitle}>
-                                        {renderTitle(card)}
-                                    </Text>
+                                    <View style={styles.cardTitleRow}>
+                                        <View style={styles.cultureIconContainer}>
+                                            <Image
+                                                source={getCulturaIcon(card)}
+                                                style={styles.cultureIcon}
+                                            />
+                                        </View>
 
-                                    <Text style={styles.opTitle}>
-                                        {renderSubtitle(card)}
-                                    </Text>
+                                        <View style={styles.cardTextContainer}>
+                                            <Text
+                                                style={styles.apTitle}
+                                                numberOfLines={1}
+                                            >
+                                                {renderTitle(card)}
+                                            </Text>
+
+                                            <Text
+                                                style={styles.opTitle}
+                                                numberOfLines={
+                                                    card?.isConsolidated ? 2 : 1
+                                                }
+                                            >
+                                                {renderSubtitle(card)}
+                                            </Text>
+
+                                            {!!getCardCultura(card) && (
+                                                <Text style={styles.cultureName}>
+                                                    {getCardCultura(card)}
+                                                </Text>
+                                            )}
+                                        </View>
+                                    </View>
                                 </View>
 
                                 <View style={styles.cardRight}>
@@ -646,5 +729,35 @@ const styles = StyleSheet.create({
         marginLeft: 6,
         color: "white",
         fontWeight: "bold",
+    },
+    cardTitleRow: {
+        flexDirection: "row",
+        alignItems: "center",
+    },
+
+    cultureIconContainer: {
+        width: 36,
+        height: 36,
+        marginRight: 10,
+        alignItems: "center",
+        justifyContent: "center",
+    },
+
+    cultureIcon: {
+        width: 28,
+        height: 28,
+        resizeMode: "contain",
+    },
+
+    cardTextContainer: {
+        flex: 1,
+        minWidth: 0,
+    },
+
+    cultureName: {
+        marginTop: 3,
+        color: Colors.secondary[600],
+        fontSize: 10,
+        fontWeight: "700",
     },
 });
