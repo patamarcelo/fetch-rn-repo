@@ -34,6 +34,13 @@ const CULTURE_PRESETS = {
 		border: "rgba(161, 98, 7, 0.45)",
 		icon: require("../../utils/assets/icons/beans2.png"),
 	},
+	Milho: {
+		label: "Milho",
+		color: "#EAB308",
+		bg: "rgba(234, 179, 8, 0.16)",
+		border: "rgba(234, 179, 8, 0.48)",
+		icon: require("../../utils/assets/icons/corn.png"),
+	},
 	default: {
 		label: "Cultura",
 		color: "#94A3B8",

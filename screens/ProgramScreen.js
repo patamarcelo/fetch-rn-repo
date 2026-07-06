@@ -211,30 +211,65 @@ const ProgramScreen = ({ navigation }) => {
 		navigation.setOptions({
 			headerShadowVisible: false,
 
+			/*
+			 * Força o header a não usar aparência translúcida/blur no iOS.
+			 */
+			headerTransparent: false,
+
+			headerStyle: {
+				backgroundColor: Colors.primary[901],
+			},
+
+			headerBackground: () => (
+				<View
+					style={{
+						flex: 1,
+						backgroundColor: Colors.primary[901],
+					}}
+				/>
+			),
+
+			headerTintColor: "#FFFFFF",
+
+			headerTitleStyle: {
+				color: "#FFFFFF",
+				fontWeight: "900",
+			},
+
+			headerLeftContainerStyle: {
+				paddingLeft: 8,
+				backgroundColor: Colors.primary[901],
+			},
+
+			headerRightContainerStyle: {
+				paddingRight: 8,
+				backgroundColor: Colors.primary[901],
+			},
+
 			title: programSelected
 				? programSelected.nome_fantasia
 					?.replace("Programa", "")
 					?.replace("Aplicação ", "")
 				: "Programas",
 
-			headerLeft: ({ tintColor }) => (
+			headerLeft: () => (
 				<Pressable
 					onPress={handleOpenDrawer}
 					hitSlop={12}
 					style={({ pressed }) => [
-						styles.headerIconButton,
-						pressed && styles.headerIconButtonPressed,
+						styles.headerIconButtonForced,
+						pressed && styles.headerIconButtonForcedPressed,
 					]}
 				>
 					<Ionicons
 						name="menu-outline"
-						size={28}
-						color={tintColor}
+						size={30}
+						color="#FFFFFF"
 					/>
 				</Pressable>
 			),
 
-			headerRight: ({ tintColor }) => {
+			headerRight: () => {
 				if (!hasProgramSelected) {
 					return null;
 				}
@@ -245,25 +280,36 @@ const ProgramScreen = ({ navigation }) => {
 						disabled={isPrinting}
 						hitSlop={12}
 						style={({ pressed }) => [
-							styles.headerIconButton,
-							pressed && !isPrinting && styles.headerIconButtonPressed,
+							styles.headerIconButtonForced,
+							pressed &&
+							!isPrinting &&
+							styles.headerIconButtonForcedPressed,
 							isPrinting && styles.headerIconButtonLoading,
 						]}
 					>
 						{isPrinting ? (
-							<ActivityIndicator size="small" color={tintColor} />
+							<ActivityIndicator
+								size="small"
+								color="#FFFFFF"
+							/>
 						) : (
 							<FontAwesome5
 								name="print"
 								size={20}
-								color={tintColor}
+								color="#FFFFFF"
 							/>
 						)}
 					</Pressable>
 				);
 			},
 		});
-	}, [navigation, programSelected, isPrinting, dataProgram, areaTotalPrograms]);
+	}, [
+		navigation,
+		programSelected,
+		isPrinting,
+		dataProgram,
+		areaTotalPrograms,
+	]);
 
 	const scrollToTopRef = useRef({
 		scrollToTop: () => {
@@ -409,7 +455,7 @@ const ProgramScreen = ({ navigation }) => {
 
 					setIsSheetOpen(false);
 				}}
-				backgroundStyle={{ backgroundColor: Colors.primary[901]}}
+				backgroundStyle={{ backgroundColor: Colors.primary[901] }}
 				handleIndicatorStyle={{ backgroundColor: "#fff" }}
 			>
 				<BottomSheetScrollView
@@ -532,8 +578,19 @@ const styles = StyleSheet.create({
 		borderRadius: 21,
 		alignItems: "center",
 		justifyContent: "center",
-		backgroundColor: "transparent",
+
+		backgroundColor: "rgba(255,255,255,0.12)",
+
+		borderWidth: 1,
+		borderColor: "rgba(255,255,255,0.28)",
+
 		marginTop: 2,
+	},
+
+	headerIconButtonPressed: {
+		backgroundColor: "rgba(255,255,255,0.22)",
+		borderColor: "rgba(255,255,255,0.42)",
+		transform: [{ scale: 0.96 }],
 	},
 
 	headerIconButtonPressed: {

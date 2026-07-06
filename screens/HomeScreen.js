@@ -24,6 +24,7 @@ import { farmsSelected, selectDataPlantio } from "../store/redux/selector";
 
 import { Colors } from "../constants/styles";
 import IconButton from "../components/ui/IconButton";
+import { Ionicons, FontAwesome5 } from "@expo/vector-icons";
 import { useEffect, useState, useLayoutEffect, useRef, useCallback, useMemo } from "react";
 
 import FarmScreen from "./FarmsScreen";
@@ -1223,9 +1224,48 @@ const HomeScreen = ({ navigation }) => {
 
 	useEffect(() => {
 		navigation.setOptions({
+			headerTransparent: false,
+			headerShadowVisible: false,
+
+			headerStyle: {
+				backgroundColor: Colors.primary[901],
+			},
+
+			headerBackground: () => (
+				<View
+					style={{
+						flex: 1,
+						backgroundColor: Colors.primary[901],
+					}}
+				/>
+			),
+
+			headerTintColor: "#FFFFFF",
+
+			headerTitleStyle: {
+				color: "#FFFFFF",
+				fontWeight: "900",
+			},
+
+			headerLeftContainerStyle: {
+				paddingLeft: 8,
+				overflow: "visible",
+			},
+
+			headerRightContainerStyle: {
+				paddingRight: 8,
+				overflow: "visible",
+			},
+
 			headerTitle: () => (
 				<View style={{ alignItems: "center" }}>
-					<Text style={{ fontSize: 16, fontWeight: "bold", color: "whitesmoke" }}>
+					<Text
+						style={{
+							fontSize: 16,
+							fontWeight: "bold",
+							color: "#FFFFFF",
+						}}
+					>
 						{farmTitle
 							.replace("Projeto ", "")
 							.replace("Benção ", "B. ")
@@ -1233,86 +1273,159 @@ const HomeScreen = ({ navigation }) => {
 					</Text>
 
 					{selFarm && (
-						<Text style={{ fontSize: 9, color: Colors.secondary[200] }}>
+						<Text
+							style={{
+								fontSize: 9,
+								color: Colors.secondary[200],
+							}}
+						>
 							{formatNumberBr(totalCalcArea)} Há
 						</Text>
 					)}
 				</View>
 			),
+
 			tabBarLabel: "Programações",
-			headerLeft: ({ tintColor }) => {
+
+			headerLeft: () => {
 				if (!selFarm) return null;
 
 				return (
-					<View style={{ flexDirection: "row" }}>
-						<IconButton
-							type="awesome"
-							icon="filter"
-							color="#3d8bfd"
-							size={22}
+					<View
+						style={{
+							flexDirection: "row",
+							alignItems: "center",
+							gap: 6,
+						}}
+					>
+						<Pressable
 							onPress={handlerFarms}
-							btnStyles={{ marginTop: 10 }}
-						/>
+							hitSlop={10}
+							style={({ pressed }) => [
+								styles.headerActionButton,
+								styles.headerActionButtonActive,
+								pressed && styles.headerActionButtonPressed,
+							]}
+						>
+							<FontAwesome5
+								name="filter"
+								size={17}
+								color="#FFFFFF"
+							/>
+						</Pressable>
 
-						<IconButton
-							type=""
-							icon="close-circle-outline"
-							color={tintColor}
-							size={22}
+						<Pressable
 							onPress={handleClear}
-							btnStyles={{ marginLeft: 5, marginTop: 10 }}
-						/>
+							hitSlop={10}
+							style={({ pressed }) => [
+								styles.headerActionButton,
+								styles.headerActionButtonDanger,
+								pressed && styles.headerActionButtonPressed,
+							]}
+						>
+							<Ionicons
+								name="close-circle-outline"
+								size={23}
+								color="#FFFFFF"
+							/>
+						</Pressable>
 					</View>
 				);
 			},
-			headerRight: ({ tintColor }) => (
-				<View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
+
+			headerRight: () => (
+				<View
+					style={{
+						flexDirection: "row",
+						alignItems: "center",
+						gap: 6,
+					}}
+				>
 					{selFarm && listToCardApp.length > 0 && (
 						<>
 							{isPrinting ? (
-								<View style={styles.headerPrintLoading}>
-									<ActivityIndicator size="small" color={tintColor} />
+								<View
+									style={[
+										styles.headerActionButton,
+										styles.headerActionButtonDisabled,
+									]}
+								>
+									<ActivityIndicator
+										size="small"
+										color="#FFFFFF"
+									/>
 								</View>
 							) : (
-								<IconButton
-									type="awesome"
-									icon="print"
-									color={tintColor}
-									size={22}
+								<Pressable
 									onPress={handlerPrintData}
-									btnStyles={{ marginLeft: 5, marginTop: 10 }}
-								/>
+									hitSlop={10}
+									style={({ pressed }) => [
+										styles.headerActionButton,
+										pressed && styles.headerActionButtonPressed,
+									]}
+								>
+									<Ionicons
+										name="print-outline"
+										size={22}
+										color="#FFFFFF"
+									/>
+								</Pressable>
 							)}
 
-							<IconButton
-								type="awesome"
-								icon={!filterByDate ? "sort-alpha-asc" : "sort-alpha-desc"}
-								color="green"
-								size={18}
+							<Pressable
 								onPress={handlerSortData}
-								btnStyles={{ marginLeft: 5, marginTop: 10 }}
-							/>
+								hitSlop={10}
+								style={({ pressed }) => [
+									styles.headerActionButton,
+									styles.headerActionButtonSuccess,
+									pressed && styles.headerActionButtonPressed,
+								]}
+							>
+								<Ionicons
+									name={
+										!filterByDate
+											? "swap-vertical-outline"
+											: "swap-vertical"
+									}
+									size={22}
+									color="#FFFFFF"
+								/>
+							</Pressable>
 						</>
 					)}
 
-					<IconButton
-						type="awesome"
-						icon="calendar"
-						color={date ? "#3d8bfd" : tintColor}
-						size={22}
+					<Pressable
 						onPress={handlerOpenCalendar}
-						btnStyles={{ marginTop: 10 }}
-					/>
+						hitSlop={10}
+						style={({ pressed }) => [
+							styles.headerActionButton,
+							date && styles.headerActionButtonActive,
+							pressed && styles.headerActionButtonPressed,
+						]}
+					>
+						<Ionicons
+							name="calendar-outline"
+							size={22}
+							color="#FFFFFF"
+						/>
+					</Pressable>
 
 					{date && (
-						<IconButton
-							type=""
-							icon="close-circle"
-							color="whitesmoke"
-							size={22}
+						<Pressable
 							onPress={handleClearDate}
-							btnStyles={{ marginTop: 10 }}
-						/>
+							hitSlop={10}
+							style={({ pressed }) => [
+								styles.headerActionButton,
+								styles.headerActionButtonDanger,
+								pressed && styles.headerActionButtonPressed,
+							]}
+						>
+							<Ionicons
+								name="close-circle-outline"
+								size={23}
+								color="#FFFFFF"
+							/>
+						</Pressable>
 					)}
 				</View>
 			),
@@ -1329,7 +1442,7 @@ const HomeScreen = ({ navigation }) => {
 		selectedCiclo,
 		selectedCultura,
 		selectedVariedade,
-		isPrinting
+		isPrinting,
 	]);
 
 	useScrollToTop(ref);
@@ -1985,6 +2098,46 @@ const styles = StyleSheet.create({
 		height: 32,
 		alignItems: "center",
 		justifyContent: "center",
+	},
+	headerActionButton: {
+		width: 36,
+		height: 36,
+		borderRadius: 18,
+		alignItems: "center",
+		justifyContent: "center",
+
+		backgroundColor: "rgba(255,255,255,0.12)",
+
+		borderWidth: 1,
+		borderColor: "rgba(255,255,255,0.28)",
+
+		overflow: "hidden",
+		marginTop: 0,
+	},
+
+	headerActionButtonPressed: {
+		backgroundColor: "rgba(255,255,255,0.22)",
+		borderColor: "rgba(255,255,255,0.42)",
+		transform: [{ scale: 0.96 }],
+	},
+
+	headerActionButtonActive: {
+		backgroundColor: "rgba(61,139,253,0.22)",
+		borderColor: "rgba(61,139,253,0.55)",
+	},
+
+	headerActionButtonDanger: {
+		backgroundColor: "rgba(239,68,68,0.18)",
+		borderColor: "rgba(239,68,68,0.45)",
+	},
+
+	headerActionButtonSuccess: {
+		backgroundColor: "rgba(34,197,94,0.18)",
+		borderColor: "rgba(34,197,94,0.46)",
+	},
+
+	headerActionButtonDisabled: {
+		opacity: 0.65,
 	},
 });
 

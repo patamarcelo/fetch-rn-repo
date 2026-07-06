@@ -63,6 +63,7 @@ const CULTURE_ICONS = {
 	"feijão": require("../../utils/assets/icons/beans2.png"),
 	arroz: require("../../utils/assets/icons/rice.png"),
 	soja: require("../../utils/assets/icons/soy.png"),
+	milho: require("../../utils/assets/icons/corn.png"),
 };
 
 const getCultureIconSource = (culture) => {

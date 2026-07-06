@@ -43,6 +43,11 @@ const cropIconDict = [
         icon: require("../../utils/assets/icons/soy.png"),
         alt: "soja",
     },
+    {
+        keys: ["milho"],
+        icon: require("../../utils/assets/icons/corn.png"),
+        alt: "milho",
+    },
 ];
 
 const fallbackCropIcon = require("../../utils/assets/icons/question.png");

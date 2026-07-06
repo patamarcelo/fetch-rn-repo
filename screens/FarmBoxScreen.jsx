@@ -19,7 +19,10 @@ import {
     useRef,
 } from "react";
 
-import { useScrollToTop } from "@react-navigation/native";
+import {
+    useScrollToTop,
+    useFocusEffect,
+} from "@react-navigation/native";
 
 import { Colors } from "../constants/styles";
 
@@ -50,8 +53,8 @@ import { CUSTOM_TAB_BAR_CONTENT_PADDING } from "../constants/layout";
 
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-const FILTERS_ACCORDION_STORAGE_KEY =
-    "@farmbox_filters_accordion_expanded";
+const FARMBOX_FILTERS_STORAGE_KEY =
+    "@farmbox_filters_shared_state";
 
 
 
@@ -291,52 +294,110 @@ const FarmBoxScreen = ({ navigation }) => {
         triggerHeavyHaptic,
     ]);
 
+    useFocusEffect(
+        useCallback(() => {
+            let isActive = true;
 
-    useEffect(() => {
-        const loadAccordionPreference = async () => {
-            try {
-                const savedValue = await AsyncStorage.getItem(
-                    FILTERS_ACCORDION_STORAGE_KEY
-                );
+            const loadSharedFilters = async () => {
+                try {
+                    const savedValue =
+                        await AsyncStorage.getItem(
+                            FARMBOX_FILTERS_STORAGE_KEY
+                        );
 
-                if (savedValue === "true" || savedValue === "false") {
-                    setIsFiltersExpanded(savedValue === "true");
+                    if (!savedValue) {
+                        if (isActive) {
+                            setHasLoadedAccordionPreference(true);
+                        }
+
+                        return;
+                    }
+
+                    let savedFilters = {};
+
+                    try {
+                        savedFilters = JSON.parse(savedValue);
+                    } catch {
+                        savedFilters = {};
+                    }
+
+                    if (!isActive) {
+                        return;
+                    }
+
+                    setSelectedSafra(
+                        savedFilters?.selectedSafra ?? null
+                    );
+
+                    setSelectedCiclo(
+                        savedFilters?.selectedCiclo !== null &&
+                            savedFilters?.selectedCiclo !== undefined
+                            ? String(savedFilters.selectedCiclo)
+                            : null
+                    );
+
+                    setSelectedCultura(
+                        savedFilters?.selectedCultura ?? null
+                    );
+
+                    setIsFiltersExpanded(
+                        typeof savedFilters?.isFiltersExpanded ===
+                            "boolean"
+                            ? savedFilters.isFiltersExpanded
+                            : false
+                    );
+
+                    setHasLoadedAccordionPreference(true);
+                } catch (error) {
+                    console.log(
+                        "Erro ao carregar filtros compartilhados:",
+                        error
+                    );
+
+                    if (isActive) {
+                        setHasLoadedAccordionPreference(true);
+                    }
                 }
-            } catch (error) {
-                console.log(
-                    "Erro ao carregar preferência dos filtros:",
-                    error
-                );
-            } finally {
-                setHasLoadedAccordionPreference(true);
-            }
-        };
+            };
 
-        loadAccordionPreference();
-    }, []);
+            loadSharedFilters();
+
+            return () => {
+                isActive = false;
+            };
+        }, [])
+    );
 
     useEffect(() => {
         if (!hasLoadedAccordionPreference) {
             return;
         }
 
-        const saveAccordionPreference = async () => {
+        const saveSharedFilters = async () => {
             try {
                 await AsyncStorage.setItem(
-                    FILTERS_ACCORDION_STORAGE_KEY,
-                    String(isFiltersExpanded)
+                    FARMBOX_FILTERS_STORAGE_KEY,
+                    JSON.stringify({
+                        selectedSafra,
+                        selectedCiclo,
+                        selectedCultura,
+                        isFiltersExpanded,
+                    })
                 );
             } catch (error) {
                 console.log(
-                    "Erro ao salvar preferência dos filtros:",
+                    "Erro ao salvar filtros compartilhados:",
                     error
                 );
             }
         };
 
-        saveAccordionPreference();
+        saveSharedFilters();
     }, [
         hasLoadedAccordionPreference,
+        selectedSafra,
+        selectedCiclo,
+        selectedCultura,
         isFiltersExpanded,
     ]);
 
@@ -344,8 +405,29 @@ const FarmBoxScreen = ({ navigation }) => {
         navigation.setOptions({
             title: "FarmBox",
             headerShadowVisible: false,
+            headerTransparent: false,
 
-            headerRight: ({ tintColor }) => (
+            headerStyle: {
+                backgroundColor: Colors.primary[901],
+            },
+
+            headerBackground: () => (
+                <View
+                    style={{
+                        flex: 1,
+                        backgroundColor: Colors.primary[901],
+                    }}
+                />
+            ),
+
+            headerTintColor: "#FFFFFF",
+
+            headerTitleStyle: {
+                color: "#FFFFFF",
+                fontWeight: "900",
+            },
+
+            headerRight: () => (
                 <Pressable
                     onPress={handleUpdateApiData}
                     disabled={isLoadingDbFarm}
@@ -360,7 +442,7 @@ const FarmBoxScreen = ({ navigation }) => {
 
                         pressed &&
                         !isLoadingDbFarm &&
-                        styles.pressed,
+                        styles.headerIconButtonPressed,
 
                         isLoadingDbFarm &&
                         styles.headerIconButtonDisabled,
@@ -369,13 +451,13 @@ const FarmBoxScreen = ({ navigation }) => {
                     {isLoadingDbFarm ? (
                         <ActivityIndicator
                             size="small"
-                            color={tintColor}
+                            color="#FFFFFF"
                         />
                     ) : (
                         <MaterialCommunityIcons
                             name="database-refresh-outline"
                             size={23}
-                            color={tintColor}
+                            color="#FFFFFF"
                         />
                     )}
                 </Pressable>
@@ -1635,12 +1717,24 @@ const styles = StyleSheet.create({
         borderRadius: 20,
         alignItems: "center",
         justifyContent: "center",
+
+        // backgroundColor: "rgba(255,255,255,0.12)",
+
+        // borderWidth: 1,
+        borderColor: "rgba(255,255,255,0.28)",
+
+        marginTop: 2,
+    },
+
+    headerIconButtonPressed: {
+        // backgroundColor: "rgba(255,255,255,0.22)",
+        borderColor: "rgba(255,255,255,0.42)",
+        transform: [{ scale: 0.96 }],
     },
 
     headerIconButtonDisabled: {
         opacity: 0.65,
     },
-
     loadingBanner: {
         flexDirection: "row",
         alignItems: "center",

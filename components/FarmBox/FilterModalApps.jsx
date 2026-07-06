@@ -85,6 +85,10 @@ const FilterModalApps = (props) => {
             icon: require("../../utils/assets/icons/soy.png"),
         },
         {
+            cultura: "Milho",
+            icon: require("../../utils/assets/icons/corn.png"),
+        },
+        {
             cultura: undefined,
             icon: require("../../utils/assets/icons/question.png"),
         },

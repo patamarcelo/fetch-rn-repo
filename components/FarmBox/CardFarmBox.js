@@ -70,9 +70,20 @@ import {
     CUSTOM_TAB_BAR_FAB_BOTTOM,
 } from '../../constans/layout'
 
+import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
+
+const FARMBOX_FILTERS_STORAGE_KEY =
+    "@farmbox_filters_shared_state";
+
 
 const CardFarmBox = ({ route, navigation }) => {
-    const { indexParent, farm } = route.params;
+    const {
+        indexParent,
+        farm,
+        selectedSafra: routeSelectedSafra = null,
+        selectedCiclo: routeSelectedCiclo = null,
+        selectedCultura: routeSelectedCultura = null,
+    } = route?.params || {};
     const { setFarmboxSearchBar, setFarmboxSearchQuery, setFarmBoxData } = geralActions;
 
     const stackNavigator = navigation.getParent();
@@ -110,6 +121,17 @@ const CardFarmBox = ({ route, navigation }) => {
 
     const [viewMode, setViewMode] = useState("normal"); // normal | consolidated
 
+    const [selectedSafra, setSelectedSafra] = useState(null);
+    const [selectedCiclo, setSelectedCiclo] = useState(null);
+    const [selectedCultura, setSelectedCultura] = useState(null);
+
+    const [isFiltersExpanded, setIsFiltersExpanded] =
+        useState(false);
+
+    const [filtersHydrated, setFiltersHydrated] =
+        useState(false);
+
+
     const backgroundColorCard = Platform.OS === "ios" ? "whitesmoke" : "white";
     const cardShareRefs = useRef({});
 
@@ -124,6 +146,86 @@ const CardFarmBox = ({ route, navigation }) => {
             month: '2-digit',
             year: '2-digit',
         });
+    };
+
+    const uniqueSorted = (values = []) => {
+        return Array.from(
+            new Set(
+                values
+                    .filter(
+                        (value) =>
+                            value !== null &&
+                            value !== undefined &&
+                            String(value).trim() !== ""
+                    )
+                    .map((value) =>
+                        String(value).trim()
+                    )
+            )
+        ).sort((first, second) =>
+            first.localeCompare(second, "pt-BR", {
+                numeric: true,
+                sensitivity: "base",
+            })
+        );
+    };
+
+    const getApplicationSafra = (application) => {
+        return String(
+            application?.safra ??
+            application?.safraNome ??
+            application?.safra_nome ??
+            application?.dados?.safra ??
+            ""
+        ).trim();
+    };
+
+    const getApplicationCiclo = (application) => {
+        return String(
+            application?.ciclo ??
+            application?.cicloNome ??
+            application?.ciclo_nome ??
+            application?.dados?.ciclo ??
+            ""
+        ).trim();
+    };
+
+    const getApplicationCultura = (application) => {
+        const directCulture =
+            application?.cultura ??
+            application?.culture ??
+            application?.crop ??
+            application?.dados?.cultura;
+
+        if (
+            directCulture !== null &&
+            directCulture !== undefined &&
+            String(directCulture).trim() !== ""
+        ) {
+            return String(directCulture).trim();
+        }
+
+        const parcelas = Array.isArray(
+            application?.parcelas
+        )
+            ? application.parcelas
+            : [];
+
+        const parcelaWithCulture = parcelas.find(
+            (parcela) =>
+                parcela?.cultura ||
+                parcela?.culture ||
+                parcela?.crop ||
+                parcela?.dados?.cultura
+        );
+
+        return String(
+            parcelaWithCulture?.cultura ??
+            parcelaWithCulture?.culture ??
+            parcelaWithCulture?.crop ??
+            parcelaWithCulture?.dados?.cultura ??
+            ""
+        ).trim();
     };
 
     const normalizeOnlyNumbers = (value) => {
@@ -205,6 +307,103 @@ const CardFarmBox = ({ route, navigation }) => {
             console.log("Erro ao salvar viewMode:", error);
         }
     };
+
+    useEffect(() => {
+        const loadSavedFilters = async () => {
+            try {
+                const savedValue =
+                    await AsyncStorage.getItem(
+                        FARMBOX_FILTERS_STORAGE_KEY
+                    );
+
+                let savedFilters = {};
+
+                if (savedValue) {
+                    try {
+                        savedFilters =
+                            JSON.parse(savedValue);
+                    } catch {
+                        savedFilters = {};
+                    }
+                }
+
+                setSelectedSafra(
+                    savedFilters?.selectedSafra ??
+                    routeSelectedSafra ??
+                    null
+                );
+
+                setSelectedCiclo(
+                    savedFilters?.selectedCiclo !== null &&
+                        savedFilters?.selectedCiclo !== undefined
+                        ? String(savedFilters.selectedCiclo)
+                        : routeSelectedCiclo !== null &&
+                            routeSelectedCiclo !== undefined
+                            ? String(routeSelectedCiclo)
+                            : null
+                );
+
+                setSelectedCultura(
+                    savedFilters?.selectedCultura ??
+                    routeSelectedCultura ??
+                    null
+                );
+
+                setIsFiltersExpanded(
+                    typeof savedFilters?.isFiltersExpanded ===
+                        "boolean"
+                        ? savedFilters.isFiltersExpanded
+                        : false
+                );
+            } catch (error) {
+                console.log(
+                    "Erro ao carregar filtros:",
+                    error
+                );
+            } finally {
+                setFiltersHydrated(true);
+            }
+        };
+
+        loadSavedFilters();
+    }, [
+        routeSelectedCiclo,
+        routeSelectedCultura,
+        routeSelectedSafra,
+    ]);
+
+    useEffect(() => {
+        if (!filtersHydrated) {
+            return;
+        }
+
+        const saveFilters = async () => {
+            try {
+                await AsyncStorage.setItem(
+                    FARMBOX_FILTERS_STORAGE_KEY,
+                    JSON.stringify({
+                        selectedSafra,
+                        selectedCiclo,
+                        selectedCultura,
+                        isFiltersExpanded,
+                    })
+                );
+            } catch (error) {
+                console.log(
+                    "Erro ao salvar filtros:",
+                    error
+                );
+            }
+        };
+
+        saveFilters();
+    }, [
+        filtersHydrated,
+        selectedSafra,
+        selectedCiclo,
+        selectedCultura,
+        isFiltersExpanded,
+    ]);
 
     const sumNumber = (v) => {
         const n = Number(v);
@@ -442,6 +641,183 @@ const CardFarmBox = ({ route, navigation }) => {
         });
     };
 
+    const farmApplications = useMemo(() => {
+        return (Array.isArray(data) ? data : []).filter(
+            (application) =>
+                application?.farmName === farm
+        );
+    }, [data, farm]);
+
+    const filterOptions = useMemo(() => {
+        return {
+            safras: uniqueSorted(
+                farmApplications.map(
+                    getApplicationSafra
+                )
+            ),
+
+            ciclos: uniqueSorted(
+                farmApplications.map(
+                    getApplicationCiclo
+                )
+            ),
+
+            culturas: uniqueSorted(
+                farmApplications.map(
+                    getApplicationCultura
+                )
+            ),
+        };
+    }, [farmApplications]);
+
+    useEffect(() => {
+        if (!filtersHydrated) {
+            return;
+        }
+
+        if (
+            selectedSafra &&
+            !filterOptions.safras.includes(
+                selectedSafra
+            )
+        ) {
+            setSelectedSafra(null);
+        }
+
+        if (
+            selectedCiclo &&
+            !filterOptions.ciclos.includes(
+                String(selectedCiclo)
+            )
+        ) {
+            setSelectedCiclo(null);
+        }
+
+        if (
+            selectedCultura &&
+            !filterOptions.culturas.includes(
+                selectedCultura
+            )
+        ) {
+            setSelectedCultura(null);
+        }
+    }, [
+        filterOptions,
+        filtersHydrated,
+        selectedSafra,
+        selectedCiclo,
+        selectedCultura,
+    ]);
+
+    const hasActiveFilters =
+        !!selectedSafra ||
+        !!selectedCiclo ||
+        !!selectedCultura;
+
+    const activeFiltersCount = [
+        selectedSafra,
+        selectedCiclo,
+        selectedCultura,
+    ].filter(Boolean).length;
+
+    const activeFiltersLabel = [
+        selectedSafra,
+
+        selectedCiclo
+            ? `Ciclo ${selectedCiclo}`
+            : null,
+
+        selectedCultura,
+    ]
+        .filter(Boolean)
+        .join(" • ");
+
+    const handleSelectSafra = (safra) => {
+        Haptics.selectionAsync();
+
+        setSelectedSafra((current) =>
+            current === safra ? null : safra
+        );
+    };
+
+    const handleSelectCiclo = (ciclo) => {
+        Haptics.selectionAsync();
+
+        setSelectedCiclo((current) =>
+            String(current) === String(ciclo)
+                ? null
+                : String(ciclo)
+        );
+    };
+
+    const handleSelectCultura = (cultura) => {
+        Haptics.selectionAsync();
+
+        setSelectedCultura((current) =>
+            current === cultura
+                ? null
+                : cultura
+        );
+    };
+
+    const handleClearFilters = () => {
+        Haptics.impactAsync(
+            Haptics.ImpactFeedbackStyle.Medium
+        );
+
+        setSelectedSafra(null);
+        setSelectedCiclo(null);
+        setSelectedCultura(null);
+    };
+
+    const renderFilterChip = ({
+        key,
+        label,
+        selected,
+        onPress,
+        icon,
+    }) => {
+        return (
+            <Pressable
+                key={key}
+                onPress={onPress}
+                style={({ pressed }) => [
+                    styles.filterChip,
+
+                    selected &&
+                    styles.filterChipSelected,
+
+                    pressed &&
+                    styles.filterChipPressed,
+                ]}
+            >
+                {!!icon && (
+                    <MaterialCommunityIcons
+                        name={icon}
+                        size={12}
+                        color={
+                            selected
+                                ? "#FFFFFF"
+                                : "#64748B"
+                        }
+                    />
+                )}
+
+                <Text
+                    numberOfLines={1}
+                    style={[
+                        styles.filterChipText,
+
+                        selected &&
+                        styles.filterChipTextSelected,
+                    ]}
+                >
+                    {label}
+                </Text>
+            </Pressable>
+        );
+    };
+
     const visibleBaseData = useMemo(() => {
         const raw = Array.isArray(farmData) ? farmData : [];
 
@@ -591,6 +967,7 @@ const CardFarmBox = ({ route, navigation }) => {
         { cultura: "Feijão", icon: require("../../utils/assets/icons/beans2.png"), alt: "feijao" },
         { cultura: "Arroz", icon: require("../../utils/assets/icons/rice.png"), alt: "arroz" },
         { cultura: "Soja", icon: require("../../utils/assets/icons/soy.png"), alt: "soja" },
+        { cultura: "Milho", icon: require("../../utils/assets/icons/corn.png"), alt: "milho" },
         { cultura: undefined, icon: require("../../utils/assets/icons/question.png"), alt: "?" },
     ];
 
@@ -617,14 +994,9 @@ const CardFarmBox = ({ route, navigation }) => {
                 Haptics.ImpactFeedbackStyle.Heavy
             );
 
-            const allApps = (
-                Array.isArray(data)
-                    ? data
-                    : []
-            ).filter(
-                (application) =>
-                    application?.farmName === farm
-            );
+            const allApps = Array.isArray(farmData)
+                ? farmData
+                : [];
 
             if (!allApps.length) {
                 Alert.alert(
@@ -820,7 +1192,7 @@ const CardFarmBox = ({ route, navigation }) => {
             navigation.navigate(
                 "FarmBoxFilterApps",
                 {
-                    data,
+                    data: farmData,
                     farm,
                     viewMode,
                 }
@@ -1133,46 +1505,152 @@ const CardFarmBox = ({ route, navigation }) => {
     };
 
     useEffect(() => {
-        function removeAccents(str) {
-            return str?.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        if (!filtersHydrated) {
+            return;
         }
 
-        const filterApplications = (applications) => {
-            if (searchQuery?.trim() === "") {
-                if (data) {
-                    const newData = data.filter((farmName) => farmName.farmName === farm);
-                    setfarmData(newData);
-                }
-            } else {
-                const filteredData = applications
-                    .filter((farmName) => farmName.farmName === farm)
-                    .filter((data) =>
-                        data.prods.some((prod) => {
-                            const normalizedQuery = removeAccents(searchQuery)?.toLowerCase();
-                            const normalizedQueryNumbers = normalizeOnlyNumbers(searchQuery);
-
-                            const productMatches = removeAccents(prod.product)
-                                ?.toLowerCase()
-                                .includes(normalizedQuery);
-
-                            const farmboxId = formatFarmboxId(getProductFarmboxId(prod));
-                            const farmboxIdNumbers = normalizeOnlyNumbers(farmboxId);
-
-                            const farmboxMatches =
-                                farmboxId.toLowerCase().includes(normalizedQuery) ||
-                                (normalizedQueryNumbers &&
-                                    farmboxIdNumbers.includes(normalizedQueryNumbers));
-
-                            return productMatches || farmboxMatches;
-                        })
-                    );
-
-                setfarmData(filteredData);
-            }
+        const removeAccents = (value) => {
+            return String(value || "")
+                .normalize("NFD")
+                .replace(/[\u0300-\u036f]/g, "");
         };
 
-        filterApplications(data);
-    }, [searchQuery, data]);
+        const normalizedQuery =
+            removeAccents(searchQuery)
+                .trim()
+                .toLowerCase();
+
+        const normalizedQueryNumbers =
+            normalizeOnlyNumbers(searchQuery);
+
+        const filteredData =
+            farmApplications.filter(
+                (application) => {
+                    const applicationSafra =
+                        getApplicationSafra(
+                            application
+                        );
+
+                    const applicationCiclo =
+                        getApplicationCiclo(
+                            application
+                        );
+
+                    const applicationCultura =
+                        getApplicationCultura(
+                            application
+                        );
+
+                    const matchesSafra =
+                        !selectedSafra ||
+                        applicationSafra ===
+                        selectedSafra;
+
+                    const matchesCiclo =
+                        !selectedCiclo ||
+                        applicationCiclo ===
+                        String(selectedCiclo);
+
+                    const matchesCultura =
+                        !selectedCultura ||
+                        normalizeString(
+                            applicationCultura
+                        ) ===
+                        normalizeString(
+                            selectedCultura
+                        );
+
+                    if (
+                        !matchesSafra ||
+                        !matchesCiclo ||
+                        !matchesCultura
+                    ) {
+                        return false;
+                    }
+
+                    if (!normalizedQuery) {
+                        return true;
+                    }
+
+                    const matchesOperation =
+                        removeAccents(
+                            application?.operation
+                        )
+                            .toLowerCase()
+                            .includes(
+                                normalizedQuery
+                            );
+
+                    const matchesCode =
+                        removeAccents(
+                            application?.code
+                        )
+                            .toLowerCase()
+                            .includes(
+                                normalizedQuery
+                            );
+
+                    const matchesProduct = (
+                        Array.isArray(
+                            application?.prods
+                        )
+                            ? application.prods
+                            : []
+                    ).some((product) => {
+                        const productMatches =
+                            removeAccents(
+                                product?.product
+                            )
+                                .toLowerCase()
+                                .includes(
+                                    normalizedQuery
+                                );
+
+                        const farmboxId =
+                            formatFarmboxId(
+                                getProductFarmboxId(
+                                    product
+                                )
+                            );
+
+                        const farmboxMatches =
+                            farmboxId
+                                .toLowerCase()
+                                .includes(
+                                    normalizedQuery
+                                ) ||
+                            (
+                                normalizedQueryNumbers &&
+                                normalizeOnlyNumbers(
+                                    farmboxId
+                                ).includes(
+                                    normalizedQueryNumbers
+                                )
+                            );
+
+                        return (
+                            productMatches ||
+                            farmboxMatches
+                        );
+                    });
+
+                    return (
+                        matchesOperation ||
+                        matchesCode ||
+                        matchesProduct
+                    );
+                }
+            );
+
+        setfarmData(filteredData);
+    }, [
+        farmApplications,
+        filtersHydrated,
+        searchQuery,
+        selectedSafra,
+        selectedCiclo,
+        selectedCultura,
+    ]);
 
     const getData = async () => {
         setIsLoading(true);
@@ -1188,8 +1666,6 @@ const CardFarmBox = ({ route, navigation }) => {
             if (response.status === 200) {
                 const payload = await response.json();
                 dispatch(setFarmBoxData(payload));
-                const newData = payload.data.filter((farmName) => farmName.farmName === farm);
-                setfarmData(newData);
             }
         } catch (error) {
             console.log("erro ao pegar os dados", error);
@@ -1252,6 +1728,260 @@ const CardFarmBox = ({ route, navigation }) => {
                         </Text>
                     </Pressable>
                 </View>
+
+                {(filterOptions.safras.length > 0 ||
+                    filterOptions.ciclos.length > 0 ||
+                    filterOptions.culturas.length > 1) && (
+                        <View style={styles.filtersContainer}>
+                            <Pressable
+                                onPress={() => {
+                                    Haptics.selectionAsync();
+
+                                    setIsFiltersExpanded(
+                                        (current) => !current
+                                    );
+                                }}
+                                style={({ pressed }) => [
+                                    styles.filtersAccordionHeader,
+
+                                    pressed &&
+                                    styles.filterHeaderPressed,
+                                ]}
+                            >
+                                <View style={styles.filtersAccordionLeft}>
+                                    <MaterialCommunityIcons
+                                        name="filter-variant"
+                                        size={17}
+                                        color={
+                                            hasActiveFilters
+                                                ? Colors.primary[700]
+                                                : "#64748B"
+                                        }
+                                    />
+
+                                    <View style={styles.filtersHeaderText}>
+                                        <View style={styles.filtersTitleLine}>
+                                            <Text style={styles.filtersTitle}>
+                                                Filtros
+                                            </Text>
+
+                                            {hasActiveFilters && (
+                                                <View
+                                                    style={
+                                                        styles.activeFiltersCount
+                                                    }
+                                                >
+                                                    <Text
+                                                        style={
+                                                            styles.activeFiltersCountText
+                                                        }
+                                                    >
+                                                        {activeFiltersCount}
+                                                    </Text>
+                                                </View>
+                                            )}
+                                        </View>
+
+                                        <Text
+                                            style={[
+                                                styles.filtersCollapsedText,
+
+                                                hasActiveFilters &&
+                                                styles.filtersCollapsedTextActive,
+                                            ]}
+                                            numberOfLines={1}
+                                        >
+                                            {hasActiveFilters
+                                                ? activeFiltersLabel
+                                                : "Safra, ciclo e cultura"}
+                                        </Text>
+                                    </View>
+                                </View>
+
+                                <View style={styles.filtersAccordionRight}>
+                                    {hasActiveFilters && (
+                                        <Pressable
+                                            onPress={(event) => {
+                                                event.stopPropagation();
+                                                handleClearFilters();
+                                            }}
+                                            hitSlop={8}
+                                            style={
+                                                styles.clearFilterIconButton
+                                            }
+                                        >
+                                            <MaterialCommunityIcons
+                                                name="filter-remove-outline"
+                                                size={18}
+                                                color="#DC2626"
+                                            />
+                                        </Pressable>
+                                    )}
+
+                                    <MaterialCommunityIcons
+                                        name={
+                                            isFiltersExpanded
+                                                ? "chevron-up"
+                                                : "chevron-down"
+                                        }
+                                        size={22}
+                                        color="#64748B"
+                                    />
+                                </View>
+                            </Pressable>
+
+                            {isFiltersExpanded && (
+                                <View style={styles.filtersAccordionContent}>
+                                    {(filterOptions.safras.length > 0 ||
+                                        filterOptions.ciclos.length > 0) && (
+                                            <View
+                                                style={
+                                                    styles.compactFiltersInlineRow
+                                                }
+                                            >
+                                                {filterOptions.safras.length >
+                                                    0 && (
+                                                        <View
+                                                            style={
+                                                                styles.inlineFilterGroup
+                                                            }
+                                                        >
+                                                            <Text
+                                                                style={
+                                                                    styles.inlineFilterLabel
+                                                                }
+                                                            >
+                                                                Safra
+                                                            </Text>
+
+                                                            <View
+                                                                style={
+                                                                    styles.inlineFilterOptions
+                                                                }
+                                                            >
+                                                                {filterOptions.safras.map(
+                                                                    (safra) =>
+                                                                        renderFilterChip(
+                                                                            {
+                                                                                key: `safra-${safra}`,
+
+                                                                                label:
+                                                                                    safra,
+
+                                                                                selected:
+                                                                                    selectedSafra ===
+                                                                                    safra,
+
+                                                                                onPress:
+                                                                                    () =>
+                                                                                        handleSelectSafra(
+                                                                                            safra
+                                                                                        ),
+
+                                                                                icon:
+                                                                                    "calendar-range",
+                                                                            }
+                                                                        )
+                                                                )}
+                                                            </View>
+                                                        </View>
+                                                    )}
+
+                                                {filterOptions.ciclos.length >
+                                                    0 && (
+                                                        <View
+                                                            style={
+                                                                styles.inlineFilterGroup
+                                                            }
+                                                        >
+                                                            <Text
+                                                                style={
+                                                                    styles.inlineFilterLabel
+                                                                }
+                                                            >
+                                                                Ciclo
+                                                            </Text>
+
+                                                            <View
+                                                                style={
+                                                                    styles.inlineFilterOptions
+                                                                }
+                                                            >
+                                                                {filterOptions.ciclos.map(
+                                                                    (ciclo) =>
+                                                                        renderFilterChip(
+                                                                            {
+                                                                                key: `ciclo-${ciclo}`,
+
+                                                                                label:
+                                                                                    ciclo,
+
+                                                                                selected:
+                                                                                    String(
+                                                                                        selectedCiclo
+                                                                                    ) ===
+                                                                                    String(
+                                                                                        ciclo
+                                                                                    ),
+
+                                                                                onPress:
+                                                                                    () =>
+                                                                                        handleSelectCiclo(
+                                                                                            ciclo
+                                                                                        ),
+                                                                            }
+                                                                        )
+                                                                )}
+                                                            </View>
+                                                        </View>
+                                                    )}
+                                            </View>
+                                        )}
+
+                                    {filterOptions.culturas.length > 1 && (
+                                        <View style={styles.cultureFilterRow}>
+                                            <Text
+                                                style={
+                                                    styles.inlineFilterLabel
+                                                }
+                                            >
+                                                Cultura
+                                            </Text>
+
+                                            <View
+                                                style={
+                                                    styles.inlineFilterOptions
+                                                }
+                                            >
+                                                {filterOptions.culturas.map(
+                                                    (cultura) =>
+                                                        renderFilterChip({
+                                                            key: `cultura-${cultura}`,
+
+                                                            label:
+                                                                cultura,
+
+                                                            selected:
+                                                                selectedCultura ===
+                                                                cultura,
+
+                                                            onPress:
+                                                                () =>
+                                                                    handleSelectCultura(
+                                                                        cultura
+                                                                    ),
+
+                                                            icon:
+                                                                "sprout-outline",
+                                                        })
+                                                )}
+                                            </View>
+                                        </View>
+                                    )}
+                                </View>
+                            )}
+                        </View>
+                    )}
 
                 {isLoading && (
                     <View style={styles.customRefreshContainer}>
@@ -2417,5 +3147,174 @@ const styles = StyleSheet.create({
         fontSize: 8.5,
         fontWeight: "800",
         marginLeft: 2,
+    },
+    filtersContainer: {
+        marginHorizontal: 8,
+        marginTop: 6,
+        marginBottom: 6,
+        overflow: "hidden",
+        borderRadius: 12,
+        borderWidth: StyleSheet.hairlineWidth,
+        borderColor: "rgba(15,23,42,0.12)",
+        backgroundColor: "#FFFFFF",
+        elevation: 2,
+    },
+
+    filtersAccordionHeader: {
+        minHeight: 48,
+        paddingHorizontal: 11,
+        paddingVertical: 7,
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "space-between",
+    },
+
+    filterHeaderPressed: {
+        opacity: 0.72,
+    },
+
+    filtersAccordionLeft: {
+        flex: 1,
+        minWidth: 0,
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 8,
+    },
+
+    filtersHeaderText: {
+        flex: 1,
+        minWidth: 0,
+    },
+
+    filtersTitleLine: {
+        flexDirection: "row",
+        alignItems: "center",
+    },
+
+    filtersTitle: {
+        fontSize: 12,
+        fontWeight: "900",
+        color: "#334155",
+    },
+
+    activeFiltersCount: {
+        minWidth: 18,
+        height: 18,
+        marginLeft: 6,
+        paddingHorizontal: 5,
+        borderRadius: 9,
+        alignItems: "center",
+        justifyContent: "center",
+        backgroundColor: Colors.primary[700],
+    },
+
+    activeFiltersCountText: {
+        fontSize: 8.5,
+        fontWeight: "900",
+        color: "#FFFFFF",
+    },
+
+    filtersCollapsedText: {
+        marginTop: 1,
+        fontSize: 9,
+        fontWeight: "700",
+        color: "#94A3B8",
+    },
+
+    filtersCollapsedTextActive: {
+        color: Colors.primary[600],
+    },
+
+    filtersAccordionRight: {
+        marginLeft: 8,
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 4,
+    },
+
+    clearFilterIconButton: {
+        width: 30,
+        height: 30,
+        borderRadius: 15,
+        alignItems: "center",
+        justifyContent: "center",
+        backgroundColor: "#FEF2F2",
+    },
+
+    filtersAccordionContent: {
+        paddingHorizontal: 10,
+        paddingVertical: 7,
+        borderTopWidth: StyleSheet.hairlineWidth,
+        borderTopColor: "rgba(15,23,42,0.08)",
+    },
+
+    compactFiltersInlineRow: {
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "space-between",
+        gap: 8,
+    },
+
+    inlineFilterGroup: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 5,
+    },
+
+    inlineFilterLabel: {
+        fontSize: 8,
+        fontWeight: "900",
+        letterSpacing: 0.2,
+        textTransform: "uppercase",
+        color: "#94A3B8",
+    },
+
+    inlineFilterOptions: {
+        flexDirection: "row",
+        alignItems: "center",
+        flexWrap: "wrap",
+        gap: 4,
+    },
+
+    cultureFilterRow: {
+        marginTop: 7,
+        paddingTop: 7,
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 6,
+        borderTopWidth: StyleSheet.hairlineWidth,
+        borderTopColor: "rgba(15,23,42,0.07)",
+    },
+
+    filterChip: {
+        minHeight: 25,
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: 3,
+        paddingHorizontal: 7,
+        borderRadius: 999,
+        borderWidth: 1,
+        borderColor: "#E2E8F0",
+        backgroundColor: "#F8FAFC",
+    },
+
+    filterChipSelected: {
+        borderColor: Colors.primary[700],
+        backgroundColor: Colors.primary[700],
+    },
+
+    filterChipPressed: {
+        opacity: 0.7,
+    },
+
+    filterChipText: {
+        fontSize: 8.5,
+        fontWeight: "800",
+        color: "#64748B",
+    },
+
+    filterChipTextSelected: {
+        color: "#FFFFFF",
     },
 });

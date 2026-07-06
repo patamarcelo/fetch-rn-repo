@@ -32,6 +32,10 @@ const iconDict = [
         alt: "soja",
     },
     {
+        cultura: "Milho",
+        icon: require("../../utils/assets/icons/corn.png"),
+    },
+    {
         cultura: undefined,
         icon: require("../../utils/assets/icons/question.png"),
         alt: "?",
