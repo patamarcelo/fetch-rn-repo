@@ -2,15 +2,27 @@
 
 set -e
 
+echo "===== Xcode Cloud post clone started ====="
+
+echo "Current directory:"
+pwd
+
 echo "Installing JS dependencies..."
 
 if [ -f yarn.lock ]; then
   yarn install --frozen-lockfile
-else
+elif [ -f package-lock.json ]; then
   npm ci
+else
+  npm install
 fi
 
 echo "Installing CocoaPods dependencies..."
 
 cd ios
-pod install
+pod install --repo-update
+
+echo "Checking generated Pods config:"
+ls -la "Pods/Target Support Files/Pods-FarmAplicaes" || true
+
+echo "===== Xcode Cloud post clone finished ====="
