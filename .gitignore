@@ -89,4 +89,5 @@ yarn-error.*
 # typescript
 *.tsbuildinfo
 
-# @end expo-cli
+# @end expo-cliios/Pods/
+ios/build/
