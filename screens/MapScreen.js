@@ -8,7 +8,7 @@ import * as Location from "expo-location";
 import { newMapArr } from "./plot-helper";
 import BottomSheetApp from "../components/MapComp/BottomSheet";
 import { useSelector } from "react-redux";
-import { selectMapDataPlot } from "../store/redux/selector";
+import { selectPlotMapData } from "../store/redux/selector";
 import Legend from "../components/MapComp/Legends";
 import { Colors } from "../constants/styles";
 
@@ -53,28 +53,28 @@ const MapParcelLabel = memo(function MapParcelLabel({
 	);
 });
 const MapScreen = ({ navigation, route }) => {
-	const mapPlotData = useSelector(selectMapDataPlot);
+	const plotMap = useSelector(selectPlotMapData);
 
 	const mapRef = useRef(null);
 	const refRBSheet = useRef();
 
-	const { data, selectedParcelas = [], apsCodes = [] } = route?.params || {};
+	const {
+		data,
+		selectedParcelas = [],
+		apsCodes = [],
+		mapContext = {},
+		routeMapData = [],
+	} = route?.params || {};
 
 	const [location, setLocation] = useState(null);
 	const [errorMsg, setErrorMsg] = useState(null);
 
-	const [farmName, setFarmName] = useState(null);
-	const [filteredFarmArr, setfilteredFarmArr] = useState([]);
+
 	const [getOperationAp, setGetOperationAp] = useState(null);
 
 	const [isPressed, setIsPressed] = useState(null);
 	const [propsToBottom, setPropsToBottom] = useState({});
-	const [mapCoordsInit, setmapCoordsInit] = useState({
-		latitude: "",
-		latitudeDelta: null,
-		longitude: "",
-		longitudeDelta: null,
-	});
+
 
 	// Modo foco: quando ON, só selecionados mostram cores originais
 	const [focusSelected, setFocusSelected] = useState(false);
@@ -98,10 +98,7 @@ const MapScreen = ({ navigation, route }) => {
 		}, 700);
 	}, []);
 
-	// Set de talhões selecionados (via params)
-	const selectedSet = useMemo(() => {
-		return new Set((selectedParcelas || []).map((p) => String(p.parcela).trim()));
-	}, [selectedParcelas]);
+
 
 	// Totais da seleção (para KPIs/Legend quando focusSelected ON)
 	const totalsSelected = useMemo(() => {
@@ -152,63 +149,6 @@ const MapScreen = ({ navigation, route }) => {
 		parentNavigation?.navigate("HomeStackScreen");
 	};
 
-	// Região inicial baseada nas coords da fazenda
-	useEffect(() => {
-		if (mapPlotData.length > 0 && farmName && data?.ciclo != null) {
-			console.log('ajustando a data aqui')
-			const dataFromMap = newMapArr(mapPlotData);
-			console.log('dataFromMap: ', dataFromMap[0])
-
-			const filteredFarm = dataFromMap
-				.filter((p) => Number(data?.ciclo) === Number(p.ciclo))
-				.filter(
-					(p) =>
-						p.farmName ==
-						farmName.replace("Fazenda", "Projeto").replace("Cacique", "Cacíque")
-				);
-
-			if (filteredFarm.length === 0) {
-				Alert.alert(
-					"Problema para plotar o mapa",
-					"Não existem talhões ativos na consulta.",
-					[{ text: "OK", onPress: () => navigation.goBack() }],
-					{ cancelable: false }
-				);
-				return;
-			}
-
-			const onlyCoords = filteredFarm.map((p) => p.coords);
-
-			const getRegionForCoordinates = (coordinates) => {
-				let minLat, maxLat, minLng, maxLng;
-
-				coordinates.forEach((subArray) => {
-					subArray.forEach((coord) => {
-						const { latitude, longitude } = coord;
-						minLat = minLat !== undefined ? Math.min(minLat, latitude) : latitude;
-						maxLat = maxLat !== undefined ? Math.max(maxLat, latitude) : latitude;
-						minLng = minLng !== undefined ? Math.min(minLng, longitude) : longitude;
-						maxLng = maxLng !== undefined ? Math.max(maxLng, longitude) : longitude;
-					});
-				});
-
-				const latitudeDelta = (maxLat - minLat) * 1.2;
-				const longitudeDelta = (maxLng - minLng) * 1.2;
-
-				return {
-					latitude: (maxLat + minLat) / 2,
-					longitude: (maxLng + minLng) / 2,
-					latitudeDelta,
-					longitudeDelta,
-				};
-			};
-
-			const region = getRegionForCoordinates(onlyCoords);
-			setmapCoordsInit(region);
-			setfilteredFarmArr(filteredFarm);
-		}
-	}, [farmName, data, mapPlotData, navigation]);
-
 	// Operação
 	useEffect(() => {
 		if (!data) return;
@@ -216,12 +156,6 @@ const MapScreen = ({ navigation, route }) => {
 		setGetOperationAp(onlyOp ? onlyOp.product : "Sem Operação");
 	}, [data]);
 
-	// Farm name
-	useEffect(() => {
-		setFarmName(data?.farmName);
-		// se veio seleção, você pode optar por ligar foco por padrão
-		if ((selectedParcelas?.length ?? 0) > 0) setFocusSelected(true);
-	}, [data, selectedParcelas]);
 
 	// Permissão localização
 	useEffect(() => {
@@ -275,8 +209,273 @@ const MapScreen = ({ navigation, route }) => {
 	const handleCloseSheet = () => setIsPressed(null);
 
 	const normalizeTalhao = (value) =>
-		String(value || "").replace(/\s+/g, "").trim().toLowerCase();
+		String(value || "")
+			.replace(/\s+/g, "")
+			.trim()
+			.toLowerCase();
 
+	const normalizeFarmName = (value) =>
+		String(value || "")
+			.replace("Fazenda", "Projeto")
+			.replace("Cacique", "Cacíque")
+			.trim();
+
+	const normalizeSafra = (value) =>
+		String(value ?? "").trim();
+
+	const normalizeCiclo = (value) =>
+		String(value ?? "").trim();
+
+	const getMapItemCiclo = (item) => {
+		return normalizeCiclo(
+			item?.ciclo ??
+			item?.ciclo__ciclo ??
+			item?.cicloNome ??
+			item?.ciclo_nome ??
+			item?.dados?.ciclo
+		);
+	};
+
+	const getMapItemSafra = (item) => {
+		return normalizeSafra(
+			item?.safra ??
+			item?.safra__safra ??
+			item?.safraNome ??
+			item?.safra_nome ??
+			item?.dados?.safra
+		);
+	};
+	const getRawMapFarmId = (item) => {
+		return String(
+			item?.talhao__fazenda__id_farmbox ??
+			item?.farmId ??
+			item?.farm_id ??
+			item?.fazenda_id_farmbox ??
+			item?.dados?.projeto_id_farmbox ??
+			""
+		).trim();
+	};
+
+	const getRawMapSafra = (item) => {
+		return String(
+			item?.safra__safra ??
+			item?.safra ??
+			item?.safraNome ??
+			item?.safra_nome ??
+			item?.dados?.safra ??
+			""
+		).trim();
+	};
+
+	const getRawMapCiclo = (item) => {
+		return String(
+			item?.ciclo__ciclo ??
+			item?.ciclo ??
+			item?.cicloNome ??
+			item?.ciclo_nome ??
+			item?.dados?.ciclo ??
+			""
+		).trim();
+	};
+
+	const getApplicationCiclo = (application) => {
+		return normalizeCiclo(
+			application?.ciclo ??
+			application?.cicloNome ??
+			application?.ciclo_nome ??
+			application?.dados?.ciclo
+		);
+	};
+
+	const getApplicationSafra = (application) => {
+		return normalizeSafra(
+			application?.safra ??
+			application?.safraNome ??
+			application?.safra_nome ??
+			application?.dados?.safra
+		);
+	};
+
+	const getRegionForCoordinates = (coordinates) => {
+		let minLat;
+		let maxLat;
+		let minLng;
+		let maxLng;
+
+		coordinates.forEach((subArray) => {
+			subArray.forEach((coord) => {
+				const latitude = Number(coord.latitude);
+				const longitude = Number(coord.longitude);
+
+				if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+					return;
+				}
+
+				minLat = minLat !== undefined ? Math.min(minLat, latitude) : latitude;
+				maxLat = maxLat !== undefined ? Math.max(maxLat, latitude) : latitude;
+				minLng = minLng !== undefined ? Math.min(minLng, longitude) : longitude;
+				maxLng = maxLng !== undefined ? Math.max(maxLng, longitude) : longitude;
+			});
+		});
+
+		if (
+			minLat === undefined ||
+			maxLat === undefined ||
+			minLng === undefined ||
+			maxLng === undefined
+		) {
+			return null;
+		}
+
+		const latitudeDelta = Math.max((maxLat - minLat) * 1.2, 0.01);
+		const longitudeDelta = Math.max((maxLng - minLng) * 1.2, 0.01);
+
+		return {
+			latitude: (maxLat + minLat) / 2,
+			longitude: (maxLng + minLng) / 2,
+			latitudeDelta,
+			longitudeDelta,
+		};
+	};
+
+	const resolvedFarmId = useMemo(() => {
+		return (
+			mapContext?.farmId ??
+			data?.farmId ??
+			data?.aps?.[0]?.farmId ??
+			null
+		);
+	}, [mapContext?.farmId, data?.farmId, data?.aps]);
+
+	const resolvedFarmName = useMemo(() => {
+		return (
+			mapContext?.farmName ||
+			data?.farmName ||
+			data?.aps?.[0]?.farmName ||
+			""
+		);
+	}, [mapContext?.farmName, data?.farmName, data?.aps]);
+
+	const resolvedSafra = useMemo(() => {
+		return (
+			getApplicationSafra(mapContext) ||
+			getApplicationSafra(data) ||
+			getApplicationSafra(data?.aps?.[0])
+		);
+	}, [mapContext?.safra, data?.safra, data?.aps]);
+
+	const resolvedCiclo = useMemo(() => {
+		return (
+			getApplicationCiclo(mapContext) ||
+			getApplicationCiclo(data) ||
+			getApplicationCiclo(data?.aps?.[0])
+		);
+	}, [mapContext?.ciclo, data?.ciclo, data?.aps]);
+
+	const apTalhoesSet = useMemo(() => {
+		return new Set(
+			(Array.isArray(data?.parcelas) ? data.parcelas : [])
+				.map((parcela) => normalizeTalhao(parcela?.parcela))
+				.filter(Boolean)
+		);
+	}, [data?.parcelas]);
+
+	const selectedSet = useMemo(() => {
+		return new Set(
+			(selectedParcelas || [])
+				.map((p) => normalizeTalhao(p?.parcela))
+				.filter(Boolean)
+		);
+	}, [selectedParcelas]);
+
+	const mapSourceData = useMemo(() => {
+		const dataFromJson =
+			Array.isArray(plotMap?.data)
+				? plotMap.data
+				: Array.isArray(plotMap?.dados)
+					? plotMap.dados
+					: Array.isArray(plotMap)
+						? plotMap
+						: [];
+
+		return dataFromJson;
+	}, [plotMap]);
+
+	const mapPlotDataForAp = useMemo(() => {
+		if (!Array.isArray(mapSourceData) || !mapSourceData.length) {
+			return [];
+		}
+
+		if (!resolvedFarmId || !resolvedSafra || !resolvedCiclo) {
+			return [];
+		}
+
+		const applicationFarmId = Number(resolvedFarmId);
+		const applicationSafra = String(resolvedSafra ?? "").trim();
+		const applicationCiclo = Number(resolvedCiclo);
+
+		const filtered = mapSourceData.filter((plot) => {
+			const plotFarmId = Number(
+				plot?.["talhao__fazenda__id_farmbox"]
+			);
+
+			const plotSafra = String(
+				plot?.["safra__safra"] ?? ""
+			).trim();
+
+			const plotCiclo = Number(
+				plot?.["ciclo__ciclo"]
+			);
+
+			return (
+				plotFarmId === applicationFarmId &&
+				plotSafra === applicationSafra &&
+				plotCiclo === applicationCiclo
+			);
+		});
+
+
+		return filtered;
+	}, [
+		mapSourceData,
+		resolvedFarmId,
+		resolvedSafra,
+		resolvedCiclo,
+	]);
+
+
+	const filteredFarmArr = useMemo(() => {
+		if (!mapPlotDataForAp?.length || !resolvedFarmName) {
+			return [];
+		}
+
+		const dataFromMap = newMapArr(mapPlotDataForAp);
+		const normalizedFarmName = normalizeFarmName(resolvedFarmName);
+
+		const filtered = dataFromMap.filter((item) => {
+			return normalizeFarmName(item?.farmName) === normalizedFarmName;
+		});
+
+		return filtered;
+	}, [
+		mapPlotDataForAp,
+		resolvedFarmId,
+		resolvedFarmName,
+		resolvedSafra,
+		resolvedCiclo,
+	]);
+
+	const mapCoordsInit = useMemo(() => {
+		if (!filteredFarmArr.length) {
+			return null;
+		}
+
+		const onlyCoords = filteredFarmArr
+			.map((p) => p.coords)
+			.filter((coords) => Array.isArray(coords) && coords.length > 0);
+
+		return getRegionForCoordinates(onlyCoords);
+	}, [filteredFarmArr]);
 
 	const isConsolidatedMap =
 		data?.isConsolidated || (Array.isArray(apsCodes) && apsCodes.length > 1);
@@ -335,8 +534,40 @@ const MapScreen = ({ navigation, route }) => {
 			: "";
 
 	if (!data) return <Text>Loading..</Text>;
-	if (filteredFarmArr.length === 0) return <Text>Loading..</Text>;
-	if (mapCoordsInit.latitude === null) return <Text>Loading..</Text>;
+
+	if (!filteredFarmArr.length || !mapCoordsInit) {
+		return (
+			<View style={[styles.container, styles.emptyMapContainer]}>
+				<Text style={styles.emptyMapTitle}>
+					Mapa não encontrado para esta AP
+				</Text>
+
+				<Text style={styles.emptyMapText}>
+					Fazenda: {String(resolvedFarmId || "-")}
+				</Text>
+
+				<Text style={styles.emptyMapText}>
+					Safra: {String(resolvedSafra || "-")}
+				</Text>
+
+				<Text style={styles.emptyMapText}>
+					Ciclo: {String(resolvedCiclo || "-")}
+				</Text>
+
+				<Text style={styles.emptyMapText}>
+					Mapa bruto: {Array.isArray(mapSourceData) ? mapSourceData.length : 0}
+				</Text>
+
+				<Text style={styles.emptyMapText}>
+					Filtrado AP: {mapPlotDataForAp.length}
+				</Text>
+
+				<Text style={styles.emptyMapHint}>
+					O Redux atual não possui polígonos para essa combinação.
+				</Text>
+			</View>
+		);
+	}
 
 	const legendAplicado =
 		focusSelected && selectedParcelas.length > 0
@@ -370,67 +601,80 @@ const MapScreen = ({ navigation, route }) => {
 			>
 				{filteredFarmArr.map((coordArr, i) => {
 					const talhaoKey = String(coordArr.talhao || "").trim();
+					const normalizedTalhaoKey = normalizeTalhao(talhaoKey);
 
-					// parcela correspondente no “data.parcelas” (pra cultura/variedade/área)
 					const canPress = (data?.parcelas || []).find(
-						(parc) =>
-							String(parc.parcela || "").split(" ").join("") ===
-							talhaoKey.split(" ").join("")
+						(parc) => normalizeTalhao(parc?.parcela) === normalizedTalhaoKey
 					);
+
+					const isApTalhao = apTalhoesSet.has(normalizedTalhaoKey);
+					const isSelected = selectedSet.has(normalizedTalhaoKey);
+
 					const areaLabel =
 						canPress?.areaSolicitada ??
 						coordArr?.area ??
 						coordArr?.areaSolicitada ??
 						0;
 
-					const isSelected = selectedSet.has(talhaoKey);
-
-					// Cor original (como antes)
-					const cultura = canPress?.cultura || "";
+					const cultura = canPress?.cultura || data?.cultura || "";
 					const variedade = canPress?.variedade || "";
-					const originalFill = getColor(cultura, variedade, canPress?.fillColorParce || "green");
+
+					const originalFill = getColor(
+						cultura,
+						variedade,
+						canPress?.fillColorParce || "green"
+					);
+
 					const originalStroke = handleLineColor(canPress);
 
-					// Branco translúcido “como antes”
 					const whiteMutedFill = "rgba(245,245,245,0.6)";
 					const whiteMutedStroke = "rgba(245,245,245,0.6)";
 
-					// Efeito foco:
-					// - focusSelected OFF: sempre originalFill/originalStroke
-					// - focusSelected ON: se selecionado -> original, senão -> branco translúcido
-					const fillColor =
+					/*
+					 * Regra correta:
+					 *
+					 * - Talhões da AP: cor original.
+					 * - Talhões fora da AP: branco.
+					 * - Se selecionou parcelas e foco está ON:
+					 *   selecionadas ficam coloridas; resto branco.
+					 */
+					const shouldHighlight =
 						focusSelected && selectedParcelas.length > 0
-							? (isSelected ? originalFill : whiteMutedFill)
-							: originalFill;
+							? isSelected
+							: isApTalhao;
 
-					const strokeColor =
-						focusSelected && selectedParcelas.length > 0
-							? (isSelected ? originalStroke : whiteMutedStroke)
-							: originalStroke;
+					const fillColor = shouldHighlight ? originalFill : whiteMutedFill;
+					const strokeColor = shouldHighlight ? originalStroke : whiteMutedStroke;
 
-					const isPressedHere = isPressed && isPressed === canPress?.parcela ? 1 : 0.6;
+					const isPressedHere =
+						isPressed && isPressed === coordArr.talhao ? 1 : 0.6;
 
 					return (
-						<View key={i}>
+						<View key={`${coordArr?.talhao || "talhao"}-${i}`}>
 							<Polygon
 								coordinates={coordArr.coords}
-								fillColor={fillColor.replace(/rgba\(([^)]+),\s*([0-9.]+)\)/, (m, rgb, a) => {
-									// mantém a lógica antiga de “pressionado” ajustando alpha quando aplicável
-									// se for rgba(...) mantemos alpha; se não for rgba, retorna como está
-									return `rgba(${rgb},${isPressedHere})`;
-								})}
+								fillColor={fillColor.replace(
+									/rgba\(([^)]+),\s*([0-9.]+)\)/,
+									(m, rgb) => {
+										return `rgba(${rgb},${isPressedHere})`;
+									}
+								)}
 								strokeColor={strokeColor}
 								strokeWidth={2}
-								tappable={true}
+								tappable={!!canPress}
 								onPress={() => {
 									if (canPress) {
 										setIsPressed(coordArr.talhao);
 
-										const parcela = (data.parcelas || []).find((p) => p.parcela === coordArr.talhao);
+										const parcela = (data.parcelas || []).find(
+											(p) => normalizeTalhao(p?.parcela) === normalizedTalhaoKey
+										);
 
 										const objToAdd = {
 											talhao: coordArr.talhao,
-											prods: (data.prods || []).filter((p) => p.type !== "Operação"),
+											prods: (data.prods || []).filter(
+												(p) => p.type !== "Operação"
+											),
 											area: parcela?.areaSolicitada,
 											cultura: data.cultura,
 											farmName: data.farmName,
@@ -444,10 +688,9 @@ const MapScreen = ({ navigation, route }) => {
 							/>
 
 							<Marker
-								// key={`${i}-m-${showDetailedLabels ? "detail" : "simple"}`}
-								key={`${i}-m`}
+								key={`${coordArr?.talhao || "talhao"}-${i}-m`}
 								hideCallout={true}
-								tracksViewChanges={true}
+								tracksViewChanges={trackMarkers}
 								coordinate={{
 									latitude: coordArr.talhaoCenterGeo.lat,
 									longitude: coordArr.talhaoCenterGeo.lng,
@@ -457,8 +700,8 @@ const MapScreen = ({ navigation, route }) => {
 								<MapParcelLabel
 									talhao={coordArr.talhao}
 									area={areaLabel}
-									isSelected={isSelected}
-									showArea={showDetailedLabels || isSelected}
+									isSelected={shouldHighlight}
+									showArea={showDetailedLabels || shouldHighlight}
 								/>
 							</Marker>
 						</View>
@@ -724,6 +967,35 @@ const styles = StyleSheet.create({
 		fontSize: 9,
 		fontWeight: "800",
 		color: "rgba(255,255,255,0.9)",
+	},
+	emptyMapContainer: {
+		alignItems: "center",
+		justifyContent: "center",
+		paddingHorizontal: 24,
+		backgroundColor: "#F8FAFC",
+	},
+
+	emptyMapTitle: {
+		fontSize: 16,
+		fontWeight: "900",
+		color: Colors.primary[900],
+		textAlign: "center",
+		marginBottom: 12,
+	},
+
+	emptyMapText: {
+		fontSize: 13,
+		fontWeight: "700",
+		color: "rgba(0,0,0,0.65)",
+		marginTop: 4,
+	},
+
+	emptyMapHint: {
+		fontSize: 12,
+		fontWeight: "600",
+		color: "rgba(0,0,0,0.45)",
+		textAlign: "center",
+		marginTop: 14,
 	},
 });
 

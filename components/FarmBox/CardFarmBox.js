@@ -125,6 +125,8 @@ const CardFarmBox = ({ route, navigation }) => {
     const [selectedCiclo, setSelectedCiclo] = useState(null);
     const [selectedCultura, setSelectedCultura] = useState(null);
 
+    const [isOpeningMap, setIsOpeningMap] = useState(false);
+
     const [isFiltersExpanded, setIsFiltersExpanded] =
         useState(false);
 
@@ -423,6 +425,80 @@ const CardFarmBox = ({ route, navigation }) => {
         return n.toLocaleString("pt-br", {
             minimumFractionDigits: 3,
             maximumFractionDigits: 3,
+        });
+    };
+
+    const formatDoseProduto = (value) => {
+        const number = Number(value || 0);
+
+        if (!Number.isFinite(number)) {
+            return "0";
+        }
+
+        if (Math.abs(number) > 100) {
+            return number.toLocaleString("pt-br", {
+                minimumFractionDigits: 0,
+                maximumFractionDigits: 0,
+            });
+        }
+
+        return number.toLocaleString("pt-br", {
+            minimumFractionDigits: 3,
+            maximumFractionDigits: 3,
+        });
+    };
+
+    const formatTotalProduto = (value, unit = "") => {
+        const number = Number(value || 0);
+
+        if (!Number.isFinite(number)) {
+            return "0";
+        }
+
+        const normalizedUnit = String(unit || "")
+            .trim()
+            .toLowerCase();
+
+        const isKg =
+            normalizedUnit === "kg" ||
+            normalizedUnit === "kg/ha" ||
+            normalizedUnit.includes("kg");
+
+        /*
+         * Se for quantidade em kg e passar de 100.000,
+         * mostra em toneladas.
+         *
+         * Exemplo:
+         * 3.536.260 kg -> 3.536 t
+         */
+        if (isKg && Math.abs(number) >= 100000) {
+            const tons = number / 1000;
+
+            return `${tons.toLocaleString("pt-br", {
+                minimumFractionDigits: tons >= 10 ? 2 : 2,
+                maximumFractionDigits: tons >= 10 ? 2 : 2,
+            })} t`;
+        }
+
+        /*
+         * Para números muito grandes que não são kg,
+         * abrevia em milhões.
+         *
+         * Exemplo:
+         * 1.250.000 -> 1,25 mi
+         */
+        if (Math.abs(number) >= 1000000) {
+            const millions = number / 1000000;
+
+            return `${millions.toLocaleString("pt-br", {
+                minimumFractionDigits: millions >= 10 ? 1 : 2,
+                maximumFractionDigits: millions >= 10 ? 1 : 2,
+            })} mi`;
+        }
+
+        return number.toLocaleString("pt-br", {
+            minimumFractionDigits: number >= 10 ? 0 : 2,
+            maximumFractionDigits: number >= 10 ? 0 : 2,
         });
     };
 
@@ -1175,14 +1251,7 @@ const CardFarmBox = ({ route, navigation }) => {
                 apParcelasIndex,
             };
 
-            console.log(
-                "[EXPORT PDF PARAMS]",
-                JSON.stringify(
-                    params,
-                    null,
-                    2
-                )
-            );
+
 
             /*
              * Abre a tela primeiro, permitindo que ela
@@ -1383,14 +1452,148 @@ const CardFarmBox = ({ route, navigation }) => {
         setTotalSelected(total);
     }, [activeCardKey, selectedParcelasByCardKey]);
 
-    const handleMapApi = (cardData) => {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+    const buildMapParamsForCard = (cardData) => {
+        const sourceApps =
+            cardData?.isConsolidated && Array.isArray(cardData?.aps)
+                ? cardData.aps
+                : [cardData];
 
-        navigation.navigate("MapsCreenStack", {
-            data: cardData,
-            selectedParcelas: getSelectedFor(cardData.cardKey),
-            apsCodes: cardData?.codes || [],
-        });
+        const validApps = sourceApps.filter(
+            (application) =>
+                application?.farmId !== null &&
+                application?.farmId !== undefined &&
+                application?.safra &&
+                application?.ciclo !== null &&
+                application?.ciclo !== undefined
+        );
+
+        const farmId =
+            cardData?.farmId ??
+            validApps?.[0]?.farmId;
+
+        const farmName =
+            cardData?.farmName ??
+            validApps?.[0]?.farmName ??
+            farm;
+
+        const contextsMap = new Map();
+
+        for (const application of validApps) {
+            const safra = String(application?.safra ?? "").trim();
+            const cicloRaw = application?.ciclo;
+            const ciclo = String(cicloRaw ?? "").trim();
+
+            if (!safra || !ciclo) {
+                continue;
+            }
+
+            const key = `${safra}||${ciclo}`;
+
+            if (!contextsMap.has(key)) {
+                contextsMap.set(key, {
+                    safra,
+                    ciclo: Number.isFinite(Number(ciclo)) ? Number(ciclo) : ciclo,
+                });
+            }
+        }
+
+        const pairs = Array.from(contextsMap.values());
+
+        const apParcelasIndex = validApps.map((application) => ({
+            idAp: application?.idAp,
+            code: application?.code,
+            farmId: application?.farmId,
+            farmName: application?.farmName,
+            safra: application?.safra,
+            ciclo: application?.ciclo,
+            parcelasIds: (
+                Array.isArray(application?.parcelas)
+                    ? application.parcelas
+                    : []
+            )
+                .map((parcel) => parcel?.parcelaAppPlantationId)
+                .filter(
+                    (id) =>
+                        id !== null &&
+                        id !== undefined &&
+                        id !== ""
+                ),
+        }));
+
+        return {
+            farm: farmId,
+            farmName,
+            mode: "farmSafraCiclo",
+            pairs,
+            apParcelasIndex,
+        };
+    };
+
+    const handleMapApi = async (cardData) => {
+        if (isOpeningMap) {
+            return;
+        }
+
+        try {
+            setIsOpeningMap(true);
+
+            await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+
+            const selected = getSelectedFor(cardData.cardKey);
+
+            const params = buildMapParamsForCard(cardData);
+
+            if (!params?.farm || !params?.pairs?.length) {
+                Alert.alert(
+                    "Atenção",
+                    "Não foi possível identificar fazenda, safra e ciclo desta AP."
+                );
+                return;
+            }
+
+            console.log(
+                "[MAP PARAMS]",
+                JSON.stringify(params, null, 2)
+            );
+
+            const loadedMapPayload = await dispatch(exportPdf(params)).unwrap();
+
+            const routeMapData =
+                Array.isArray(loadedMapPayload?.data)
+                    ? loadedMapPayload.data
+                    : Array.isArray(loadedMapPayload?.dados)
+                        ? loadedMapPayload.dados
+                        : Array.isArray(loadedMapPayload)
+                            ? loadedMapPayload
+                            : [];
+
+
+
+            navigation.navigate("MapsCreenStack", {
+                data: cardData,
+                selectedParcelas: selected,
+                apsCodes: cardData?.codes || [],
+                routeMapData,
+                mapContext: {
+                    farmId: cardData?.farmId,
+                    farmName: cardData?.farmName,
+                    safra: cardData?.safra,
+                    ciclo: cardData?.ciclo,
+                    isConsolidated: !!cardData?.isConsolidated,
+                    aps: cardData?.aps || [],
+                    codes: cardData?.codes || [],
+                },
+            });
+        } catch (error) {
+            console.log("Erro ao carregar mapa da AP:", error);
+
+            Alert.alert(
+                "Erro",
+                "Não foi possível carregar o mapa desta AP."
+            );
+        } finally {
+            setIsOpeningMap(false);
+        }
     };
 
     const handleKmlGenerator = async (cardData, mapPlotDataParam) => {
@@ -2402,7 +2605,7 @@ const CardFarmBox = ({ route, navigation }) => {
                                                                                             },
                                                                                         ]}
                                                                                     >
-                                                                                        {formatNumberProds(produto.doseSolicitada)}
+                                                                                        {formatDoseProduto(produto.doseSolicitada)}
                                                                                     </Text>
 
                                                                                     <Text
@@ -2430,8 +2633,9 @@ const CardFarmBox = ({ route, navigation }) => {
                                                                                                         : "whitesmoke",
                                                                                             },
                                                                                         ]}
+                                                                                        numberOfLines={1}
                                                                                     >
-                                                                                        {formatNumber(totalProduto)}
+                                                                                        {formatTotalProduto(totalProduto, produto.unit)}
                                                                                     </Text>
                                                                                 </View>
 
@@ -2561,17 +2765,26 @@ const CardFarmBox = ({ route, navigation }) => {
                                                                     </Pressable>
 
                                                                     <Pressable
+                                                                        disabled={isOpeningMap}
                                                                         style={({ pressed }) => [
                                                                             styles.mapBtn,
                                                                             pressed && styles.pressed,
+                                                                            isOpeningMap && { opacity: 0.55 },
                                                                         ]}
                                                                         onPress={() => handleMapApi(cardData)}
                                                                     >
-                                                                        <FontAwesome5
-                                                                            name="map-marked-alt"
-                                                                            size={24}
-                                                                            color={Colors.primary[600]}
-                                                                        />
+                                                                        {isOpeningMap ? (
+                                                                            <ActivityIndicator
+                                                                                size={22}
+                                                                                color={Colors.primary[600]}
+                                                                            />
+                                                                        ) : (
+                                                                            <FontAwesome5
+                                                                                name="map-marked-alt"
+                                                                                size={24}
+                                                                                color={Colors.primary[600]}
+                                                                            />
+                                                                        )}
                                                                     </Pressable>
                                                                 </View>
 
