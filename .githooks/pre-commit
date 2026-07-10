@@ -1,0 +1,17 @@
+#!/bin/sh
+
+set -e
+
+MASTER_SCRIPT=".xcode-cloud/ci_post_clone.sh"
+IOS_SCRIPT="ios/ci_scripts/ci_post_clone.sh"
+
+if [ -f "$MASTER_SCRIPT" ]; then
+  mkdir -p ios/ci_scripts
+
+  if [ ! -f "$IOS_SCRIPT" ] || ! cmp -s "$MASTER_SCRIPT" "$IOS_SCRIPT"; then
+    echo "Xcode Cloud script ausente ou diferente. Restaurando antes do commit..."
+    cp "$MASTER_SCRIPT" "$IOS_SCRIPT"
+    chmod +x "$IOS_SCRIPT"
+    git add "$IOS_SCRIPT"
+  fi
+fi

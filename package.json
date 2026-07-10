@@ -6,7 +6,8 @@
     "android": "expo run:android",
     "ios": "expo run:ios",
     "web": "expo start --web",
-    "clean": "rm -rf node_modules/ yarn.lock package-lock.json && npm cache clean --force && npm install --legacy-peer-deps"
+    "clean": "rm -rf node_modules/ yarn.lock package-lock.json && npm cache clean --force && npm install --legacy-peer-deps",
+    "prebuild:clean": "sh scripts/prebuild-clean.sh"
   },
   "dependencies": {
     "@devvie/bottom-sheet": "^0.3.0",
