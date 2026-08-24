@@ -31,6 +31,7 @@ export default {
     expo: {
         name: "Farm Aplicações",
         slug: "fetch-app",
+        scheme: "fetch-app",
 
         version: APP_VERSION,
 
@@ -40,9 +41,7 @@ export default {
          * Isso impede que binários antigos recebam JavaScript
          * dependente de módulos nativos que eles não possuem.
          */
-        runtimeVersion: {
-            policy: "appVersion",
-        },
+        runtimeVersion: APP_VERSION,
 
         orientation: "portrait",
         icon: "./assets/icon.png",
