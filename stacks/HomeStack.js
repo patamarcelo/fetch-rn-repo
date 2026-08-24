@@ -1,7 +1,7 @@
 import { Platform } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { createNativeBottomTabNavigator } from "@react-navigation/bottom-tabs/unstable";
+import { createNativeBottomTabNavigator } from "@bottom-tabs/react-navigation";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 
 import Ionicons from "@expo/vector-icons/Ionicons";
@@ -58,16 +58,15 @@ const getPlantioTabMeta = (filters = {}) => {
 	};
 };
 
-const iosIcon = (name) => ({
-	type: "sfSymbol",
-	name,
+const nativeIcon = (sfSymbol) => () => ({
+	sfSymbol,
 });
 
 const AndroidTabs = ({ plantioTabMeta }) => {
 	const iconSize = 21;
 	const insets = useSafeAreaInsets();
 
-	const TAB_CONTENT_HEIGHT = ANDROID_TAB_CONTENT_HEIGHT;
+	const tabContentHeight = ANDROID_TAB_CONTENT_HEIGHT;
 	const bottomInset = Math.max(insets.bottom, 0);
 
 	return (
@@ -80,21 +79,26 @@ const AndroidTabs = ({ plantioTabMeta }) => {
 			}}
 			screenOptions={{
 				headerShown: false,
+
 				tabBarActiveTintColor: "#FFFFFF",
-				tabBarInactiveTintColor: "rgba(255,255,255,0.62)",
+				tabBarInactiveTintColor:
+					"rgba(255,255,255,0.62)",
+
 				tabBarStyle: {
 					backgroundColor: Colors.primary[901],
 					borderTopWidth: 0,
 					elevation: 0,
 
-					height: TAB_CONTENT_HEIGHT + bottomInset,
+					height:
+						tabContentHeight +
+						bottomInset,
 
 					paddingTop: 5,
 					paddingBottom: bottomInset,
 				},
 
 				tabBarItemStyle: {
-					height: TAB_CONTENT_HEIGHT,
+					height: tabContentHeight,
 					paddingTop: 2,
 					paddingBottom: 6,
 				},
@@ -179,7 +183,9 @@ const AndroidTabs = ({ plantioTabMeta }) => {
 					title: plantioTabMeta.title,
 					tabBarIcon: ({ color }) => (
 						<MaterialCommunityIcons
-							name={plantioTabMeta.androidIcon}
+							name={
+								plantioTabMeta.androidIcon
+							}
 							color={color}
 							size={iconSize}
 						/>
@@ -193,17 +199,15 @@ const AndroidTabs = ({ plantioTabMeta }) => {
 const IOSTabs = ({ plantioTabMeta }) => {
 	return (
 		<NativeTab.Navigator
-			screenOptions={{
-				tabBarActiveTintColor: Colors.primary[700],
-				tabBarInactiveTintColor: "rgba(15,23,42,0.46)",
-			}}
+			labeled
+			hapticFeedbackEnabled
 		>
 			<NativeTab.Screen
 				name="Next"
 				component={ProgramStack}
 				options={{
 					title: "Programas",
-					tabBarIcon: iosIcon("book"),
+					tabBarIcon: nativeIcon("book"),
 				}}
 			/>
 
@@ -212,7 +216,7 @@ const IOSTabs = ({ plantioTabMeta }) => {
 				component={NavigationHomeScreen}
 				options={{
 					title: "Navegação",
-					tabBarIcon: iosIcon("location"),
+					tabBarIcon: nativeIcon("location"),
 				}}
 			/>
 
@@ -221,26 +225,27 @@ const IOSTabs = ({ plantioTabMeta }) => {
 				component={FarmBoxStack}
 				options={{
 					title: "FarmBox",
-					tabBarIcon: iosIcon("hourglass"),
+					tabBarIcon: nativeIcon("hourglass"),
 				}}
 			/>
 
 			<NativeTab.Screen
-				name="Programações"
+				name="ProgramacoesTab"
 				component={ProgramacoesStack}
 				options={{
 					title: "Programações",
-					tabBarIcon: iosIcon("timer"),
+					tabBarIcon: nativeIcon("timer"),
 				}}
 			/>
 
 			<NativeTab.Screen
-				key={`plantio-colheita-${plantioTabMeta.key}`}
-				name="Plantio / Colheita"
+				name="PlantioColheitaTab"
 				component={PlantioStack}
 				options={{
 					title: plantioTabMeta.title,
-					tabBarIcon: iosIcon(plantioTabMeta.iosIcon),
+					tabBarIcon: nativeIcon(
+						plantioTabMeta.iosIcon
+					),
 				}}
 			/>
 		</NativeTab.Navigator>
@@ -248,14 +253,26 @@ const IOSTabs = ({ plantioTabMeta }) => {
 };
 
 const HomeStack = () => {
-	const colheitaFilters = useSelector(selectColheitaDataToggle);
-	const plantioTabMeta = getPlantioTabMeta(colheitaFilters);
+	const colheitaFilters = useSelector(
+		selectColheitaDataToggle
+	);
+
+	const plantioTabMeta =
+		getPlantioTabMeta(colheitaFilters);
 
 	if (isIOS) {
-		return <IOSTabs plantioTabMeta={plantioTabMeta} />;
+		return (
+			<IOSTabs
+				plantioTabMeta={plantioTabMeta}
+			/>
+		);
 	}
 
-	return <AndroidTabs plantioTabMeta={plantioTabMeta} />;
+	return (
+		<AndroidTabs
+			plantioTabMeta={plantioTabMeta}
+		/>
+	);
 };
 
 export default HomeStack;

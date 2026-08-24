@@ -28,8 +28,8 @@ const formatDate = (dateString) => {
 const formatString = (str) => {
     return str.replace(/(\D+)(\d+)/, '$1-$2');
 }
-4852, 67
-4254, 55
+
+
 const TabelaTalhoesScreen = ({ data }) => {
     const totalVerde = data.reduce((acc, curr) => acc += ((curr.peso_bruto - curr.peso_tara) / 60), 0)
     const totalSeco = data.reduce((acc, curr) => acc += ((curr.peso_liquido) / 60), 0)
@@ -68,37 +68,112 @@ const TabelaTalhoesScreen = ({ data }) => {
                             <View style={[stylesTable.title, { flex: 1 }]}>
                                 <Text style={stylesTable.titleText}>Impureza</Text>
                             </View>
-                            <View style={[stylesTable.title, {alignItems: 'center' }]}>
+                            <View style={[stylesTable.title, { alignItems: 'center' }]}>
                                 <Text style={stylesTable.titleText}>Scs</Text>
                             </View>
                         </View>
 
                         {data.map((item, index) => (
                             <Animated.View
-                                entering={FadeInRight.duration(300 + (index * 50))} // Root-level animation for appearance
-                                exiting={FadeOutUp.duration(20)} // Root-level animation for disappearance
-                                layout={Layout.springify()}    // Layout animation for dynamic resizing
-                                key={index} style={[stylesTable.row, { backgroundColor: index % 2 === 0 && 'whitesmoke' }]}>
+                                key={`${item?.ticket || item?.id || "colheita"}-${index}`}
+                                entering={FadeInRight.duration(
+                                    300 + index * 50
+                                )}
+                                exiting={FadeOutUp.duration(20)}
+                                layout={Layout.springify()}
+                                style={[
+                                    stylesTable.row,
+                                    {
+                                        backgroundColor:
+                                            index % 2 === 0
+                                                ? "whitesmoke"
+                                                : "#ffffff",
+                                    },
+                                ]}
+                            >
                                 <View style={[stylesTable.cell, { width: 70 }]}>
-                                    <Text style={stylesTable.cellText}>{formatDate(item.data_colheita)}</Text>
+                                    <Text style={stylesTable.cellText}>
+                                        {formatDate(item.data_colheita)}
+                                    </Text>
                                 </View>
+
                                 <View style={[stylesTable.cell, { width: 50 }]}>
-                                    <Text style={stylesTable.cellText}>{item?.ticket ? item?.ticket?.slice(-5) : " - "}</Text>
+                                    <Text style={stylesTable.cellText}>
+                                        {item?.ticket
+                                            ? item.ticket.slice(-5)
+                                            : " - "}
+                                    </Text>
                                 </View>
+
                                 <View style={[stylesTable.cell, { width: 60 }]}>
-                                    <Text style={stylesTable.cellText}>{item?.placa ? formatString(item?.placa) : " - "}</Text>
+                                    <Text style={stylesTable.cellText}>
+                                        {item?.placa
+                                            ? formatString(item.placa)
+                                            : " - "}
+                                    </Text>
                                 </View>
-                                <View style={[stylesTable.cell, { width: 50, alignItems: 'flex-end', paddingRight: 10 }]}>
-                                    <Text style={stylesTable.cellText}>{formatNumber(((item.peso_bruto - item.peso_tara) / 60) || 0)}</Text>
+
+                                <View
+                                    style={[
+                                        stylesTable.cell,
+                                        {
+                                            width: 50,
+                                            alignItems: "flex-end",
+                                            paddingRight: 10,
+                                        },
+                                    ]}
+                                >
+                                    <Text style={stylesTable.cellText}>
+                                        {formatNumber(
+                                            (item.peso_bruto -
+                                                item.peso_tara) /
+                                            60 || 0
+                                        )}
+                                    </Text>
                                 </View>
-                                <View style={[stylesTable.cell, { flex: 1, marginLeft: 10 }]}>
-                                    <Text style={stylesTable.cellText}>{formatNumber(item.umidade || 0)}</Text>
+
+                                <View
+                                    style={[
+                                        stylesTable.cell,
+                                        {
+                                            flex: 1,
+                                            marginLeft: 10,
+                                        },
+                                    ]}
+                                >
+                                    <Text style={stylesTable.cellText}>
+                                        {formatNumber(item.umidade || 0)}
+                                    </Text>
                                 </View>
-                                <View style={[stylesTable.cell, { flex: 1, alignItems: 'flex-end' }]}>
-                                    <Text style={stylesTable.cellText}>{formatNumber(item.impureza || 0)}</Text>
+
+                                <View
+                                    style={[
+                                        stylesTable.cell,
+                                        {
+                                            flex: 1,
+                                            alignItems: "flex-end",
+                                        },
+                                    ]}
+                                >
+                                    <Text style={stylesTable.cellText}>
+                                        {formatNumber(item.impureza || 0)}
+                                    </Text>
                                 </View>
-                                <View style={[stylesTable.cell, { width: 50, alignItems: 'flex-end' }]}>
-                                    <Text style={stylesTable.cellText}>{formatNumber(item.peso_scs_liquido || 0)}</Text>
+
+                                <View
+                                    style={[
+                                        stylesTable.cell,
+                                        {
+                                            width: 50,
+                                            alignItems: "flex-end",
+                                        },
+                                    ]}
+                                >
+                                    <Text style={stylesTable.cellText}>
+                                        {formatNumber(
+                                            item.peso_scs_liquido || 0
+                                        )}
+                                    </Text>
                                 </View>
                             </Animated.View>
                         ))}
