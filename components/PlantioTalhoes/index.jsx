@@ -1,4 +1,4 @@
-import { StyleSheet, Text, View, ScrollView, Dimensions, TouchableOpacity, Image } from 'react-native'
+import { StyleSheet, Text, View, ScrollView, Dimensions, TouchableOpacity, Image, Alert, ActivityIndicator } from 'react-native'
 // import Icon from "react-native-vector-icons/MaterialCommunityIcons"; // Uses MaterialCommunityIcons
 import Icon from "@expo/vector-icons/MaterialCommunityIcons";
 
@@ -18,6 +18,10 @@ import { Skeleton } from '@rneui/themed';
 import dayjs from 'dayjs';
 
 import * as Haptics from 'expo-haptics';
+import * as FileSystem from 'expo-file-system/legacy';
+import * as Sharing from 'expo-sharing';
+import { captureRef } from 'react-native-view-shot';
+import ViewShot from 'react-native-view-shot';
 
 import { AnimatedCircularProgress } from 'react-native-circular-progress';
 import Animated, { BounceIn, BounceOut, FadeIn, FadeInRight, FadeInUp, FadeOut, FadeOutUp, FlipInEasyX, FlipOutEasyX, Layout, SlideInLeft, SlideInRight, SlideOutRight, SlideOutUp, StretchInY, StretchOutX, ZoomIn, ZoomOut } from 'react-native-reanimated';
@@ -60,6 +64,68 @@ const PlantioTalhoesCard = (props) => {
     const [isLoadingData, setIsLoadingData] = useState(false);
     const [showTruckData, setShowTruckData] = useState([]);
     const [canRotate, setCanRotate] = useState(false);
+    const cardShareRef = useRef(null);
+    const [isSharingCard, setIsSharingCard] = useState(false);
+
+    const wait = (ms = 120) => new Promise((resolve) => setTimeout(resolve, ms));
+
+    const slugify = (value = '') =>
+        String(value || '')
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .replace(/\s+/g, '_')
+            .replace(/[^\w.-]/g, '')
+            .replace(/_+/g, '_')
+            .replace(/^_+|_+$/g, '');
+
+    const getShareFileName = () => {
+        const talhao = slugify(data?.talhao__id_talhao || 'talhao');
+        return `cargas-${talhao}.png`;
+    };
+
+    const handleShareCard = async () => {
+        if (isSharingCard) return;
+
+        try {
+            setIsSharingCard(true);
+            await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+
+            if (!cardShareRef.current) {
+                Alert.alert('Atenção', 'Não foi possível gerar a imagem deste card.');
+                return;
+            }
+
+            await wait(180);
+
+            const tmpUri = await captureRef(cardShareRef.current, {
+                format: 'png',
+                quality: 1,
+                result: 'tmpfile',
+            });
+
+            if (!(await Sharing.isAvailableAsync())) {
+                Alert.alert('Atenção', 'O compartilhamento não está disponível neste dispositivo.');
+                return;
+            }
+
+            const basePath = FileSystem.cacheDirectory || FileSystem.documentDirectory;
+            const finalUri = `${basePath}${getShareFileName()}`;
+
+            await FileSystem.copyAsync({ from: tmpUri, to: finalUri });
+
+            await Sharing.shareAsync(finalUri, {
+                mimeType: 'image/png',
+                dialogTitle: 'Compartilhar cargas',
+                UTI: 'public.png',
+            });
+        } catch (error) {
+            console.log('Erro ao compartilhar card de cargas:', error);
+            Alert.alert('Erro', 'Não foi possível compartilhar o card.');
+        } finally {
+            setIsSharingCard(false);
+        }
+    };
+
 
 
 
@@ -224,7 +290,16 @@ const PlantioTalhoesCard = (props) => {
         //     layout={Layout.springify()}    // Layout animation for dynamic resizing
         // >
         <View>
+            <ViewShot
+                ref={cardShareRef}
+                options={{
+                    format: 'png',
+                    quality: 1,
+                    result: 'tmpfile',
+                }}
+            >
             <Pressable
+                collapsable={false}
                 style={({ pressed }) => [
                     styles.mainContainer,
                     pressed && styles.pressed,
@@ -357,13 +432,41 @@ const PlantioTalhoesCard = (props) => {
                     {
                         data?.cargas && showTruckData?.length > 0 && !isLoadingData && (
 
-                            <View style={{ alignItems: 'flex-end', marginVertical: 10 }}>
-                                <CloseButton onPress={handleClose} name={"arrow-up-thick"} color={Colors.error[300]} />
+                            <View style={styles.cardActions}>
+                                <TouchableOpacity
+                                    onPress={handleShareCard}
+                                    disabled={isSharingCard}
+                                    activeOpacity={0.65}
+                                    style={[
+                                        styles.actionButton,
+                                        isSharingCard && styles.actionButtonDisabled,
+                                    ]}
+                                >
+                                    {isSharingCard ? (
+                                        <ActivityIndicator
+                                            size="small"
+                                            color={Colors.primary[600]}
+                                        />
+                                    ) : (
+                                        <Icon
+                                            name={'share-variant'}
+                                            size={23}
+                                            color={Colors.primary[600]}
+                                        />
+                                    )}
+                                </TouchableOpacity>
+
+                                <CloseButton
+                                    onPress={handleClose}
+                                    name={"arrow-up-thick"}
+                                    color={Colors.error[300]}
+                                />
                             </View>
                         )
                     }
                 </View>
             </Pressable>
+            </ViewShot>
         </View>
     )
 }
@@ -427,5 +530,25 @@ const styles = StyleSheet.create({
     },
     pressed: {
         opacity: 0.5,
+    },
+    cardActions: {
+        flexDirection: 'row',
+        justifyContent: 'flex-end',
+        alignItems: 'center',
+        gap: 8,
+        marginVertical: 10,
+    },
+    actionButton: {
+        width: 42,
+        height: 42,
+        borderRadius: 12,
+        alignItems: 'center',
+        justifyContent: 'center',
+        // backgroundColor: 'rgba(255,255,255,0.45)',
+        borderWidth: 1,
+        borderColor: 'rgba(0,0,0,0.06)',
+    },
+    actionButtonDisabled: {
+        opacity: 0.45,
     },
 })
