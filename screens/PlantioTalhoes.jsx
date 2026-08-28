@@ -1,37 +1,63 @@
-import { View, FlatList, Text, Platform, StatusBar, RefreshControl, Alert, StyleSheet } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import {
+    View,
+    FlatList,
+    Text,
+    Platform,
+    RefreshControl,
+    Alert,
+    StyleSheet
+} from 'react-native';
+
+import {
+    SafeAreaView,
+    useSafeAreaInsets
+} from 'react-native-safe-area-context';
 
 import { SafeAreaView as SaveView } from 'react-native-safe-area-context';
 
+import {
+    useRoute,
+    useIsFocused,
+    useFocusEffect
+} from '@react-navigation/native';
 
-import { useRoute } from '@react-navigation/native';
-import { useSelector, shallowEqual, useDispatch } from 'react-redux';
+import {
+    useEffect,
+    useState,
+    useMemo,
+    useCallback
+} from 'react';
+
+import {
+    useSelector,
+    shallowEqual,
+    useDispatch
+} from 'react-redux';
+
+import { FAB } from 'react-native-paper';
+
+import * as Haptics from 'expo-haptics';
+
+import dayjs from 'dayjs';
+
 import { selectColheitaData } from '../store/redux/selector';
 import PlantioTalhoesCard from '../components/PlantioTalhoes';
-
-
 import FilterPlantioComponent from '../components/Global/FilterPlantioComponent';
 
-import { useEffect, useState } from 'react';
-import { useIsFocused } from '@react-navigation/native';
 import { Colors } from '../constants/styles';
 
-
 import { geralActions } from '../store/redux/geral';
-import { LINK } from '../utils/api';
-import { EXPO_PUBLIC_REACT_APP_DJANGO_TOKEN } from "@env";
-import dayjs from 'dayjs';
-import { FAB } from "react-native-paper"; // Floating Action Button
-import * as Haptics from 'expo-haptics';
-import { useMemo } from 'react';
 
+import { LINK } from '../utils/api';
+
+import {
+    EXPO_PUBLIC_REACT_APP_DJANGO_TOKEN
+} from '@env';
 
 import {
     CUSTOM_TAB_BAR_TOTAL_HEIGHT,
     CUSTOM_TAB_BAR_CONTENT_PADDING,
-    CUSTOM_TAB_BAR_FAB_BOTTOM,
-} from '../constans/layout'
+} from '../constans/layout';
 
 
 const PlantioTalhoesCardScreen = (itemData) => {
@@ -41,219 +67,688 @@ const PlantioTalhoesCardScreen = (itemData) => {
         />
     );
 };
+
+
 const PlantioTalhoesDescription = ({ navigation }) => {
 
-    const isFocused = useIsFocused(); // Track screen focus
-    const insets = useSafeAreaInsets(); // Get dynamic insets for Android & iOS
-    // Get route object
-    const route = useRoute();
-    const { farm } = route.params;
-    const colheitaData = useSelector(selectColheitaData, shallowEqual);
-    const { data } = colheitaData
-    const { setColheitaData } = geralActions
+    const isFocused = useIsFocused();
 
-    const [isRefreshing, setIsRefreshing] = useState(false);  // For pull-to-refresh
-    const dispatch = useDispatch()
+    const insets = useSafeAreaInsets();
+
+    const route = useRoute();
+
+    const { farm } = route.params;
+
+    const dispatch = useDispatch();
+
+    const colheitaData = useSelector(
+        selectColheitaData,
+        shallowEqual
+    );
+
+    const { data = [] } = colheitaData;
+
+    const {
+        setColheitaData
+    } = geralActions;
+
+
+    const [isRefreshing, setIsRefreshing] = useState(false);
+
+    /*
+     * Impede que a tela navegue para PlantioScreen
+     * antes de concluir o primeiro refresh ao ganhar foco.
+     */
+    const [
+        hasFocusedRefreshCompleted,
+        setHasFocusedRefreshCompleted
+    ] = useState(false);
+
 
     const [filterByDate, setFilterByDate] = useState(false);
+
     const [filterdByLoad, setFilterdByLoad] = useState(false);
-    const [filteredNotLoading, setFilteredNotLoading] = useState(false);
+
+    const [
+        filteredNotLoading,
+        setFilteredNotLoading
+    ] = useState(false);
 
 
-    // Filter data based on farm
-    const filteredDataResults = data.filter((plantio) => plantio.talhao__fazenda__nome === farm);
+    /*
+     * ============================================================
+     * DADOS DA FAZENDA
+     * ============================================================
+     */
+
+    const filteredDataResults = useMemo(() => {
+
+        return data.filter(
+            plantio =>
+                plantio.talhao__fazenda__nome === farm
+        );
+
+    }, [data, farm]);
 
 
-    // Navigate to another screen if filteredData is empty
+    /*
+     * ============================================================
+     * REFRESH API
+     * ============================================================
+     */
+
+    const handleUpdateApiData = useCallback(
+        async (showSuccessAlert = true) => {
+
+            setIsRefreshing(true);
+
+            try {
+
+                const response = await fetch(
+                    LINK +
+                    '/plantio/get_colheita_plantio_info_react_native/',
+                    {
+                        method: 'POST',
+
+                        body: JSON.stringify({
+                            safra: '2024/2025',
+                            ciclo: '3',
+                        }),
+
+                        headers: {
+                            'Content-Type': 'application/json',
+
+                            Authorization:
+                                `Token ${EXPO_PUBLIC_REACT_APP_DJANGO_TOKEN}`,
+                        },
+                    }
+                );
+
+
+                if (!response.ok) {
+
+                    throw new Error(
+                        `Erro HTTP ${response.status}`
+                    );
+                }
+
+
+                const responseData = await response.json();
+
+
+                dispatch(
+                    setColheitaData(responseData)
+                );
+
+
+                if (showSuccessAlert) {
+
+                    Alert.alert(
+                        'Tudo Certo',
+                        'Dados Atualizados com sucesso!!'
+                    );
+                }
+
+
+                return responseData;
+
+            } catch (error) {
+
+                console.error(
+                    '[COLHEITA] Erro ao atualizar dados:',
+                    error
+                );
+
+
+                Alert.alert(
+                    'Problema em atualizar o banco de dados',
+                    `Erro: ${error?.message || error}`
+                );
+
+                return null;
+
+            } finally {
+
+                setIsRefreshing(false);
+            }
+
+        },
+        [
+            dispatch,
+            setColheitaData
+        ]
+    );
+
+
+    /*
+     * ============================================================
+     * REFRESH AUTOMÁTICO AO ENTRAR / VOLTAR PARA A TELA
+     * ============================================================
+     */
+
+    useFocusEffect(
+
+        useCallback(() => {
+
+            let isActive = true;
+
+
+            console.log(
+                '[COLHEITA] Tela recebeu foco'
+            );
+
+
+            /*
+             * Marca como "ainda carregando".
+             *
+             * Isso impede o useEffect abaixo de navegar
+             * para PlantioScreen antes do refresh terminar.
+             */
+            setHasFocusedRefreshCompleted(false);
+
+
+            const refreshOnFocus = async () => {
+
+                await handleUpdateApiData(false);
+
+
+                if (isActive) {
+
+                    setHasFocusedRefreshCompleted(true);
+                }
+            };
+
+
+            refreshOnFocus();
+
+
+            return () => {
+
+                isActive = false;
+
+                console.log(
+                    '[COLHEITA] Tela perdeu foco'
+                );
+            };
+
+        }, [handleUpdateApiData])
+    );
+
+
+    /*
+     * ============================================================
+     * CASO NÃO EXISTAM RESULTADOS PARA A FAZENDA
+     * ============================================================
+     *
+     * Só verifica DEPOIS que o refresh automático terminou.
+     *
+     * Assim evitamos:
+     *
+     * entra na tela
+     * -> Redux ainda vazio
+     * -> navigate PlantioScreen
+     * -> API responde depois
+     *
+     */
+
     useEffect(() => {
-        if (isFocused) {
-            if (filteredDataResults.length === 0) {
-                setTimeout(() => {
-                    navigation.navigate('PlantioScreen')
-                }, 600);
-            }
+
+        if (!isFocused) {
+            return;
         }
-    }, [isFocused]);
 
-    const handleUpdateApiData = async () => {
-        setIsRefreshing(true)
-        try {
-            const response = await fetch(LINK + "/plantio/get_colheita_plantio_info_react_native/", {
-                method: "POST",
-                body: JSON.stringify({
-                    safra: "2024/2025",
-                    ciclo: "3",
-                }),
-                headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Token ${EXPO_PUBLIC_REACT_APP_DJANGO_TOKEN}`,
-                },
-            });
-            // console.log('response : ', response)
-            if (response.status === 200) {
-                Alert.alert('Tudo Certo', 'Dados Atualizados com sucesso!!')
-                const data = await response.json();
-                dispatch(setColheitaData(data))
-                return data
-            }
 
-        } catch (error) {
-            console.error(error);
-            setIsRefreshing(false)
-            Alert.alert('Problema em atualizar o banco de dados', `Erro: ${error}`)
-        } finally {
-            console.log('Finally block reached');  //
-            setIsRefreshing(false)
+        if (!hasFocusedRefreshCompleted) {
+            return;
         }
-    }
 
-    const daysUntilFutureDate = (dateStr, daysToAdd) => {
-        // Parse the given date
-        const futureDate = dayjs(dateStr).add(daysToAdd, "day");
 
-        // Get today's date
-        const today = dayjs().startOf("day");
+        if (isRefreshing) {
+            return;
+        }
 
-        // Calculate the difference in days
-        return futureDate.diff(today, "day");
-    };
+
+        if (filteredDataResults.length > 0) {
+            return;
+        }
+
+
+        const timeout = setTimeout(() => {
+
+            navigation.navigate(
+                'PlantioScreen'
+            );
+
+        }, 600);
+
+
+        return () => {
+
+            clearTimeout(timeout);
+        };
+
+    }, [
+        isFocused,
+        hasFocusedRefreshCompleted,
+        isRefreshing,
+        filteredDataResults.length,
+        navigation
+    ]);
+
+
+    /*
+     * ============================================================
+     * DATA
+     * ============================================================
+     */
+
+    const daysUntilFutureDate = useCallback(
+        (dateStr, daysToAdd) => {
+
+            const futureDate = dayjs(dateStr)
+                .add(daysToAdd, 'day');
+
+            const today = dayjs()
+                .startOf('day');
+
+            return futureDate.diff(
+                today,
+                'day'
+            );
+        },
+        []
+    );
+
+
+    /*
+     * ============================================================
+     * FILTROS
+     * ============================================================
+     */
 
     const handleFilterPlant = () => {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy)
-        setFilterByDate(!filterByDate)
-    }
+
+        Haptics.impactAsync(
+            Haptics.ImpactFeedbackStyle.Heavy
+        );
+
+        setFilterByDate(
+            previous => !previous
+        );
+    };
+
+
     const handleFilterLoad = () => {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy)
-        setFilterdByLoad(!filterdByLoad)
-    }
+
+        Haptics.impactAsync(
+            Haptics.ImpactFeedbackStyle.Heavy
+        );
+
+        setFilterdByLoad(
+            previous => !previous
+        );
+    };
+
+
     const handleFilterNotLoad = () => {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy)
-        setFilteredNotLoading(!filteredNotLoading)
-    }
+
+        Haptics.impactAsync(
+            Haptics.ImpactFeedbackStyle.Heavy
+        );
+
+        setFilteredNotLoading(
+            previous => !previous
+        );
+    };
+
+
+    /*
+     * ============================================================
+     * DADOS FILTRADOS
+     * ============================================================
+     */
 
     const filteredData = useMemo(() => {
+
         return data
-            .filter(plantio => plantio.talhao__fazenda__nome === farm)
-            .filter(plantio => filterdByLoad ? plantio.area_parcial > 0 : true)
-            .filter(plantio => filteredNotLoading ? plantio.area_parcial === null : true)
-            .sort((a, b) => filterByDate
-                ? daysUntilFutureDate(a.data_plantio, a.variedade__dias_ciclo)
-                - daysUntilFutureDate(b.data_plantio, b.variedade__dias_ciclo)
-                : 0);
-    }, [data, farm, filterdByLoad, filteredNotLoading, filterByDate]);
+            .filter(
+                plantio =>
+                    plantio.talhao__fazenda__nome === farm
+            )
+
+            .filter(
+                plantio =>
+                    filterdByLoad
+                        ? plantio.area_parcial > 0
+                        : true
+            )
+
+            .filter(
+                plantio =>
+                    filteredNotLoading
+                        ? plantio.area_parcial === null
+                        : true
+            )
+
+            .sort(
+                (a, b) => {
+
+                    if (!filterByDate) {
+                        return 0;
+                    }
+
+
+                    return (
+                        daysUntilFutureDate(
+                            a.data_plantio,
+                            a.variedade__dias_ciclo
+                        )
+                        -
+                        daysUntilFutureDate(
+                            b.data_plantio,
+                            b.variedade__dias_ciclo
+                        )
+                    );
+                }
+            );
+
+    }, [
+        data,
+        farm,
+        filterdByLoad,
+        filteredNotLoading,
+        filterByDate,
+        daysUntilFutureDate
+    ]);
+
+
+    /*
+     * ============================================================
+     * RENDER
+     * ============================================================
+     */
+
     return (
         <>
-
             {
-                filteredDataResults?.length === 0 ? (
-
-                    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-                        <Text style={{ fontSize: 16, fontWeight: 'bold', color: Colors.secondary[600] }}>Sem Resultados para o Filtro Selecionado</Text>
-                    </View>
-                )
-                    :
-
-                    <SafeAreaView
-                        contentInsetAdjustmentBehavior='automatic'
-                        style={{
-                            flex: 1,
-                            paddingTop: Platform.OS === 'android' && insets.top + 22,
-                        }}
-                        edges={['top']} // aplica safe area só no topo, ignora bottom
-                    >
-                        <FlatList
-                            key={farm}
-                            contentInsetAdjustmentBehavior='automatic'
-                            // keyboardDismissMode='on-drag'
-                            initialNumToRender={5}      // renderiza apenas 5 cards inicialmente
-                            maxToRenderPerBatch={5}     // renderiza 5 por batch
-                            windowSize={7}
-                            removeClippedSubviews={true}
-                            scrollEnabled={true}
-                            contentContainerStyle={{
-                                paddingBottom: CUSTOM_TAB_BAR_CONTENT_PADDING + 50,
-                                paddingTop: 10,
+                /*
+                 * Durante o primeiro refresh da tela,
+                 * não mostramos "Sem resultados".
+                 *
+                 * Isso evita aquele flash visual antes
+                 * da API responder.
+                 */
+                hasFocusedRefreshCompleted &&
+                filteredDataResults.length === 0
+                    ? (
+                        <View
+                            style={{
+                                flex: 1,
+                                justifyContent: 'center',
+                                alignItems: 'center'
                             }}
-                            data={filteredData}
-                            keyExtractor={(item, i) => item.id.toString()}
-                            renderItem={PlantioTalhoesCardScreen}
-                            ItemSeparatorComponent={() => <View style={{ height: 13 }} />}
-                            refreshControl={
-                                <RefreshControl
-                                    refreshing={isRefreshing} // Make sure this comes from state
-                                    onRefresh={() => {
-                                        console.log('Pull-to-refresh triggered');
-                                        handleUpdateApiData();
-                                    }}
-                                    colors={[Colors.secondary[100], Colors.secondary[200], Colors.secondary[300]]}
-                                    tintColor={Colors.secondary[100]}
+                        >
+                            <Text
+                                style={{
+                                    fontSize: 16,
+                                    fontWeight: 'bold',
+                                    color: Colors.secondary[600]
+                                }}
+                            >
+                                Sem Resultados para o Filtro Selecionado
+                            </Text>
+                        </View>
+                    )
+                    : (
+                        <SafeAreaView
+                            contentInsetAdjustmentBehavior="automatic"
+                            style={{
+                                flex: 1,
+
+                                paddingTop:
+                                    Platform.OS === 'android'
+                                        ? insets.top + 22
+                                        : 0,
+                            }}
+                            edges={['top']}
+                        >
+
+                            <FlatList
+                                key={farm}
+
+                                contentInsetAdjustmentBehavior="automatic"
+
+                                initialNumToRender={5}
+
+                                maxToRenderPerBatch={5}
+
+                                windowSize={7}
+
+                                removeClippedSubviews={true}
+
+                                scrollEnabled={true}
+
+                                contentContainerStyle={{
+                                    paddingBottom:
+                                        CUSTOM_TAB_BAR_CONTENT_PADDING + 50,
+
+                                    paddingTop: 10,
+                                }}
+
+                                data={filteredData}
+
+                                keyExtractor={
+                                    item =>
+                                        item.id.toString()
+                                }
+
+                                renderItem={
+                                    PlantioTalhoesCardScreen
+                                }
+
+                                ItemSeparatorComponent={
+                                    () => (
+                                        <View
+                                            style={{
+                                                height: 13
+                                            }}
+                                        />
+                                    )
+                                }
+
+                                refreshControl={
+                                    <RefreshControl
+
+                                        refreshing={
+                                            isRefreshing
+                                        }
+
+                                        onRefresh={() => {
+
+                                            console.log(
+                                                '[COLHEITA] Pull-to-refresh'
+                                            );
+
+                                            handleUpdateApiData(true);
+                                        }}
+
+                                        colors={[
+                                            Colors.secondary[100],
+                                            Colors.secondary[200],
+                                            Colors.secondary[300]
+                                        ]}
+
+                                        tintColor={
+                                            Colors.secondary[100]
+                                        }
+                                    />
+                                }
+                            />
+
+
+                            <FilterPlantioComponent />
+
+
+                            <SaveView
+                                style={
+                                    styles.fabContainer
+                                }
+                                edges={[]}
+                            >
+                                <FAB
+                                    style={[
+                                        styles.fab,
+                                        {
+                                            marginBottom:
+                                                CUSTOM_TAB_BAR_TOTAL_HEIGHT
+                                        }
+                                    ]}
+
+                                    icon={
+                                        filterByDate
+                                            ? 'calendar'
+                                            : 'sort-alphabetical-variant'
+                                    }
+
+                                    color="black"
+
+                                    onPress={
+                                        handleFilterPlant
+                                    }
                                 />
-                            }
-                        />
-                        <FilterPlantioComponent />
-                        <SaveView style={styles.fabContainer} edges={[]}>
-                            <FAB
-                                style={[styles.fab, { marginBottom: CUSTOM_TAB_BAR_TOTAL_HEIGHT }]}
-                                icon={filterByDate ? "calendar" : "sort-alphabetical-variant"}
-                                color="black" // Icon color
-                                onPress={handleFilterPlant}
-                            />
-                        </SaveView>
-                        <SaveView style={styles.fabContainer2}>
-                            <FAB
-                                style={[styles.fab, { marginBottom: CUSTOM_TAB_BAR_TOTAL_HEIGHT, backgroundColor: filterdByLoad ? 'rgba(153,204,153,0.4)' : 'rgba(200, 200, 200, 0.3)' }]}
-                                icon={"truck"}
-                                color="black" // Icon color
-                                onPress={handleFilterLoad}
-                                disabled={filteredNotLoading} // Disable if `filteredNotLoading` is false
-                            />
-                        </SaveView>
-                        <SaveView style={styles.fabContainer3}>
-                            <FAB
-                                style={[styles.fab, { marginBottom: CUSTOM_TAB_BAR_TOTAL_HEIGHT, backgroundColor: filteredNotLoading ? 'rgba(255,102,102,0.4)' : 'rgba(200, 200, 200, 0.3)' }]}
-                                icon={"truck-remove"}
-                                color="black" // Icon color
-                                onPress={handleFilterNotLoad}
-                                disabled={filterdByLoad} // Disable if `filteredNotLoading` is false
-                            />
-                        </SaveView>
-                    </SafeAreaView>
+                            </SaveView>
+
+
+                            <SaveView
+                                style={
+                                    styles.fabContainer2
+                                }
+                                edges={[]}
+                            >
+                                <FAB
+                                    style={[
+                                        styles.fab,
+
+                                        {
+                                            marginBottom:
+                                                CUSTOM_TAB_BAR_TOTAL_HEIGHT,
+
+                                            backgroundColor:
+                                                filterdByLoad
+                                                    ? 'rgba(153,204,153,0.4)'
+                                                    : 'rgba(200, 200, 200, 0.3)'
+                                        }
+                                    ]}
+
+                                    icon="truck"
+
+                                    color="black"
+
+                                    onPress={
+                                        handleFilterLoad
+                                    }
+
+                                    disabled={
+                                        filteredNotLoading
+                                    }
+                                />
+                            </SaveView>
+
+
+                            <SaveView
+                                style={
+                                    styles.fabContainer3
+                                }
+                                edges={[]}
+                            >
+                                <FAB
+                                    style={[
+                                        styles.fab,
+
+                                        {
+                                            marginBottom:
+                                                CUSTOM_TAB_BAR_TOTAL_HEIGHT,
+
+                                            backgroundColor:
+                                                filteredNotLoading
+                                                    ? 'rgba(255,102,102,0.4)'
+                                                    : 'rgba(200, 200, 200, 0.3)'
+                                        }
+                                    ]}
+
+                                    icon="truck-remove"
+
+                                    color="black"
+
+                                    onPress={
+                                        handleFilterNotLoad
+                                    }
+
+                                    disabled={
+                                        filterdByLoad
+                                    }
+                                />
+                            </SaveView>
+
+                        </SafeAreaView>
+                    )
             }
         </>
+    );
+};
 
-    )
-}
 
-export default PlantioTalhoesDescription
+export default PlantioTalhoesDescription;
+
 
 const styles = StyleSheet.create({
+
     fabContainer3: {
-        position: "absolute",
+        position: 'absolute',
         right: 240,
-        bottom: 20
+        bottom: 20,
     },
+
+
     fabContainer2: {
-        position: "absolute",
+        position: 'absolute',
         right: 180,
-        bottom: 20
+        bottom: 20,
     },
+
+
     fabContainer: {
-        position: "absolute",
+        position: 'absolute',
         right: 120,
-        bottom: 20
+        bottom: 20,
     },
+
+
     fab: {
-        position: "absolute",
+        position: 'absolute',
+
         right: 0,
+
         bottom: 0,
-        backgroundColor: "rgba(200, 200, 200, 0.3)", // Grey, almost transparent
+
+        backgroundColor:
+            'rgba(200, 200, 200, 0.3)',
+
         width: 50,
+
         height: 50,
-        borderRadius: 25, // Makes it perfectly circular
-        justifyContent: "center",
-        alignItems: "center",
+
+        borderRadius: 25,
+
+        justifyContent: 'center',
+
+        alignItems: 'center',
+
         elevation: 4,
-        borderColor: Colors.primary[300],
-        borderWidth: 1
+
+        borderColor:
+            Colors.primary[300],
+
+        borderWidth: 1,
     },
-})
+});
