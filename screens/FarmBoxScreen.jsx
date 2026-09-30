@@ -1133,7 +1133,7 @@ const FarmBoxScreen = ({ navigation }) => {
                 </View>
             )}
 
-            {isLoading && (
+            {/* {isLoading && (
                 <View style={styles.loadingBanner}>
                     <ActivityIndicator
                         size="small"
@@ -1144,7 +1144,7 @@ const FarmBoxScreen = ({ navigation }) => {
                         Atualizando aplicações...
                     </Text>
                 </View>
-            )}
+            )} */}
 
             <ScrollView
                 ref={ref}

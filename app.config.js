@@ -49,6 +49,12 @@ export default {
         plugins: [
             "expo-system-ui",
 
+            "expo-splash-screen",
+            "expo-status-bar",
+            
+            "@react-native-community/datetimepicker",
+            "expo-sharing",
+
             [
                 "expo-build-properties",
                 {
@@ -62,10 +68,6 @@ export default {
 
             "react-native-bottom-tabs",
 
-            /**
-             * Configuração personalizada para aumentar o limite
-             * do banco utilizado pelo AsyncStorage no Android.
-             */
             "./plugins.js",
 
             [
@@ -76,6 +78,7 @@ export default {
                 },
             ],
         ],
+
 
         splash: {
             resizeMode: "contain",

@@ -12,11 +12,13 @@ import {
 	ActivityIndicator,
 	RefreshControl,
 	Animated,
-	Easing,
+	Easing
 } from "react-native";
 
-import { setStatusBarStyle, setStatusBarBackgroundColor } from "expo-status-bar";
-import { useFocusEffect } from "@react-navigation/native";
+import { useFocusEffect, useIsFocused } from "@react-navigation/native";
+import { StatusBar } from "expo-status-bar";
+
+
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { useDispatch, useSelector } from "react-redux";
@@ -216,6 +218,8 @@ const NavigationHomeSkeleton = () => {
 
 const NavigationHomeScreen = ({ navigation }) => {
 	const dispatch = useDispatch();
+	const isFocused = useIsFocused();
+
 
 	const navigationMapDataRaw = useSelector(selectNavigationMapData);
 	const navigationMapStatus = useSelector(selectNavigationMapStatus);
@@ -610,14 +614,6 @@ const NavigationHomeScreen = ({ navigation }) => {
 						console.log("Erro ao carregar dados de navegação na Home:", error);
 					});
 			}
-
-			setStatusBarStyle("dark");
-			setStatusBarBackgroundColor("#D6E3F3", true);
-
-			return () => {
-				setStatusBarStyle("light");
-				setStatusBarBackgroundColor(Colors.primary[901], true);
-			};
 		}, [dispatch, navigationMapData.length, navigationMapStatus])
 	);
 
@@ -669,252 +665,131 @@ const NavigationHomeScreen = ({ navigation }) => {
 	const hasError = navigationMapStatus === "failed" || !!navigationMapError;
 
 	return (
-		<SafeAreaView style={styles.safeArea} edges={["top"]}>
-			<View style={styles.container}>
-				<View style={styles.header}>
-					<View style={styles.headerTextBox}>
-						<Text style={styles.title}>Navegação</Text>
+		<>
+			<StatusBar style={isFocused ? "dark" : "light"} />
+			<SafeAreaView style={styles.safeArea} edges={["top"]}>
+				<View style={styles.container}>
+					<View style={styles.header}>
+						<View style={styles.headerTextBox}>
+							<Text style={styles.title}>Navegação</Text>
 
-						<Text style={styles.subtitle}>
-							Selecione uma fazenda para abrir o mapa operacional.
-						</Text>
-					</View>
-
-					<View style={styles.headerActionsRow}>
-						<View style={styles.summaryPill}>
-							<Ionicons name="map-outline" size={16} color={Colors.primary[700]} />
-
-							<Text style={styles.summaryPillText}>
-								{summary.totalFarms} fazendas · {summary.totalProjects} projetos
+							<Text style={styles.subtitle}>
+								Selecione uma fazenda para abrir o mapa operacional.
 							</Text>
 						</View>
 
-						<TouchableOpacity
-							activeOpacity={0.84}
-							onPress={() => setFiltersVisible((current) => !current)}
-							style={[
-								styles.homeFilterButton,
-								filtersVisible && styles.homeFilterButtonActive,
-								hasActiveHomeFilters && styles.homeFilterButtonWithFilters,
-							]}
-						>
-							<Ionicons
-								name={filtersVisible ? "options" : "options-outline"}
-								size={17}
-								color={filtersVisible ? "#07130C" : Colors.primary[700]}
-							/>
+						<View style={styles.headerActionsRow}>
+							<View style={styles.summaryPill}>
+								<Ionicons name="map-outline" size={16} color={Colors.primary[700]} />
 
-							<Text
+								<Text style={styles.summaryPillText}>
+									{summary.totalFarms} fazendas · {summary.totalProjects} projetos
+								</Text>
+							</View>
+
+							<TouchableOpacity
+								activeOpacity={0.84}
+								onPress={() => setFiltersVisible((current) => !current)}
 								style={[
-									styles.homeFilterButtonText,
-									filtersVisible && styles.homeFilterButtonTextActive,
+									styles.homeFilterButton,
+									filtersVisible && styles.homeFilterButtonActive,
+									hasActiveHomeFilters && styles.homeFilterButtonWithFilters,
 								]}
 							>
-								Filtros
-							</Text>
+								<Ionicons
+									name={filtersVisible ? "options" : "options-outline"}
+									size={17}
+									color={filtersVisible ? "#07130C" : Colors.primary[700]}
+								/>
 
-							{activeFiltersCount > 0 && (
-								<View style={styles.homeFilterCountBadge}>
-									<Text style={styles.homeFilterCountBadgeText}>
-										{activeFiltersCount}
-									</Text>
-								</View>
-							)}
-						</TouchableOpacity>
-					</View>
+								<Text
+									style={[
+										styles.homeFilterButtonText,
+										filtersVisible && styles.homeFilterButtonTextActive,
+									]}
+								>
+									Filtros
+								</Text>
 
-					<View style={styles.filterInfoPill}>
-						<Text style={styles.filterInfoText}>
-							Safra {currentSafra || "—"} · Ciclo {currentCiclo || "—"} ·{" "}
-							{summary.totalParcels} parcelas · {formatHa(summary.totalArea)}
-						</Text>
-					</View>
-
-					{!!appliedFiltersLabel && (
-						<View style={styles.appliedFiltersPill}>
-							<Ionicons
-								name="filter-outline"
-								size={12}
-								color={Colors.primary[700]}
-							/>
-
-							<Text style={styles.appliedFiltersText} numberOfLines={1}>
-								{appliedFiltersLabel}
-							</Text>
-						</View>
-					)}
-
-					{filtersMounted && (
-						<Animated.View style={[styles.homeFiltersCardAnimated, filterCardAnimatedStyle]}>
-							<View style={styles.homeFiltersCard}>
-								<View style={styles.homeFiltersHeader}>
-									<View>
-										<Text style={styles.homeFiltersTitle}>Filtros operacionais</Text>
-										<Text style={styles.homeFiltersSubtitle}>
-											Safra, ciclo, status, cultura e variedade
+								{activeFiltersCount > 0 && (
+									<View style={styles.homeFilterCountBadge}>
+										<Text style={styles.homeFilterCountBadgeText}>
+											{activeFiltersCount}
 										</Text>
 									</View>
+								)}
+							</TouchableOpacity>
+						</View>
 
-									<View style={styles.homeFiltersHeaderActions}>
-										{hasActiveHomeFilters && (
+						<View style={styles.filterInfoPill}>
+							<Text style={styles.filterInfoText}>
+								Safra {currentSafra || "—"} · Ciclo {currentCiclo || "—"} ·{" "}
+								{summary.totalParcels} parcelas · {formatHa(summary.totalArea)}
+							</Text>
+						</View>
+
+						{!!appliedFiltersLabel && (
+							<View style={styles.appliedFiltersPill}>
+								<Ionicons
+									name="filter-outline"
+									size={12}
+									color={Colors.primary[700]}
+								/>
+
+								<Text style={styles.appliedFiltersText} numberOfLines={1}>
+									{appliedFiltersLabel}
+								</Text>
+							</View>
+						)}
+
+						{filtersMounted && (
+							<Animated.View style={[styles.homeFiltersCardAnimated, filterCardAnimatedStyle]}>
+								<View style={styles.homeFiltersCard}>
+									<View style={styles.homeFiltersHeader}>
+										<View>
+											<Text style={styles.homeFiltersTitle}>Filtros operacionais</Text>
+											<Text style={styles.homeFiltersSubtitle}>
+												Safra, ciclo, status, cultura e variedade
+											</Text>
+										</View>
+
+										<View style={styles.homeFiltersHeaderActions}>
+											{hasActiveHomeFilters && (
+												<TouchableOpacity
+													activeOpacity={0.82}
+													onPress={handleClearHomeFilters}
+													style={styles.homeFiltersClearButton}
+												>
+													<Text style={styles.homeFiltersClear}>Limpar</Text>
+												</TouchableOpacity>
+											)}
+
 											<TouchableOpacity
 												activeOpacity={0.82}
-												onPress={handleClearHomeFilters}
-												style={styles.homeFiltersClearButton}
+												onPress={() => setFiltersVisible(false)}
+												style={styles.homeFiltersCloseButton}
 											>
-												<Text style={styles.homeFiltersClear}>Limpar</Text>
+												<Ionicons name="close" size={15} color="#0F172A" />
 											</TouchableOpacity>
-										)}
-
-										<TouchableOpacity
-											activeOpacity={0.82}
-											onPress={() => setFiltersVisible(false)}
-											style={styles.homeFiltersCloseButton}
-										>
-											<Ionicons name="close" size={15} color="#0F172A" />
-										</TouchableOpacity>
+										</View>
 									</View>
-								</View>
 
-								<View style={styles.homeFilterSection}>
-									<Text style={styles.homeFilterLabel}>Safra</Text>
-
-									<ScrollView
-										horizontal
-										showsHorizontalScrollIndicator={false}
-										contentContainerStyle={styles.homeChipsRow}
-									>
-										{safraOptions.map((option) => {
-											const isSelected = normalizeSafra(currentSafra) === normalizeSafra(option);
-
-											return (
-												<TouchableOpacity
-													key={`home-safra-${option}`}
-													activeOpacity={0.82}
-													onPress={() => handleSelectSafra(option)}
-													style={[
-														styles.homeFilterChip,
-														isSelected && styles.homeFilterChipSelected,
-													]}
-												>
-													<Text
-														style={[
-															styles.homeFilterChipText,
-															isSelected && styles.homeFilterChipTextSelected,
-														]}
-													>
-														{option}
-													</Text>
-												</TouchableOpacity>
-											);
-										})}
-
-										{safraOptions.length === 0 && (
-											<View style={styles.homeFilterChipDisabled}>
-												<Text style={styles.homeFilterChipDisabledText}>
-													Sem safra disponível
-												</Text>
-											</View>
-										)}
-									</ScrollView>
-								</View>
-
-								<View style={styles.homeFilterSection}>
-									<Text style={styles.homeFilterLabel}>Ciclo</Text>
-
-									<ScrollView
-										horizontal
-										showsHorizontalScrollIndicator={false}
-										contentContainerStyle={styles.homeChipsRow}
-									>
-										{cicloOptions.map((option) => {
-											const normalizedOption = normalizeCiclo(option);
-											const isSelected = normalizeCiclo(currentCiclo) === normalizedOption;
-
-											return (
-												<TouchableOpacity
-													key={`home-ciclo-${normalizedOption}`}
-													activeOpacity={0.82}
-													onPress={() => handleSelectCiclo(normalizedOption)}
-													style={[
-														styles.homeFilterChip,
-														isSelected && styles.homeFilterChipSelected,
-													]}
-												>
-													<Text
-														style={[
-															styles.homeFilterChipText,
-															isSelected && styles.homeFilterChipTextSelected,
-														]}
-													>
-														Ciclo {normalizedOption}
-													</Text>
-												</TouchableOpacity>
-											);
-										})}
-
-										{cicloOptions.length === 0 && (
-											<View style={styles.homeFilterChipDisabled}>
-												<Text style={styles.homeFilterChipDisabledText}>
-													Sem ciclo disponível
-												</Text>
-											</View>
-										)}
-									</ScrollView>
-								</View>
-
-								<View style={styles.homeFilterSection}>
-									<Text style={styles.homeFilterLabel}>Status</Text>
-
-									<ScrollView
-										horizontal
-										showsHorizontalScrollIndicator={false}
-										contentContainerStyle={styles.homeChipsRow}
-									>
-										{statusOptions.map((option) => {
-											const isSelected = selectedStatus.includes(option.key);
-
-											return (
-												<TouchableOpacity
-													key={option.key}
-													activeOpacity={0.82}
-													onPress={() => handleToggleStatus(option.key)}
-													style={[
-														styles.homeFilterChip,
-														isSelected && styles.homeFilterChipSelected,
-													]}
-												>
-													<Text
-														style={[
-															styles.homeFilterChipText,
-															isSelected && styles.homeFilterChipTextSelected,
-														]}
-													>
-														{option.label}
-													</Text>
-												</TouchableOpacity>
-											);
-										})}
-									</ScrollView>
-								</View>
-
-								{cultureOptions.length > 0 && (
 									<View style={styles.homeFilterSection}>
-										<Text style={styles.homeFilterLabel}>Cultura</Text>
+										<Text style={styles.homeFilterLabel}>Safra</Text>
 
 										<ScrollView
 											horizontal
 											showsHorizontalScrollIndicator={false}
 											contentContainerStyle={styles.homeChipsRow}
 										>
-											{cultureOptions.map((culture) => {
-												const isSelected = selectedCultures.includes(culture);
+											{safraOptions.map((option) => {
+												const isSelected = normalizeSafra(currentSafra) === normalizeSafra(option);
 
 												return (
 													<TouchableOpacity
-														key={`home-culture-${culture}`}
+														key={`home-safra-${option}`}
 														activeOpacity={0.82}
-														onPress={() => handleToggleCulture(culture)}
+														onPress={() => handleSelectSafra(option)}
 														style={[
 															styles.homeFilterChip,
 															isSelected && styles.homeFilterChipSelected,
@@ -926,32 +801,39 @@ const NavigationHomeScreen = ({ navigation }) => {
 																isSelected && styles.homeFilterChipTextSelected,
 															]}
 														>
-															{culture}
+															{option}
 														</Text>
 													</TouchableOpacity>
 												);
 											})}
+
+											{safraOptions.length === 0 && (
+												<View style={styles.homeFilterChipDisabled}>
+													<Text style={styles.homeFilterChipDisabledText}>
+														Sem safra disponível
+													</Text>
+												</View>
+											)}
 										</ScrollView>
 									</View>
-								)}
 
-								{varietyOptions.length > 0 && (
-									<View style={styles.homeFilterSectionLast}>
-										<Text style={styles.homeFilterLabel}>Variedade</Text>
+									<View style={styles.homeFilterSection}>
+										<Text style={styles.homeFilterLabel}>Ciclo</Text>
 
 										<ScrollView
 											horizontal
 											showsHorizontalScrollIndicator={false}
 											contentContainerStyle={styles.homeChipsRow}
 										>
-											{varietyOptions.map((variety) => {
-												const isSelected = selectedVarieties.includes(variety);
+											{cicloOptions.map((option) => {
+												const normalizedOption = normalizeCiclo(option);
+												const isSelected = normalizeCiclo(currentCiclo) === normalizedOption;
 
 												return (
 													<TouchableOpacity
-														key={`home-variety-${variety}`}
+														key={`home-ciclo-${normalizedOption}`}
 														activeOpacity={0.82}
-														onPress={() => handleToggleVariety(variety)}
+														onPress={() => handleSelectCiclo(normalizedOption)}
 														style={[
 															styles.homeFilterChip,
 															isSelected && styles.homeFilterChipSelected,
@@ -963,264 +845,381 @@ const NavigationHomeScreen = ({ navigation }) => {
 																isSelected && styles.homeFilterChipTextSelected,
 															]}
 														>
-															{variety}
+															Ciclo {normalizedOption}
+														</Text>
+													</TouchableOpacity>
+												);
+											})}
+
+											{cicloOptions.length === 0 && (
+												<View style={styles.homeFilterChipDisabled}>
+													<Text style={styles.homeFilterChipDisabledText}>
+														Sem ciclo disponível
+													</Text>
+												</View>
+											)}
+										</ScrollView>
+									</View>
+
+									<View style={styles.homeFilterSection}>
+										<Text style={styles.homeFilterLabel}>Status</Text>
+
+										<ScrollView
+											horizontal
+											showsHorizontalScrollIndicator={false}
+											contentContainerStyle={styles.homeChipsRow}
+										>
+											{statusOptions.map((option) => {
+												const isSelected = selectedStatus.includes(option.key);
+
+												return (
+													<TouchableOpacity
+														key={option.key}
+														activeOpacity={0.82}
+														onPress={() => handleToggleStatus(option.key)}
+														style={[
+															styles.homeFilterChip,
+															isSelected && styles.homeFilterChipSelected,
+														]}
+													>
+														<Text
+															style={[
+																styles.homeFilterChipText,
+																isSelected && styles.homeFilterChipTextSelected,
+															]}
+														>
+															{option.label}
 														</Text>
 													</TouchableOpacity>
 												);
 											})}
 										</ScrollView>
 									</View>
-								)}
 
-								{(hasActiveHomeFilters || currentSafra || currentCiclo) && (
-									<View style={styles.homeFiltersFooter}>
-										<Text style={styles.homeFiltersFooterText} numberOfLines={1}>
-											Safra {currentSafra || "—"} · Ciclo {currentCiclo || "—"} ·{" "}
-											{summary.totalParcels} parcelas · {formatHa(summary.totalArea)}
-										</Text>
+									{cultureOptions.length > 0 && (
+										<View style={styles.homeFilterSection}>
+											<Text style={styles.homeFilterLabel}>Cultura</Text>
 
-										<TouchableOpacity
-											activeOpacity={0.82}
-											onPress={handleClearAllFilterContext}
-											style={styles.homeFiltersResetContextButton}
-										>
-											<Text style={styles.homeFiltersResetContextText}>
-												Resetar
-											</Text>
-										</TouchableOpacity>
-									</View>
-								)}
-							</View>
-						</Animated.View>
-					)}
-
-					{isRefreshing && (
-						<View style={styles.refreshPill}>
-							<View style={styles.refreshSpinnerBox}>
-								<ActivityIndicator size="small" color={Colors.primary[700]} />
-							</View>
-
-							<View>
-								<Text style={styles.refreshPillText}>Atualizando dados</Text>
-								<Text style={styles.refreshPillSubText}>Sincronizando parcelas e projetos...</Text>
-							</View>
-						</View>
-					)}
-				</View>
-
-				{isFirstLoading ? (
-					<NavigationHomeSkeleton />
-				) : hasError && !hasRawData ? (
-					<View style={styles.emptyBox}>
-						<Ionicons name="warning-outline" size={30} color="#B45309" />
-						<Text style={styles.emptyTitle}>Não foi possível carregar</Text>
-						<Text style={styles.emptyText}>
-							{navigationMapError || "Erro ao carregar dados de navegação."}
-						</Text>
-					</View>
-				) : !hasData ? (
-					<ScrollView
-						style={styles.scroll}
-						contentContainerStyle={styles.emptyScrollContent}
-						showsVerticalScrollIndicator={false}
-						refreshControl={
-							<RefreshControl
-								refreshing={isRefreshing}
-								onRefresh={handleRefreshNavigationData}
-								tintColor={Colors.primary[700]}
-								colors={[Colors.primary[700]]}
-								progressBackgroundColor="#FFFFFF"
-							/>
-						}
-					>
-						<View style={styles.emptyBoxInline}>
-							<Ionicons name="map-outline" size={30} color={Colors.primary[700]} />
-							<Text style={styles.emptyTitle}>Nenhum dado encontrado</Text>
-							<Text style={styles.emptyText}>
-								Não há parcelas disponíveis para os filtros atuais.
-							</Text>
-
-							{(hasActiveHomeFilters || currentSafra || currentCiclo) && (
-								<TouchableOpacity
-									activeOpacity={0.84}
-									onPress={handleClearAllFilterContext}
-									style={styles.emptyClearButton}
-								>
-									<Text style={styles.emptyClearButtonText}>Resetar filtros</Text>
-								</TouchableOpacity>
-							)}
-						</View>
-					</ScrollView>
-				) : (
-					<ScrollView
-						style={styles.scroll}
-						contentContainerStyle={styles.scrollContent}
-						showsVerticalScrollIndicator={false}
-						refreshControl={
-							<RefreshControl
-								refreshing={isRefreshing}
-								onRefresh={handleRefreshNavigationData}
-								tintColor={Colors.primary[700]}
-								colors={[Colors.primary[700]]}
-								progressBackgroundColor="#FFFFFF"
-							/>
-						}
-					>
-						{farmsData.map((farm) => {
-							const isExpanded = expandedFarmId === farm.fazenda_id;
-
-							const visibleProjects = farm.projetos.slice(0, 3);
-							const hiddenProjectsCount = Math.max(farm.projetos.length - 3, 0);
-
-							return (
-								<View key={farm.fazenda_id} style={styles.farmCard}>
-									<TouchableOpacity
-										activeOpacity={0.88}
-										onPress={() => handleOpenFarmMap(farm)}
-										style={styles.farmMainButton}
-									>
-										<View style={styles.farmIconBox}>
-											<Ionicons
-												name="navigate-outline"
-												size={21}
-												color="#FFFFFF"
-											/>
-										</View>
-
-										<View style={styles.farmContent}>
-											<Text style={styles.farmName} numberOfLines={1}>
-												{farm.fazenda_nome}
-											</Text>
-
-											<Text style={styles.farmMeta} numberOfLines={1}>
-												{farm.projetos.length}{" "}
-												{farm.projetos.length === 1 ? "projeto" : "projetos"} ·{" "}
-												{farm.total_parcelas} parcelas · {formatHa(farm.total_area)}
-											</Text>
-
-											<View style={styles.projectPreviewRow}>
-												{visibleProjects.map((project) => (
-													<View
-														key={project.projeto_id}
-														style={styles.projectMiniChip}
-													>
-														<Text
-															style={styles.projectMiniChipText}
-															numberOfLines={1}
-														>
-															{normalizeProjectName(project.projeto_nome)}
-														</Text>
-													</View>
-												))}
-
-												{hiddenProjectsCount > 0 && (
-													<View style={styles.projectMoreChip}>
-														<Text style={styles.projectMoreChipText}>
-															+{hiddenProjectsCount}
-														</Text>
-													</View>
-												)}
-											</View>
-										</View>
-
-										<Ionicons
-											name="chevron-forward"
-											size={22}
-											color="rgba(15,23,42,0.38)"
-										/>
-									</TouchableOpacity>
-
-									<View style={styles.cardFooter}>
-										<TouchableOpacity
-											activeOpacity={0.82}
-											onPress={() => handleToggleDetails(farm.fazenda_id)}
-											style={styles.detailsButton}
-										>
-											<Text style={styles.detailsButtonText}>
-												{isExpanded ? "Ocultar detalhes" : "Ver detalhes"}
-											</Text>
-
-											<Ionicons
-												name={isExpanded ? "chevron-up" : "chevron-down"}
-												size={16}
-												color={Colors.primary[700]}
-											/>
-										</TouchableOpacity>
-
-										<TouchableOpacity
-											activeOpacity={0.88}
-											onPress={() => handleOpenFarmMap(farm)}
-											style={styles.openButton}
-										>
-											<Text style={styles.openButtonText}>Abrir mapa</Text>
-										</TouchableOpacity>
-									</View>
-
-									{isExpanded && (
-										<View style={styles.expandedBox}>
-											<View style={styles.expandedMetricsRow}>
-												<View style={styles.expandedMetric}>
-													<Text style={styles.expandedMetricLabel}>Área total</Text>
-													<Text style={styles.expandedMetricValue}>
-														{formatHa(farm.total_area)}
-													</Text>
-												</View>
-
-												<View style={styles.expandedMetric}>
-													<Text style={styles.expandedMetricLabel}>Parcelas</Text>
-													<Text style={styles.expandedMetricValue}>
-														{farm.total_parcelas}
-													</Text>
-												</View>
-											</View>
-
-											<View style={styles.expandedProjects}>
-												{farm.projetos.map((project) => {
-													const hasMapCenter =
-														!!project?.map_centro_id?.lat ||
-														!!project?.map_centro_id?.latitude;
+											<ScrollView
+												horizontal
+												showsHorizontalScrollIndicator={false}
+												contentContainerStyle={styles.homeChipsRow}
+											>
+												{cultureOptions.map((culture) => {
+													const isSelected = selectedCultures.includes(culture);
 
 													return (
 														<TouchableOpacity
-															key={project.projeto_id}
-															activeOpacity={0.84}
-															onPress={() => handleOpenProjectMap(farm, project)}
-															style={styles.expandedProjectRow}
+															key={`home-culture-${culture}`}
+															activeOpacity={0.82}
+															onPress={() => handleToggleCulture(culture)}
+															style={[
+																styles.homeFilterChip,
+																isSelected && styles.homeFilterChipSelected,
+															]}
 														>
-															<View
-																style={[
-																	styles.projectDot,
-																	{
-																		backgroundColor: hasMapCenter
-																			? "#16A34A"
-																			: "#CBD5E1",
-																	},
-																]}
-															/>
-
 															<Text
-																style={styles.expandedProjectName}
-																numberOfLines={1}
+																style={[
+																	styles.homeFilterChipText,
+																	isSelected && styles.homeFilterChipTextSelected,
+																]}
 															>
-																{project.projeto_nome}
-															</Text>
-
-															<Text style={styles.expandedProjectArea}>
-																{formatHa(project.area_produtiva)}
+																{culture}
 															</Text>
 														</TouchableOpacity>
 													);
 												})}
-											</View>
+											</ScrollView>
+										</View>
+									)}
+
+									{varietyOptions.length > 0 && (
+										<View style={styles.homeFilterSectionLast}>
+											<Text style={styles.homeFilterLabel}>Variedade</Text>
+
+											<ScrollView
+												horizontal
+												showsHorizontalScrollIndicator={false}
+												contentContainerStyle={styles.homeChipsRow}
+											>
+												{varietyOptions.map((variety) => {
+													const isSelected = selectedVarieties.includes(variety);
+
+													return (
+														<TouchableOpacity
+															key={`home-variety-${variety}`}
+															activeOpacity={0.82}
+															onPress={() => handleToggleVariety(variety)}
+															style={[
+																styles.homeFilterChip,
+																isSelected && styles.homeFilterChipSelected,
+															]}
+														>
+															<Text
+																style={[
+																	styles.homeFilterChipText,
+																	isSelected && styles.homeFilterChipTextSelected,
+																]}
+															>
+																{variety}
+															</Text>
+														</TouchableOpacity>
+													);
+												})}
+											</ScrollView>
+										</View>
+									)}
+
+									{(hasActiveHomeFilters || currentSafra || currentCiclo) && (
+										<View style={styles.homeFiltersFooter}>
+											<Text style={styles.homeFiltersFooterText} numberOfLines={1}>
+												Safra {currentSafra || "—"} · Ciclo {currentCiclo || "—"} ·{" "}
+												{summary.totalParcels} parcelas · {formatHa(summary.totalArea)}
+											</Text>
+
+											<TouchableOpacity
+												activeOpacity={0.82}
+												onPress={handleClearAllFilterContext}
+												style={styles.homeFiltersResetContextButton}
+											>
+												<Text style={styles.homeFiltersResetContextText}>
+													Resetar
+												</Text>
+											</TouchableOpacity>
 										</View>
 									)}
 								</View>
-							);
-						})}
-					</ScrollView>
-				)}
-			</View>
-		</SafeAreaView>
+							</Animated.View>
+						)}
+
+						{isRefreshing && (
+							<View style={styles.refreshPill}>
+								<View style={styles.refreshSpinnerBox}>
+									<ActivityIndicator size="small" color={Colors.primary[700]} />
+								</View>
+
+								<View>
+									<Text style={styles.refreshPillText}>Atualizando dados</Text>
+									<Text style={styles.refreshPillSubText}>Sincronizando parcelas e projetos...</Text>
+								</View>
+							</View>
+						)}
+					</View>
+
+					{isFirstLoading ? (
+						<NavigationHomeSkeleton />
+					) : hasError && !hasRawData ? (
+						<View style={styles.emptyBox}>
+							<Ionicons name="warning-outline" size={30} color="#B45309" />
+							<Text style={styles.emptyTitle}>Não foi possível carregar</Text>
+							<Text style={styles.emptyText}>
+								{navigationMapError || "Erro ao carregar dados de navegação."}
+							</Text>
+						</View>
+					) : !hasData ? (
+						<ScrollView
+							style={styles.scroll}
+							contentContainerStyle={styles.emptyScrollContent}
+							showsVerticalScrollIndicator={false}
+							refreshControl={
+								<RefreshControl
+									refreshing={isRefreshing}
+									onRefresh={handleRefreshNavigationData}
+									tintColor={Colors.primary[700]}
+									colors={[Colors.primary[700]]}
+									progressBackgroundColor="#FFFFFF"
+								/>
+							}
+						>
+							<View style={styles.emptyBoxInline}>
+								<Ionicons name="map-outline" size={30} color={Colors.primary[700]} />
+								<Text style={styles.emptyTitle}>Nenhum dado encontrado</Text>
+								<Text style={styles.emptyText}>
+									Não há parcelas disponíveis para os filtros atuais.
+								</Text>
+
+								{(hasActiveHomeFilters || currentSafra || currentCiclo) && (
+									<TouchableOpacity
+										activeOpacity={0.84}
+										onPress={handleClearAllFilterContext}
+										style={styles.emptyClearButton}
+									>
+										<Text style={styles.emptyClearButtonText}>Resetar filtros</Text>
+									</TouchableOpacity>
+								)}
+							</View>
+						</ScrollView>
+					) : (
+						<ScrollView
+							style={styles.scroll}
+							contentContainerStyle={styles.scrollContent}
+							showsVerticalScrollIndicator={false}
+							refreshControl={
+								<RefreshControl
+									refreshing={isRefreshing}
+									onRefresh={handleRefreshNavigationData}
+									tintColor={Colors.primary[700]}
+									colors={[Colors.primary[700]]}
+									progressBackgroundColor="#FFFFFF"
+								/>
+							}
+						>
+							{farmsData.map((farm) => {
+								const isExpanded = expandedFarmId === farm.fazenda_id;
+
+								const visibleProjects = farm.projetos.slice(0, 3);
+								const hiddenProjectsCount = Math.max(farm.projetos.length - 3, 0);
+
+								return (
+									<View key={farm.fazenda_id} style={styles.farmCard}>
+										<TouchableOpacity
+											activeOpacity={0.88}
+											onPress={() => handleOpenFarmMap(farm)}
+											style={styles.farmMainButton}
+										>
+											<View style={styles.farmIconBox}>
+												<Ionicons
+													name="navigate-outline"
+													size={21}
+													color="#FFFFFF"
+												/>
+											</View>
+
+											<View style={styles.farmContent}>
+												<Text style={styles.farmName} numberOfLines={1}>
+													{farm.fazenda_nome}
+												</Text>
+
+												<Text style={styles.farmMeta} numberOfLines={1}>
+													{farm.projetos.length}{" "}
+													{farm.projetos.length === 1 ? "projeto" : "projetos"} ·{" "}
+													{farm.total_parcelas} parcelas · {formatHa(farm.total_area)}
+												</Text>
+
+												<View style={styles.projectPreviewRow}>
+													{visibleProjects.map((project) => (
+														<View
+															key={project.projeto_id}
+															style={styles.projectMiniChip}
+														>
+															<Text
+																style={styles.projectMiniChipText}
+																numberOfLines={1}
+															>
+																{normalizeProjectName(project.projeto_nome)}
+															</Text>
+														</View>
+													))}
+
+													{hiddenProjectsCount > 0 && (
+														<View style={styles.projectMoreChip}>
+															<Text style={styles.projectMoreChipText}>
+																+{hiddenProjectsCount}
+															</Text>
+														</View>
+													)}
+												</View>
+											</View>
+
+											<Ionicons
+												name="chevron-forward"
+												size={22}
+												color="rgba(15,23,42,0.38)"
+											/>
+										</TouchableOpacity>
+
+										<View style={styles.cardFooter}>
+											<TouchableOpacity
+												activeOpacity={0.82}
+												onPress={() => handleToggleDetails(farm.fazenda_id)}
+												style={styles.detailsButton}
+											>
+												<Text style={styles.detailsButtonText}>
+													{isExpanded ? "Ocultar detalhes" : "Ver detalhes"}
+												</Text>
+
+												<Ionicons
+													name={isExpanded ? "chevron-up" : "chevron-down"}
+													size={16}
+													color={Colors.primary[700]}
+												/>
+											</TouchableOpacity>
+
+											<TouchableOpacity
+												activeOpacity={0.88}
+												onPress={() => handleOpenFarmMap(farm)}
+												style={styles.openButton}
+											>
+												<Text style={styles.openButtonText}>Abrir mapa</Text>
+											</TouchableOpacity>
+										</View>
+
+										{isExpanded && (
+											<View style={styles.expandedBox}>
+												<View style={styles.expandedMetricsRow}>
+													<View style={styles.expandedMetric}>
+														<Text style={styles.expandedMetricLabel}>Área total</Text>
+														<Text style={styles.expandedMetricValue}>
+															{formatHa(farm.total_area)}
+														</Text>
+													</View>
+
+													<View style={styles.expandedMetric}>
+														<Text style={styles.expandedMetricLabel}>Parcelas</Text>
+														<Text style={styles.expandedMetricValue}>
+															{farm.total_parcelas}
+														</Text>
+													</View>
+												</View>
+
+												<View style={styles.expandedProjects}>
+													{farm.projetos.map((project) => {
+														const hasMapCenter =
+															!!project?.map_centro_id?.lat ||
+															!!project?.map_centro_id?.latitude;
+
+														return (
+															<TouchableOpacity
+																key={project.projeto_id}
+																activeOpacity={0.84}
+																onPress={() => handleOpenProjectMap(farm, project)}
+																style={styles.expandedProjectRow}
+															>
+																<View
+																	style={[
+																		styles.projectDot,
+																		{
+																			backgroundColor: hasMapCenter
+																				? "#16A34A"
+																				: "#CBD5E1",
+																		},
+																	]}
+																/>
+
+																<Text
+																	style={styles.expandedProjectName}
+																	numberOfLines={1}
+																>
+																	{project.projeto_nome}
+																</Text>
+
+																<Text style={styles.expandedProjectArea}>
+																	{formatHa(project.area_produtiva)}
+																</Text>
+															</TouchableOpacity>
+														);
+													})}
+												</View>
+											</View>
+										)}
+									</View>
+								);
+							})}
+						</ScrollView>
+					)}
+				</View>
+			</SafeAreaView>
+		</>
 	);
 };
 

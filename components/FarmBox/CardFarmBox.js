@@ -2186,12 +2186,12 @@ const CardFarmBox = ({ route, navigation }) => {
                         </View>
                     )}
 
-                {isLoading && (
+                {/* {isLoading && (
                     <View style={styles.customRefreshContainer}>
                         <ActivityIndicator size="large" color="#1E90FF" />
                         <Text style={styles.refreshText}>Atualizando...</Text>
                     </View>
-                )}
+                )} */}
 
                 <SectionList
                     ref={ref}

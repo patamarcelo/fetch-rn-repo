@@ -19,6 +19,7 @@ import { useEffect, useRef, useState } from "react";
 
 import { checkUserStatus } from "./store/firebase/logged-checked";
 import AppSplash from "./components/Splash/AppSplash";
+import * as SplashScreen from "expo-splash-screen";
 
 import { fetchNavigationMapData, geralActions } from "./store/redux/geral";
 
@@ -45,6 +46,10 @@ const Navigation = () => {
 	useEffect(() => {
 		const timer = setTimeout(() => {
 			setShowStartupSplash(false);
+
+			SplashScreen.hideAsync().catch((error) => {
+				console.log("Erro ao fechar splash nativo:", error);
+			});
 		}, __DEV__ ? 1800 : 900);
 
 		return () => clearTimeout(timer);
