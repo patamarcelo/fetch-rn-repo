@@ -51,7 +51,7 @@ export default {
 
             "expo-splash-screen",
             "expo-status-bar",
-            
+
             "@react-native-community/datetimepicker",
             "expo-sharing",
 
@@ -97,6 +97,8 @@ export default {
 
             infoPlist: {
                 ITSAppUsesNonExemptEncryption: false,
+                NSMotionUsageDescription:
+                    "O Farm Aplicações pode usar dados de movimento para aprimorar recursos de mapas e navegação.",
             },
 
             config: {

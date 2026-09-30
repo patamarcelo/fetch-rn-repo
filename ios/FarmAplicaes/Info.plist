@@ -60,6 +60,8 @@
 	<string>Allow $(PRODUCT_NAME) to access your location</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Allow $(PRODUCT_NAME) to access your location</string>
+	<key>NSMotionUsageDescription</key>
+	<string>O Farm Aplicações pode usar dados de movimento para aprimorar recursos de mapas e navegação.</string>
 	<key>RCTNewArchEnabled</key>
 	<true/>
 	<key>UILaunchStoryboardName</key>
