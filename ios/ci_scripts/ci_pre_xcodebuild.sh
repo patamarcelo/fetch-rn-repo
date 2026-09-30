@@ -2,47 +2,75 @@
 
 set -e
 
-echo "===== Xcode Cloud pre xcodebuild started ====="
+echo "===== XCODE CLOUD: PRE XCODEBUILD ====="
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-cd "$SCRIPT_DIR/../.."
+REPOSITORY_PATH="$(cd "$SCRIPT_DIR/../.." && pwd)"
+
+cd "$REPOSITORY_PATH"
 
 echo "Repository root:"
 pwd
 
-echo "Checking Node..."
-which node || true
-node -v || true
+echo "===== CONFIGURANDO NODE ====="
 
-echo "Checking NPM..."
-which npm || true
-npm -v || true
+NODE_VERSION="20.19.4"
 
-echo "Installing JS dependencies..."
+case "$(uname -m)" in
+  arm64) NODE_ARCH="arm64" ;;
+  x86_64) NODE_ARCH="x64" ;;
+  *)
+    echo "Arquitetura não suportada: $(uname -m)"
+    exit 1
+    ;;
+esac
 
-if command -v npm >/dev/null 2>&1; then
-  if [ -f package-lock.json ]; then
-    npm ci
-  else
-    npm install
-  fi
-else
-  echo "ERROR: npm not found in Xcode Cloud environment."
-  exit 1
+NODE_BASENAME="node-v${NODE_VERSION}-darwin-${NODE_ARCH}"
+NODE_DIRECTORY="${CI_DERIVED_DATA_PATH:-/tmp}/node"
+NODE_INSTALL_PATH="${NODE_DIRECTORY}/${NODE_BASENAME}"
+NODE_ARCHIVE="/tmp/${NODE_BASENAME}.tar.gz"
+
+if [ ! -x "${NODE_INSTALL_PATH}/bin/node" ]; then
+  echo "Baixando Node ${NODE_VERSION} para macOS ${NODE_ARCH}..."
+  mkdir -p "$NODE_DIRECTORY"
+  curl \
+    --fail \
+    --location \
+    --retry 3 \
+    --silent \
+    --show-error \
+    "https://nodejs.org/dist/v${NODE_VERSION}/${NODE_BASENAME}.tar.gz" \
+    -o "$NODE_ARCHIVE"
+  tar -xzf "$NODE_ARCHIVE" -C "$NODE_DIRECTORY"
+  rm -f "$NODE_ARCHIVE"
 fi
 
-echo "Installing CocoaPods..."
+export PATH="${NODE_INSTALL_PATH}/bin:${PATH}"
+
+echo "Node: $(node -v)"
+echo "npm: $(npm -v)"
+
+echo "===== INSTALANDO DEPENDÊNCIAS JS ====="
+if [ -f package-lock.json ]; then
+  npm ci
+else
+  npm install
+fi
+
+echo "===== INSTALANDO PODS ====="
+
+if ! command -v pod >/dev/null 2>&1; then
+  echo "CocoaPods não está disponível no Xcode Cloud."
+  exit 1
+fi
 
 cd ios
 pod install
 
-echo "Checking Pods xcconfig..."
-
-if [ -f "Pods/Target Support Files/Pods-FarmAplicaes/Pods-FarmAplicaes.release.xcconfig" ]; then
-  echo "Pods xcconfig found."
-else
-  echo "ERROR: Pods xcconfig not found after pod install."
+XCCONFIG_PATH="Pods/Target Support Files/Pods-FarmAplicaes/Pods-FarmAplicaes.release.xcconfig"
+if [ ! -f "$XCCONFIG_PATH" ]; then
+  echo "Pods xcconfig não encontrado: $XCCONFIG_PATH"
   exit 1
 fi
 
-echo "===== Xcode Cloud pre xcodebuild finished ====="
+echo "===== PRE XCODEBUILD FINALIZADO ====="
