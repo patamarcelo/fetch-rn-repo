@@ -25,7 +25,7 @@ const req = (key) => {
  * Esta versão continua sendo controlada manualmente.
  * Altere quando criar uma nova versão pública do aplicativo.
  */
-const APP_VERSION = "1.0.89";
+const APP_VERSION = "1.0.90";
 
 export default {
     expo: {
