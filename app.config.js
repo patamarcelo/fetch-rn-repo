@@ -111,6 +111,8 @@ export default {
         },
 
         android: {
+            jsEngine: "hermes",
+            
             package: "com.patamarcelo.fetchapp",
 
             adaptiveIcon: {
