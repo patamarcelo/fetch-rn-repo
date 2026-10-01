@@ -64,6 +64,7 @@ function getCulturePreset(cultura) {
 	if (normalized.includes("arroz")) return CULTURE_PRESETS.Arroz;
 	if (normalized.includes("soja")) return CULTURE_PRESETS.Soja;
 	if (normalized.includes("feijao")) return CULTURE_PRESETS.Feijão;
+	if (normalized.includes("milho")) return CULTURE_PRESETS.Milho;
 
 	return {
 		...CULTURE_PRESETS.default,
