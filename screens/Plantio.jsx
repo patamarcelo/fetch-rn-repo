@@ -254,14 +254,6 @@ const PlantioScreen = () => {
 
 	return (
 		<GestureHandlerRootView style={styles.containerGesture}>
-			{isRefreshing && (
-				<View style={styles.customRefreshContainer}>
-					<ActivityIndicator size="large" color="#1E90FF" />
-
-					<Text style={styles.customRefreshText}>Atualizando Dados...</Text>
-				</View>
-			)}
-
 			<ScrollView
 				style={styles.scrollView}
 				contentContainerStyle={[

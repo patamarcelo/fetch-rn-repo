@@ -2,118 +2,131 @@
 
 set -e
 
-echo "===== XCODE CLOUD: POST CLONE ====="
-echo "PWD inicial: $(pwd)"
-echo "CI_PRIMARY_REPOSITORY_PATH: $CI_PRIMARY_REPOSITORY_PATH"
+echo "=================================================="
+echo "Xcode Cloud - ci_post_clone"
+echo "=================================================="
 
 REPOSITORY_PATH="${CI_PRIMARY_REPOSITORY_PATH:-$(pwd)}"
 
-echo "===== ENTRANDO NO APP ====="
-cd "$REPOSITORY_PATH"
+echo "Repositório:"
+echo "${REPOSITORY_PATH}"
 
-echo "PWD atual: $(pwd)"
+cd "${REPOSITORY_PATH}"
 
-echo "===== CONFIGURANDO NODE ====="
+echo ""
+echo "Diretório atual:"
+pwd
 
-NODE_VERSION="20.19.4"
+echo ""
+echo "Configurando Homebrew no PATH..."
 
-case "$(uname -m)" in
-  arm64)
-    NODE_ARCH="arm64"
-    ;;
-  x86_64)
-    NODE_ARCH="x64"
-    ;;
-  *)
-    echo "Arquitetura não suportada: $(uname -m)"
-    exit 1
-    ;;
-esac
-
-NODE_BASENAME="node-v${NODE_VERSION}-darwin-${NODE_ARCH}"
-NODE_DIRECTORY="${CI_DERIVED_DATA_PATH:-/tmp}/node"
-NODE_INSTALL_PATH="${NODE_DIRECTORY}/${NODE_BASENAME}"
-NODE_ARCHIVE="/tmp/${NODE_BASENAME}.tar.gz"
-
-if [ ! -x "${NODE_INSTALL_PATH}/bin/node" ]; then
-  echo "Baixando Node ${NODE_VERSION} para macOS ${NODE_ARCH}..."
-
-  mkdir -p "$NODE_DIRECTORY"
-
-  curl \
-    --fail \
-    --location \
-    --retry 3 \
-    --silent \
-    --show-error \
-    "https://nodejs.org/dist/v${NODE_VERSION}/${NODE_BASENAME}.tar.gz" \
-    -o "$NODE_ARCHIVE"
-
-  tar -xzf "$NODE_ARCHIVE" -C "$NODE_DIRECTORY"
-  rm -f "$NODE_ARCHIVE"
-fi
-
-export PATH="${NODE_INSTALL_PATH}/bin:${PATH}"
-
-echo "Node:"
-node -v
-
-echo "npm:"
-npm -v
-
-echo "===== INSTALANDO DEPENDÊNCIAS JS ====="
-
-if [ -f package-lock.json ]; then
-  npm ci
+if [ -x "/opt/homebrew/bin/brew" ]; then
+    eval "$(/opt/homebrew/bin/brew shellenv)"
+elif [ -x "/usr/local/bin/brew" ]; then
+    eval "$(/usr/local/bin/brew shellenv)"
+elif command -v brew >/dev/null 2>&1; then
+    eval "$(brew shellenv)"
 else
-  npm install
+    echo "ERRO: Homebrew não está disponível no ambiente."
+    exit 1
 fi
 
-echo "===== VERIFICANDO COCOAPODS ====="
+echo ""
+echo "Homebrew encontrado:"
+command -v brew
+brew --version
+
+echo ""
+echo "Verificando Node.js..."
+
+if ! command -v node >/dev/null 2>&1; then
+    echo "Node.js não encontrado. Instalando..."
+    brew install node
+else
+    echo "Node.js já está instalado."
+fi
+
+echo ""
+echo "Verificando CocoaPods..."
 
 if ! command -v pod >/dev/null 2>&1; then
-  echo "CocoaPods não está disponível no Xcode Cloud."
-  exit 1
+    echo "CocoaPods não encontrado. Instalando..."
+    brew install cocoapods
+else
+    echo "CocoaPods já está instalado."
 fi
+
+echo ""
+echo "Atualizando PATH após as instalações..."
+
+export PATH="/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/usr/local/sbin:${PATH}"
+
+echo ""
+echo "Versões disponíveis:"
+
+echo "Node:"
+node --version
+
+echo "NPM:"
+npm --version
 
 echo "CocoaPods:"
 pod --version
 
-echo "===== INSTALANDO PODS ====="
+echo ""
+echo "Instalando dependências JavaScript..."
 
-cd ios
+cd "${REPOSITORY_PATH}"
 
-MAX_ATTEMPTS=4
-ATTEMPT=1
+if [ -f "package-lock.json" ]; then
+    echo "package-lock.json encontrado. Executando npm ci..."
+    npm ci
+elif [ -f "yarn.lock" ]; then
+    echo "yarn.lock encontrado."
 
-while [ "$ATTEMPT" -le "$MAX_ATTEMPTS" ]; do
-  echo "===== POD INSTALL: tentativa $ATTEMPT de $MAX_ATTEMPTS ====="
+    if ! command -v yarn >/dev/null 2>&1; then
+        echo "Yarn não encontrado. Instalando..."
+        npm install --global yarn
+    fi
 
-  if pod install; then
-    echo "===== POD INSTALL CONCLUÍDO ====="
-    break
-  fi
+    yarn install --frozen-lockfile
+else
+    echo "Nenhum lockfile encontrado. Executando npm install..."
+    npm install
+fi
 
-  if [ "$ATTEMPT" -eq "$MAX_ATTEMPTS" ]; then
-    echo "===== POD INSTALL FALHOU APÓS $MAX_ATTEMPTS TENTATIVAS ====="
-    exit 1
-  fi
+echo ""
+echo "Instalando Pods..."
 
-  WAIT_SECONDS=$((ATTEMPT * 60))
+cd "${REPOSITORY_PATH}/ios"
 
-  echo "pod install falhou. Aguardando ${WAIT_SECONDS}s..."
-  sleep "$WAIT_SECONDS"
+pod install --repo-update
 
-  ATTEMPT=$((ATTEMPT + 1))
-done
-
-echo "===== VALIDANDO PODS ====="
+echo ""
+echo "Verificando integração do CocoaPods..."
 
 XCCONFIG_PATH="Pods/Target Support Files/Pods-FarmAplicaes/Pods-FarmAplicaes.release.xcconfig"
 
-if [ ! -f "$XCCONFIG_PATH" ]; then
-  echo "Arquivo xcconfig não foi criado: $XCCONFIG_PATH"
-  exit 1
+if [ ! -f "${XCCONFIG_PATH}" ]; then
+    echo "ERRO: o arquivo esperado não foi criado:"
+    echo "${XCCONFIG_PATH}"
+
+    echo ""
+    echo "Arquivos xcconfig encontrados:"
+
+    find "Pods/Target Support Files" \
+        -type f \
+        -name "*.xcconfig" \
+        -print 2>/dev/null || true
+
+    exit 1
 fi
 
-echo "===== POST CLONE FINALIZADO ====="
+echo ""
+echo "Arquivo encontrado:"
+echo "${XCCONFIG_PATH}"
+
+echo ""
+echo "=================================================="
+echo "ci_post_clone concluído com sucesso"
+echo "=================================================="
