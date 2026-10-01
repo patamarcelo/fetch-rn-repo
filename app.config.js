@@ -43,6 +43,8 @@ export default {
          */
         runtimeVersion: APP_VERSION,
 
+        jsEngine: "jsc",
+
         orientation: "portrait",
         icon: "./assets/icon.png",
 
